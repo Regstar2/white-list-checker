@@ -1,48 +1,57 @@
 package com.whitelistchecker
 
+import android.net.ConnectivityManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.domain.checker.CellularNetworkProvider
+import com.whitelistchecker.domain.checker.MobileSiteChecker
+import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
+import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
+import com.whitelistchecker.ui.main.MainScreen
+import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val viewModelFactory by lazy {
+        val connectivityManager = getSystemService(ConnectivityManager::class.java)
+        val cellularNetworkProvider = CellularNetworkProvider(connectivityManager)
+        val mobileSiteChecker = MobileSiteChecker()
+        val classifier = WhitelistStateClassifier()
+        val useCase = WhitelistCheckUseCase(
+            connectivityManager = connectivityManager,
+            cellularNetworkProvider = cellularNetworkProvider,
+            mobileSiteChecker = mobileSiteChecker,
+            classifier = classifier,
+        )
+        MainViewModelFactory(useCase)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
             WhiteListCheckerTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Column(
-                        modifier = Modifier
-                            .fillMaxSize()
-                            .padding(innerPadding)
-                            .padding(24.dp),
-                        verticalArrangement = Arrangement.Center,
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                    ) {
-                        Text(
-                            text = "Whitelist Checker",
-                            style = MaterialTheme.typography.headlineMedium,
-                        )
-                        Text(
-                            text = "Проект готов к разработке v0.1",
-                            style = MaterialTheme.typography.bodyLarge,
-                            modifier = Modifier.padding(top = 12.dp),
-                        )
-                    }
-                }
+                val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
+                MainScreen(viewModel = viewModel)
             }
+        }
+    }
+
+    private class MainViewModelFactory(
+        private val whitelistCheckUseCase: WhitelistCheckUseCase,
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
+                return MainViewModel(whitelistCheckUseCase) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
     }
 }
