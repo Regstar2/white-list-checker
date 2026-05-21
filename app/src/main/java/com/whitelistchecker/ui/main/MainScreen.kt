@@ -20,6 +20,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
@@ -37,6 +38,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.whitelistchecker.domain.model.BackgroundCheckInterval
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramChatCandidate
 import com.whitelistchecker.domain.model.SiteCheckErrorType
@@ -107,6 +109,14 @@ fun MainScreen(viewModel: MainViewModel) {
                 CircularProgressIndicator(modifier = Modifier.padding(top = 4.dp))
             }
 
+            BackgroundCheckCard(
+                uiState = uiState,
+                onEnabledChange = viewModel::updateBackgroundCheckEnabled,
+                onIntervalChange = viewModel::updateBackgroundCheckInterval,
+                onReschedule = viewModel::rescheduleBackgroundCheck,
+                onStop = viewModel::stopBackgroundCheck,
+            )
+
             LocalNotificationsCard(
                 uiState = uiState,
                 onEnabledChange = viewModel::updateLocalNotificationsEnabled,
@@ -159,6 +169,99 @@ fun MainScreen(viewModel: MainViewModel) {
                 uiState.result?.error?.let { message ->
                     ErrorCard(message)
                 }
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackgroundCheckCard(
+    uiState: MainUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onIntervalChange: (Long) -> Unit,
+    onReschedule: () -> Unit,
+    onStop: () -> Unit,
+) {
+    InfoCard(title = "Автопроверка") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Включить автопроверку")
+            Switch(
+                checked = uiState.backgroundCheckSettings.enabled,
+                onCheckedChange = onEnabledChange,
+            )
+        }
+        Text(
+            text = if (uiState.backgroundCheckSettings.enabled) {
+                "Автопроверка включена. Android выполнит проверку примерно по расписанию. " +
+                    "Точное время зависит от системы и энергосбережения."
+            } else {
+                "Автопроверка выключена. Фоновая проверка не выполняется."
+            },
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+            text = "Фоновая проверка использует WorkManager. Android может сдвигать время запуска " +
+                "из-за энергосбережения. Для частых проверок нужен foreground service, но в MVP он не используется.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Text(
+            text = "Telegram-уведомления отправляются только через Cloudflare Worker relay. " +
+                "Если Worker недоступен, сообщение сохраняется в очередь.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        if (uiState.backgroundCheckSettings.enabled) {
+            Text(
+                text = "Интервал",
+                style = MaterialTheme.typography.titleSmall,
+            )
+            BackgroundCheckInterval.entries.forEach { interval ->
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    RadioButton(
+                        selected = uiState.backgroundCheckSettings.intervalMinutes == interval.minutes,
+                        onClick = { onIntervalChange(interval.minutes) },
+                    )
+                    Text(text = interval.label)
+                }
+            }
+        }
+        val status = uiState.backgroundCheckStatus
+        DetailLine(
+            "Последний запуск",
+            status.lastRunAtMillis?.let { formatCheckedAt(it) } ?: "—",
+        )
+        DetailLine(
+            "Последнее завершение",
+            status.lastFinishedAtMillis?.let { formatCheckedAt(it) } ?: "—",
+        )
+        DetailLine("Последний статус", status.lastState.toDisplayLabel())
+        DetailLine("Последняя ошибка", status.lastError ?: "нет")
+        DetailLine("Последняя отправка Telegram", status.lastTelegramSendResult ?: "нет")
+        status.lastQueueFlushSummary?.let { summary ->
+            DetailLine("Последний flush очереди", summary)
+        }
+        DetailLine("Очередь Telegram", "${uiState.pendingReportsCount} сообщений")
+        OutlinedButton(
+            onClick = onReschedule,
+            enabled = uiState.backgroundCheckSettings.enabled && !uiState.isSavingBackgroundSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Запланировать заново")
+        }
+        if (uiState.backgroundCheckSettings.enabled) {
+            OutlinedButton(
+                onClick = onStop,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Остановить автопроверку")
             }
         }
     }

@@ -13,8 +13,8 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 3
-        versionName = "0.5.0"
+        versionCode = 4
+        versionName = "0.6.0"
     }
 
     buildTypes {
@@ -50,6 +50,7 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.okhttp)
     implementation(libs.androidx.activity.compose)
     implementation(platform(libs.androidx.compose.bom))

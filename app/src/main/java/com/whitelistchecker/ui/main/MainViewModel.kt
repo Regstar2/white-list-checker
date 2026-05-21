@@ -2,8 +2,11 @@ package com.whitelistchecker.ui.main
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
+import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
+import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.TelegramChatCandidate
@@ -19,6 +22,7 @@ import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.userMessage
+import com.whitelistchecker.worker.BackgroundCheckScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +39,9 @@ class MainViewModel(
     private val permissionChecker: LocalNotificationPermissionChecker,
     private val channelManager: LocalNotificationChannelManager,
     private val appSettingsNavigator: AppSettingsNavigator,
+    private val backgroundCheckSettingsRepository: BackgroundCheckSettingsRepository,
+    private val backgroundCheckStatusRepository: BackgroundCheckStatusRepository,
+    private val backgroundCheckScheduler: BackgroundCheckScheduler,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -44,6 +51,129 @@ class MainViewModel(
         channelManager.ensureChannelsCreated()
         refreshNotificationPermissionState()
         loadInitialState()
+        observeBackgroundCheck()
+    }
+
+    fun updateBackgroundCheckEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            try {
+                _uiState.update {
+                    it.copy(
+                        backgroundCheckSettings = it.backgroundCheckSettings.copy(enabled = enabled),
+                    )
+                }
+                backgroundCheckSettingsRepository.setEnabled(enabled)
+                val settings = backgroundCheckSettingsRepository.getSettings()
+                if (enabled) {
+                    backgroundCheckScheduler.schedule(settings.normalizedIntervalMinutes)
+                } else {
+                    backgroundCheckScheduler.cancel()
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
+                }
+            }
+        }
+    }
+
+    fun updateBackgroundCheckInterval(minutes: Long) {
+        val normalized = BackgroundCheckSettings(intervalMinutes = minutes).normalizedIntervalMinutes
+        viewModelScope.launch {
+            try {
+                _uiState.update {
+                    it.copy(
+                        backgroundCheckSettings = it.backgroundCheckSettings.copy(
+                            intervalMinutes = normalized,
+                        ),
+                    )
+                }
+                backgroundCheckSettingsRepository.setIntervalMinutes(normalized)
+                val settings = backgroundCheckSettingsRepository.getSettings()
+                if (settings.enabled) {
+                    backgroundCheckScheduler.schedule(normalized)
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
+                }
+            }
+        }
+    }
+
+    fun saveBackgroundCheckSettings() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingBackgroundSettings = true) }
+            try {
+                val settings = _uiState.value.backgroundCheckSettings.copy(
+                    intervalMinutes = _uiState.value.backgroundCheckSettings.normalizedIntervalMinutes,
+                )
+                backgroundCheckSettingsRepository.saveSettings(settings)
+                backgroundCheckScheduler.reschedule(settings)
+                _uiState.update {
+                    it.copy(
+                        backgroundCheckSettings = settings,
+                        isSavingBackgroundSettings = false,
+                        errorMessage = null,
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSavingBackgroundSettings = false,
+                        errorMessage = exception.message ?: exception.javaClass.simpleName,
+                    )
+                }
+            }
+        }
+    }
+
+    fun rescheduleBackgroundCheck() {
+        viewModelScope.launch {
+            try {
+                val settings = backgroundCheckSettingsRepository.getSettings()
+                backgroundCheckScheduler.reschedule(settings)
+                _uiState.update {
+                    it.copy(backgroundCheckSettings = settings, errorMessage = null)
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
+                }
+            }
+        }
+    }
+
+    fun stopBackgroundCheck() {
+        viewModelScope.launch {
+            try {
+                backgroundCheckSettingsRepository.setEnabled(false)
+                backgroundCheckScheduler.cancel()
+                _uiState.update {
+                    it.copy(
+                        backgroundCheckSettings = it.backgroundCheckSettings.copy(enabled = false),
+                        errorMessage = null,
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
+                }
+            }
+        }
+    }
+
+    private fun observeBackgroundCheck() {
+        viewModelScope.launch {
+            backgroundCheckSettingsRepository.observeSettings().collect { settings ->
+                _uiState.update { it.copy(backgroundCheckSettings = settings) }
+            }
+        }
+        viewModelScope.launch {
+            backgroundCheckStatusRepository.observeStatus().collect { status ->
+                _uiState.update { it.copy(backgroundCheckStatus = status) }
+            }
+        }
     }
 
     fun checkMobileNetwork() {
@@ -456,6 +586,9 @@ class MainViewModel(
                 val discoveryOffset = telegramSettingsRepository.getChatDiscoveryOffset()
                 val monitorState = checkAndNotifyUseCase.loadMonitorState()
                 val pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount()
+                val backgroundSettings = backgroundCheckSettingsRepository.getSettings()
+                val backgroundStatus = backgroundCheckStatusRepository.getStatus()
+                backgroundCheckScheduler.reschedule(backgroundSettings)
                 _uiState.update {
                     it.copy(
                         localNotificationSettings = localSettings,
@@ -465,6 +598,8 @@ class MainViewModel(
                         ),
                         monitorState = monitorState,
                         pendingReportsCount = pendingReportsCount,
+                        backgroundCheckSettings = backgroundSettings,
+                        backgroundCheckStatus = backgroundStatus,
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                         notificationPermissionRequired = permissionChecker.requiresRuntimePermission(),
                     )
