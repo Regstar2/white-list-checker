@@ -26,7 +26,7 @@ class TelegramWorkerClient(
         }
         executeWorkerRequest(
             settings = settings,
-            method = "getMe",
+            method = WorkerUrlBuilder.METHOD_GET_ME,
             jsonBody = JSONObject(),
         ) { body, _ ->
             parseOkResponse(body, successMessage = null)
@@ -48,7 +48,7 @@ class TelegramWorkerClient(
         when (
             val response = executeWorkerRequestRaw(
                 settings = settings,
-                method = "getUpdates",
+                method = WorkerUrlBuilder.METHOD_GET_UPDATES,
                 jsonBody = jsonBody,
             )
         ) {
@@ -71,7 +71,7 @@ class TelegramWorkerClient(
         when (
             val response = executeWorkerRequestRaw(
                 settings = settings,
-                method = "sendMessage",
+                method = WorkerUrlBuilder.METHOD_SEND_MESSAGE,
                 jsonBody = jsonBody,
             )
         ) {
@@ -141,16 +141,10 @@ class TelegramWorkerClient(
                 .build()
             httpClient.newCall(request).execute().use { response ->
                 val responseBody = response.body?.string().orEmpty()
-                when (response.code) {
-                    200 -> WorkerHttpResult.Success(responseBody, response.code)
-                    401 -> WorkerHttpResult.Failure("Неверный Relay Secret или Worker отклонил запрос")
-                    403 -> WorkerHttpResult.Failure("Worker запретил метод или chat_id")
-                    404 -> WorkerHttpResult.Failure("Endpoint Worker не найден. Проверь Worker URL")
-                    405 -> WorkerHttpResult.Failure("Worker ожидает POST-запрос")
-                    500 -> WorkerHttpResult.Failure(
-                        "Ошибка Worker. Возможно, BOT_TOKEN не настроен в Worker secrets",
-                    )
-                    else -> WorkerHttpResult.Failure("Worker HTTP ${response.code}")
+                if (response.code == 200) {
+                    WorkerHttpResult.Success(responseBody, response.code)
+                } else {
+                    WorkerHttpResult.Failure(formatWorkerHttpError(response.code, responseBody))
                 }
             }
         } catch (exception: IllegalArgumentException) {
@@ -159,6 +153,22 @@ class TelegramWorkerClient(
             WorkerHttpResult.Failure("${exception.javaClass.simpleName}: Worker недоступен")
         } catch (exception: Exception) {
             WorkerHttpResult.Failure("${exception.javaClass.simpleName}: Worker недоступен")
+        }
+    }
+
+    private fun formatWorkerHttpError(httpCode: Int, responseBody: String): String {
+        val details = responseBody.trim().takeIf { it.isNotBlank() }
+        return if (details != null) {
+            "Worker HTTP $httpCode: $details"
+        } else {
+            when (httpCode) {
+                401 -> "Worker HTTP 401: Unauthorized"
+                403 -> "Worker HTTP 403"
+                404 -> "Worker HTTP 404: Not found"
+                405 -> "Worker HTTP 405: Method not allowed"
+                500 -> "Worker HTTP 500: BOT_TOKEN is not configured"
+                else -> "Worker HTTP $httpCode"
+            }
         }
     }
 
