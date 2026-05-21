@@ -47,3 +47,6 @@ captures/
 
 # Log
 *.log
+
+# Local release artifacts (APK for GitHub upload)
+release/
