@@ -11,6 +11,7 @@ class LocalNotificationFormatter {
         WhitelistState.WHITELIST_OFF -> "Белые списки не обнаружены"
         WhitelistState.WHITELIST_ON -> "Похоже на включённые белые списки"
         WhitelistState.NO_MOBILE_INTERNET -> "Мобильного интернета нет"
+        WhitelistState.MOBILE_DNS_FAILURE -> "Проблема DNS в мобильной сети"
         WhitelistState.PARTIAL_PROBLEM -> "Частичная проблема сети"
         WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> "Мобильная сеть недоступна"
         WhitelistState.UNKNOWN -> "Состояние не определено"

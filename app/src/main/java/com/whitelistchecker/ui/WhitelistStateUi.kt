@@ -8,6 +8,7 @@ fun WhitelistState.toDisplayLabel(): String = when (this) {
     WhitelistState.WHITELIST_OFF -> "🟢 Белые списки не обнаружены"
     WhitelistState.WHITELIST_ON -> "🟠 Похоже на включённые белые списки"
     WhitelistState.NO_MOBILE_INTERNET -> "🔴 Мобильного интернета нет"
+    WhitelistState.MOBILE_DNS_FAILURE -> "🟡 Проблема DNS в мобильной сети"
     WhitelistState.PARTIAL_PROBLEM -> "🟡 Частичная проблема сети"
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> "⚪ Мобильная сеть недоступна"
 }
@@ -17,8 +18,18 @@ fun WhitelistState.toPlainLabel(): String = when (this) {
     WhitelistState.WHITELIST_OFF -> "Белые списки не обнаружены"
     WhitelistState.WHITELIST_ON -> "Похоже на включённые белые списки"
     WhitelistState.NO_MOBILE_INTERNET -> "Мобильного интернета нет"
+    WhitelistState.MOBILE_DNS_FAILURE -> "Проблема DNS в мобильной сети"
     WhitelistState.PARTIAL_PROBLEM -> "Частичная проблема сети"
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> "Мобильная сеть недоступна"
+}
+
+fun WhitelistState.toDescription(): String? = when (this) {
+    WhitelistState.MOBILE_DNS_FAILURE ->
+        "Мобильная сеть получена, но домены не резолвятся. " +
+            "Проверь Private DNS, APN и DNS оператора."
+    WhitelistState.CELLULAR_NETWORK_UNAVAILABLE ->
+        "Android не дал cellular Network. Мобильные данные, SIM или сигнал могут быть недоступны."
+    else -> null
 }
 
 fun WhitelistStateChangeType.toEventTitle(): String = when (this) {

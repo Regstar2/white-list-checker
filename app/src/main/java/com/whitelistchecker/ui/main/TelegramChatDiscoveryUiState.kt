@@ -6,6 +6,7 @@ import com.whitelistchecker.domain.model.TelegramChatDiscoveryResult
 data class TelegramChatDiscoveryUiState(
     val isPreparing: Boolean = false,
     val isLoading: Boolean = false,
+    val isLoadingRecent: Boolean = false,
     val discoveryOffset: Long? = null,
     val candidates: List<TelegramChatCandidate> = emptyList(),
     val selectedCandidate: TelegramChatCandidate? = null,

@@ -20,6 +20,7 @@ class WhitelistCheckUseCase(
     private val cellularNetworkProvider: CellularNetworkProvider,
     private val mobileSiteChecker: MobileSiteChecker,
     private val classifier: WhitelistStateClassifier,
+    private val networkDiagnosticsUseCase: NetworkDiagnosticsUseCase,
 ) {
 
     suspend fun execute(): NetworkCheckResult {
@@ -56,7 +57,12 @@ class WhitelistCheckUseCase(
             }
             val foreignSummary = buildSummary(TargetGroup.FOREIGN, siteResults)
             val localSummary = buildSummary(TargetGroup.LOCAL, siteResults)
-            val state = classifier.classify(foreignSummary, localSummary)
+            val state = classifier.classify(foreignSummary, localSummary, siteResults)
+            val diagnosticsMessage = if (state == WhitelistState.MOBILE_DNS_FAILURE) {
+                networkDiagnosticsUseCase.diagnoseDnsConnectivity(cellularNetwork)
+            } else {
+                null
+            }
             NetworkCheckResult(
                 siteResults = siteResults,
                 foreignSummary = foreignSummary,
@@ -65,7 +71,7 @@ class WhitelistCheckUseCase(
                 activeNetworkLabel = activeNetworkLabel,
                 checkedNetworkLabel = checkedNetworkLabel,
                 checkedAtMillis = checkedAtMillis,
-                error = null,
+                diagnosticsMessage = diagnosticsMessage,
             )
         } finally {
             cellularNetworkProvider.release()

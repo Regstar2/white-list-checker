@@ -88,22 +88,25 @@ class TelegramWorkerClient(
     private fun parseGetUpdatesBody(body: String): TelegramChatDiscoveryResult {
         return when (val parsed = TelegramGetUpdatesParser.parseResponse(body)) {
             is TelegramGetUpdatesParser.ParseResult.Failure ->
-                TelegramChatDiscoveryResult.Failure(
-                    parsed.reason.replace(
-                        "Не удалось разобрать ответ Telegram",
-                        "Не удалось разобрать ответ Worker",
-                    ),
-                )
+                TelegramChatDiscoveryResult.Failure(parsed.reason)
             is TelegramGetUpdatesParser.ParseResult.Success -> {
                 val updates = parsed.updates
+                val rawUpdatesCount = updates.size
                 val nextOffset = TelegramGetUpdatesParser.maxUpdateId(updates)?.plus(1)
                 val candidates = TelegramGetUpdatesParser.toCandidates(updates)
-                if (candidates.isEmpty()) {
-                    TelegramChatDiscoveryResult.Empty(nextOffset = nextOffset)
-                } else {
-                    TelegramChatDiscoveryResult.Success(
+                when {
+                    rawUpdatesCount == 0 -> TelegramChatDiscoveryResult.Empty(
+                        nextOffset = nextOffset,
+                        rawUpdatesCount = 0,
+                    )
+                    candidates.isEmpty() -> TelegramChatDiscoveryResult.Empty(
+                        nextOffset = nextOffset,
+                        rawUpdatesCount = rawUpdatesCount,
+                    )
+                    else -> TelegramChatDiscoveryResult.Success(
                         candidates = candidates,
                         nextOffset = nextOffset,
+                        rawUpdatesCount = rawUpdatesCount,
                     )
                 }
             }
@@ -180,13 +183,22 @@ class TelegramWorkerClient(
             } else {
                 val description = root.optString("description").takeIf { it.isNotBlank() }
                 TelegramTestResult.Failure(
-                    description?.let { "Telegram Bot API вернул ошибку: $it" }
-                        ?: "Не удалось разобрать ответ Worker/Telegram",
+                    mapTelegramApiError(description),
                 )
             }
         } catch (_: Exception) {
             TelegramTestResult.Failure("Не удалось разобрать ответ Worker/Telegram")
         }
+    }
+
+    private fun mapTelegramApiError(description: String?): String {
+        if (description.isNullOrBlank()) {
+            return "Не удалось разобрать ответ Worker/Telegram"
+        }
+        if (description.contains("bot can't send messages to the bot", ignoreCase = true)) {
+            return "Вы указали ID самого бота, а не chat_id получателя. Получите chat_id через /start."
+        }
+        return "Telegram Bot API вернул ошибку: $description"
     }
 
     private fun validateCanTest(settings: TelegramSettings): ValidationResult {

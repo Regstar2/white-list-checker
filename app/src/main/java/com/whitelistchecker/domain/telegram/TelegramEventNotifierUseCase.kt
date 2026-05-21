@@ -12,6 +12,16 @@ class TelegramEventNotifierUseCase(
     private val reportFormatter: TelegramReportFormatter,
 ) {
 
+    suspend fun sendOnManualCheck(checkResult: NetworkCheckResult): TelegramSendResult? {
+        val settings = settingsRepository.getSettings()
+        if (!settings.enabled) return null
+        if (!settings.isConfigured) {
+            return TelegramSendResult.Failure("Telegram не настроен")
+        }
+        val text = reportFormatter.formatManualCheck(checkResult)
+        return telegramWorkerClient.sendMessage(settings, text)
+    }
+
     suspend fun notifyIfNeeded(
         event: WhitelistStateChangeEvent?,
         checkResult: NetworkCheckResult,

@@ -25,6 +25,7 @@ fun TelegramChatCandidate.displayName(): String {
 fun TelegramChatDiscoveryResult.userMessage(): String? = when (this) {
     is TelegramChatDiscoveryResult.Success -> null
     is TelegramChatDiscoveryResult.Empty ->
-        "Новых сообщений не найдено. Напиши /start боту и попробуй снова."
+        "Новых сообщений не найдено. Отправь боту новое сообщение после нажатия «Начать получение chat_id» и попробуй снова. " +
+            "Если ты уже писал /start раньше, нажми «Показать последние чаты»."
     is TelegramChatDiscoveryResult.Failure -> reason
 }

@@ -236,7 +236,7 @@ class MainViewModel(
                     result = result,
                     offset = offset,
                     preparing = false,
-                    successStatus = PREPARE_SUCCESS_MESSAGE,
+                    successStatus = buildPrepareStatusMessage(result, offset),
                 )
             } catch (exception: Exception) {
                 _uiState.update {
@@ -280,10 +280,10 @@ class MainViewModel(
                     result = result,
                     offset = offset,
                     loading = false,
-                    successStatus = if (result is TelegramChatDiscoveryResult.Success) {
-                        "Chat ID найден"
-                    } else {
-                        null
+                    successStatus = when (result) {
+                        is TelegramChatDiscoveryResult.Success ->
+                            "Найдено кандидатов: ${result.candidates.size}"
+                        else -> null
                     },
                 )
             } catch (exception: Exception) {
@@ -291,6 +291,72 @@ class MainViewModel(
                     it.copy(
                         telegramChatDiscovery = it.telegramChatDiscovery.copy(
                             isLoading = false,
+                            errorMessage = exception.message ?: exception.javaClass.simpleName,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun resetTelegramChatDiscovery() {
+        viewModelScope.launch {
+            telegramSettingsRepository.clearChatDiscoveryOffset()
+            _uiState.update {
+                it.copy(
+                    telegramChatDiscovery = TelegramChatDiscoveryUiState(
+                        statusMessage = RESET_DISCOVERY_MESSAGE,
+                    ),
+                )
+            }
+        }
+    }
+
+    fun findRecentTelegramChats() {
+        val state = _uiState.value
+        if (!state.telegramSettings.isReadyForDiscovery) {
+            _uiState.update {
+                it.copy(
+                    telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                        errorMessage = discoverySettingsError(state.telegramSettings),
+                    ),
+                )
+            }
+            return
+        }
+        viewModelScope.launch {
+            val preservedOffset = telegramSettingsRepository.getChatDiscoveryOffset()
+            _uiState.update {
+                it.copy(
+                    telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                        isLoadingRecent = true,
+                        errorMessage = null,
+                    ),
+                )
+            }
+            try {
+                telegramSettingsRepository.saveSettings(state.telegramSettings)
+                val result = telegramChatIdResolverUseCase.findRecentChats()
+                handleDiscoveryResult(
+                    result = result,
+                    offset = preservedOffset,
+                    loadingRecent = false,
+                    successStatus = when (result) {
+                        is TelegramChatDiscoveryResult.Success ->
+                            "$RECENT_CHATS_STATUS\nНайдено кандидатов: ${result.candidates.size}"
+                        is TelegramChatDiscoveryResult.Empty ->
+                            when {
+                                result.rawUpdatesCount == 0 -> "getUpdates вернул 0 updates"
+                                else -> "getUpdates вернул updates, но message.chat не найден"
+                            }
+                        else -> null
+                    },
+                )
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                            isLoadingRecent = false,
                             errorMessage = exception.message ?: exception.javaClass.simpleName,
                         ),
                     )
@@ -358,6 +424,7 @@ class MainViewModel(
         offset: Long?,
         preparing: Boolean = false,
         loading: Boolean = false,
+        loadingRecent: Boolean = false,
         successStatus: String? = null,
     ) {
         when (result) {
@@ -367,6 +434,7 @@ class MainViewModel(
                         telegramChatDiscovery = it.telegramChatDiscovery.copy(
                             isPreparing = preparing,
                             isLoading = loading,
+                            isLoadingRecent = loadingRecent,
                             discoveryOffset = offset,
                             candidates = result.candidates,
                             lastResult = result,
@@ -382,6 +450,7 @@ class MainViewModel(
                         telegramChatDiscovery = it.telegramChatDiscovery.copy(
                             isPreparing = preparing,
                             isLoading = loading,
+                            isLoadingRecent = loadingRecent,
                             discoveryOffset = offset,
                             candidates = emptyList(),
                             lastResult = result,
@@ -401,6 +470,7 @@ class MainViewModel(
                         telegramChatDiscovery = it.telegramChatDiscovery.copy(
                             isPreparing = preparing,
                             isLoading = loading,
+                            isLoadingRecent = loadingRecent,
                             discoveryOffset = offset,
                             lastResult = result,
                             statusMessage = null,
@@ -408,6 +478,18 @@ class MainViewModel(
                         ),
                     )
                 }
+            }
+        }
+    }
+
+    private fun buildPrepareStatusMessage(
+        result: TelegramChatDiscoveryResult,
+        offset: Long?,
+    ): String {
+        return buildString {
+            append(PREPARE_SUCCESS_MESSAGE)
+            if (result is TelegramChatDiscoveryResult.Empty && result.rawUpdatesCount > 0 && offset != null) {
+                append("\nСтарые updates пропущены. Offset: $offset")
             }
         }
     }
@@ -422,7 +504,12 @@ class MainViewModel(
 
     companion object {
         private const val PREPARE_SUCCESS_MESSAGE =
-            "Теперь напиши /start боту в личном чате или в группе, затем нажми «Получить chat_id»."
+            "Поиск chat_id начат. Теперь отправь боту новое сообщение, например /start или id test, " +
+                "затем нажми «Получить chat_id»."
+        private const val RESET_DISCOVERY_MESSAGE =
+            "Поиск chat_id сброшен. Нажми «Начать получение chat_id», затем отправь боту новое сообщение."
+        private const val RECENT_CHATS_STATUS =
+            "Показаны последние чаты из getUpdates. Проверь, что это нужный чат."
         private const val TEST_MESSAGE_TEXT = "Тестовое сообщение Whitelist Monitor"
     }
 }

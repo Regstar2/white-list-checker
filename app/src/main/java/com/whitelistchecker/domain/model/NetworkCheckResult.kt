@@ -8,5 +8,6 @@ data class NetworkCheckResult(
     val activeNetworkLabel: String,
     val checkedNetworkLabel: String,
     val checkedAtMillis: Long,
-    val error: String?,
+    val error: String? = null,
+    val diagnosticsMessage: String? = null,
 )

@@ -5,5 +5,6 @@ data class SiteCheckResult(
     val available: Boolean,
     val httpCode: Int?,
     val error: String?,
+    val errorType: SiteCheckErrorType = SiteCheckErrorType.NONE,
     val durationMs: Long,
 )

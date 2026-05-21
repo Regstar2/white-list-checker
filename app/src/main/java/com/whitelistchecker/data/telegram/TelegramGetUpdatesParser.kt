@@ -12,7 +12,10 @@ object TelegramGetUpdatesParser {
         val ok = root.optBoolean("ok", false)
         if (!ok) {
             val description = root.optString("description").takeIf { it.isNotBlank() }
-            return ParseResult.Failure(description ?: "Не удалось разобрать ответ Telegram")
+            return ParseResult.Failure(
+                description?.let { "Worker вернул ok=false: $it" }
+                    ?: "Worker вернул ok=false",
+            )
         }
         val resultArray = root.optJSONArray("result") ?: JSONArray()
         val updates = mutableListOf<RawUpdate>()

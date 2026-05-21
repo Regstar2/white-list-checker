@@ -23,8 +23,24 @@ class TelegramChatIdResolverUseCase(
             is TelegramChatDiscoveryResult.Empty -> result.nextOffset ?: 0L
             is TelegramChatDiscoveryResult.Failure -> return result
         }
+        val skippedUpdatesCount = when (result) {
+            is TelegramChatDiscoveryResult.Success -> result.rawUpdatesCount
+            is TelegramChatDiscoveryResult.Empty -> result.rawUpdatesCount
+            is TelegramChatDiscoveryResult.Failure -> 0
+        }
         settingsRepository.saveChatDiscoveryOffset(nextOffset)
-        return TelegramChatDiscoveryResult.Empty(nextOffset = nextOffset)
+        return TelegramChatDiscoveryResult.Empty(
+            nextOffset = nextOffset,
+            rawUpdatesCount = skippedUpdatesCount,
+        )
+    }
+
+    suspend fun findRecentChats(): TelegramChatDiscoveryResult {
+        val settings = settingsRepository.getSettings()
+        if (!settings.isReadyForDiscovery) {
+            return TelegramChatDiscoveryResult.Failure(discoverySettingsError(settings))
+        }
+        return telegramWorkerClient.getUpdates(settings, offset = null)
     }
 
     suspend fun findNewChats(): TelegramChatDiscoveryResult {

@@ -14,6 +14,7 @@ import com.whitelistchecker.data.targets.DefaultTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.checker.MobileSiteChecker
+import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
 import com.whitelistchecker.domain.monitor.StateChangeDetector
@@ -35,6 +36,7 @@ import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
 import okhttp3.OkHttpClient
+import java.util.concurrent.TimeUnit
 
 class MainActivity : ComponentActivity() {
 
@@ -45,12 +47,14 @@ class MainActivity : ComponentActivity() {
         val cellularNetworkProvider = CellularNetworkProvider(connectivityManager)
         val mobileSiteChecker = MobileSiteChecker()
         val classifier = WhitelistStateClassifier()
+        val networkDiagnosticsUseCase = NetworkDiagnosticsUseCase()
         val whitelistCheckUseCase = WhitelistCheckUseCase(
             connectivityManager = connectivityManager,
             targetsRepository = targetsRepository,
             cellularNetworkProvider = cellularNetworkProvider,
             mobileSiteChecker = mobileSiteChecker,
             classifier = classifier,
+            networkDiagnosticsUseCase = networkDiagnosticsUseCase,
         )
         val monitorStateRepository = MonitorStateRepository(appContext)
         val whitelistMonitorUseCase = WhitelistMonitorUseCase(
@@ -77,7 +81,13 @@ class MainActivity : ComponentActivity() {
         )
         val telegramSettingsRepository = TelegramSettingsRepository(appContext)
         val telegramWorkerClient = TelegramWorkerClient(
-            httpClient = OkHttpClient.Builder().build(),
+            httpClient = OkHttpClient.Builder()
+                .connectTimeout(10, TimeUnit.SECONDS)
+                .readTimeout(20, TimeUnit.SECONDS)
+                .writeTimeout(10, TimeUnit.SECONDS)
+                .callTimeout(30, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build(),
             workerUrlBuilder = WorkerUrlBuilder(),
         )
         val telegramChatIdResolverUseCase = TelegramChatIdResolverUseCase(

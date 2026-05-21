@@ -39,6 +39,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramChatCandidate
+import com.whitelistchecker.domain.model.SiteCheckErrorType
 import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroup
 import com.whitelistchecker.domain.model.TargetGroupSummary
@@ -51,6 +52,7 @@ import com.whitelistchecker.ui.TelegramWorkerTemplate
 import com.whitelistchecker.ui.configurationStatusLabel
 import com.whitelistchecker.ui.permissionStatusLabel
 import com.whitelistchecker.ui.toDisplayDateTime
+import com.whitelistchecker.ui.toDescription
 import com.whitelistchecker.ui.toDisplayLabel
 import com.whitelistchecker.ui.toEventTitle
 import com.whitelistchecker.ui.displayName
@@ -128,6 +130,8 @@ fun MainScreen(viewModel: MainViewModel) {
                 onSendTestMessage = viewModel::sendTelegramTestMessage,
                 onPrepareChatDiscovery = viewModel::prepareTelegramChatDiscovery,
                 onFindChatId = viewModel::findTelegramChatId,
+                onFindRecentChats = viewModel::findRecentTelegramChats,
+                onResetChatDiscovery = viewModel::resetTelegramChatDiscovery,
                 onUseChat = viewModel::useTelegramChat,
             )
 
@@ -236,6 +240,8 @@ private fun TelegramCard(
     onSendTestMessage: () -> Unit,
     onPrepareChatDiscovery: () -> Unit,
     onFindChatId: () -> Unit,
+    onFindRecentChats: () -> Unit,
+    onResetChatDiscovery: () -> Unit,
     onUseChat: (TelegramChatCandidate) -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
@@ -330,8 +336,31 @@ private fun TelegramCard(
         ) {
             Text("Получить chat_id")
         }
-        if (uiState.telegramChatDiscovery.isPreparing || uiState.telegramChatDiscovery.isLoading) {
+        OutlinedButton(
+            onClick = onFindRecentChats,
+            enabled = !uiState.telegramChatDiscovery.isLoadingRecent,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Показать последние чаты")
+        }
+        OutlinedButton(
+            onClick = onResetChatDiscovery,
+            enabled = !uiState.telegramChatDiscovery.isPreparing &&
+                !uiState.telegramChatDiscovery.isLoading &&
+                !uiState.telegramChatDiscovery.isLoadingRecent,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Сбросить поиск chat_id")
+        }
+        if (
+            uiState.telegramChatDiscovery.isPreparing ||
+            uiState.telegramChatDiscovery.isLoading ||
+            uiState.telegramChatDiscovery.isLoadingRecent
+        ) {
             CircularProgressIndicator()
+        }
+        uiState.telegramChatDiscovery.discoveryOffset?.let { offset ->
+            DetailLine("Offset поиска", offset.toString())
         }
         uiState.telegramChatDiscovery.statusMessage?.let { message ->
             Text(
@@ -489,6 +518,16 @@ private fun StatusCard(result: NetworkCheckResult) {
             text = result.state.toDisplayLabel(),
             style = MaterialTheme.typography.titleMedium,
         )
+        result.state.toDescription()?.let { description ->
+            Text(
+                text = description,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        result.diagnosticsMessage?.let { diagnostics ->
+            DetailLine("Диагностика TCP", diagnostics)
+        }
     }
 }
 
@@ -567,6 +606,9 @@ private fun SiteResultBlock(site: SiteCheckResult) {
             if (site.available) "доступен" else "недоступен",
         )
         DetailLine("HTTP", site.httpCode?.toString() ?: "—")
+        if (site.errorType != SiteCheckErrorType.NONE) {
+            DetailLine("Тип ошибки", site.errorType.name)
+        }
         DetailLine("Ошибка", site.error ?: "—")
         DetailLine("Время", "${site.durationMs} мс")
     }

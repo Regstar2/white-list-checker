@@ -12,8 +12,8 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 1
-        versionName = "0.4.2"
+        versionCode = 2
+        versionName = "0.4.5"
     }
 
     buildTypes {
