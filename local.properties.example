@@ -1,0 +1,6 @@
+# Android SDK path is generated locally by Android Studio.
+# Do not commit real local.properties.
+# sdk.dir=C\:\\Users\\User\\AppData\\Local\\Android\\Sdk
+
+# No Telegram secrets should be stored here for public builds.
+# BOT_TOKEN must exist only in Cloudflare Worker secrets.

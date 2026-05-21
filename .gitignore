@@ -43,7 +43,7 @@ captures/
 
 # Secrets
 *.keystore
-!debug.keystore
+*.jks
 
 # Log
 *.log

@@ -24,7 +24,7 @@ Build an Android app that:
    - whitelist ON → whitelist OFF.
 5. Supports local Android notifications.
 6. Supports optional Telegram notifications through a user-owned Cloudflare Worker relay.
-7. Each user creates their own Telegram bot and Worker; Android stores only Worker URL, Relay Secret, and Chat ID.
+7. Each user creates their own Telegram bot and Worker; Android stores only Worker URL, Relay Secret, and recipients (chat_id list).
 8. `BOT_TOKEN` must never be stored in Android.
 9. No shared Worker, shared Relay Secret, or direct Telegram fallback from the app.
 10. Can later perform periodic checks through WorkManager.
@@ -61,7 +61,13 @@ Do not use unless explicitly requested:
 - custom proxy/VPN implementation
 - multi-module architecture
 - server backend
-- Telegram getUpdates / bot commands
+- Telegram getUpdates / bot commands in background
+
+Allowed for manual chat_id discovery only:
+
+- `getUpdates` through the user's Cloudflare Worker relay when the user taps discovery buttons in UI
+- Do not use Telegram long polling in background
+- Do not implement app control through Telegram commands
 
 Keep the MVP focused. Do not build an enterprise cathedral for a network checker.
 
@@ -136,6 +142,7 @@ enum class WhitelistState {
     WHITELIST_OFF,
     WHITELIST_ON,
     NO_MOBILE_INTERNET,
+    MOBILE_DNS_FAILURE,
     PARTIAL_PROBLEM,
     CELLULAR_NETWORK_UNAVAILABLE
 }
@@ -152,6 +159,9 @@ FOREIGN group is mostly unavailable while LOCAL group is available.
 
 NO_MOBILE_INTERNET:
 FOREIGN and LOCAL groups are both unavailable.
+
+MOBILE_DNS_FAILURE:
+Android provided a cellular Network, but domains fail to resolve through that network at scale.
 
 PARTIAL_PROBLEM:
 The result is mixed and does not clearly match whitelist mode or normal internet.
@@ -203,6 +213,7 @@ UNKNOWN initial state fixation
 pendingStateCount = 1
 OTHER_CONFIRMED_CHANGE
 NO_MOBILE_INTERNET
+MOBILE_DNS_FAILURE
 PARTIAL_PROBLEM
 CELLULAR_NETWORK_UNAVAILABLE
 ordinary checks without state change
@@ -276,7 +287,7 @@ Android app stores only:
 ```text
 Worker URL
 Relay Secret
-Chat ID
+recipients (chat_id list)
 enabled flag
 ```
 
@@ -621,15 +632,15 @@ For groups: add bot to group, /start in group, discover group chat_id, test mess
 After installing v0.5, tell the user in Russian to test:
 
 ```text
-1. Настрой Telegram.
-2. Отключи локальный proxy.
+1. Настрой Telegram через Cloudflare Worker relay.
+2. Отключи Worker (неверный URL или выключи Worker в Cloudflare).
 3. Создай подтверждённый переход БС.
 4. Ожидаемо: сообщение не отправляется и сохраняется в очередь.
 5. Проверь, что UI показывает количество сообщений в очереди.
-6. Включи proxy.
+6. Включи Worker снова.
 7. Нажми "Повторить отправку очереди".
 8. Ожидаемо: сообщение отправляется, очередь уменьшается.
-9. Проверь, что direct fallback не используется.
+9. Проверь, что direct fallback на api.telegram.org не используется.
 ```
 
 ### v0.6 manual tests
@@ -734,6 +745,7 @@ Use clear Russian wording in the app:
 Похоже на включённые белые списки
 Белые списки не обнаружены
 Мобильного интернета нет
+Проблема DNS в мобильной сети
 Частичная проблема сети
 Мобильная сеть недоступна
 Локальные уведомления

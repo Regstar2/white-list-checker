@@ -4,6 +4,7 @@ data class TelegramSettings(
     val enabled: Boolean = false,
     val workerUrl: String = "",
     val relaySecret: String = "",
+    /** Legacy single-recipient field. Kept only for migration/backward compatibility. */
     val chatId: String = "",
     val chatDiscoveryOffset: Long? = null,
     val recipients: List<TelegramRecipient> = emptyList(),
