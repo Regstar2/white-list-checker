@@ -1,7 +1,12 @@
 package com.whitelistchecker.ui.main
 
+import android.Manifest
+import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -13,19 +18,34 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
+import com.whitelistchecker.ui.permissionStatusLabel
+import com.whitelistchecker.ui.toResultLabel
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroup
 import com.whitelistchecker.domain.model.TargetGroupSummary
+import com.whitelistchecker.domain.model.WhitelistMonitorState
 import com.whitelistchecker.domain.model.WhitelistState
+import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
+import com.whitelistchecker.domain.model.WhitelistStateChangeType
+import com.whitelistchecker.domain.monitor.StateChangeDetector
+import com.whitelistchecker.ui.toDisplayLabel
+import com.whitelistchecker.ui.toEventTitle
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
@@ -34,6 +54,19 @@ import java.util.Locale
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        viewModel.onNotificationPermissionResult(granted)
+    }
+
+    LaunchedEffect(lifecycleOwner) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshNotificationPermissionState()
+        }
+    }
 
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -65,6 +98,26 @@ fun MainScreen(viewModel: MainViewModel) {
                 CircularProgressIndicator(modifier = Modifier.padding(top = 4.dp))
             }
 
+            LocalNotificationsCard(
+                uiState = uiState,
+                onEnabledChange = viewModel::updateLocalNotificationsEnabled,
+                onRequestPermission = {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                        notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                    }
+                },
+                onOpenBatterySettings = viewModel::openBatteryOptimizationSettings,
+                onOpenAppSettings = viewModel::openAppDetailsSettings,
+            )
+
+            MonitoringCard(uiState.monitorState)
+
+            uiState.lastStateChangeEvent?.let { event ->
+                if (event.type != WhitelistStateChangeType.NO_CONFIRMED_CHANGE) {
+                    StateChangeEventCard(event)
+                }
+            }
+
             uiState.result?.let { result ->
                 StatusCard(result)
                 SummaryCard(result)
@@ -85,8 +138,121 @@ fun MainScreen(viewModel: MainViewModel) {
 }
 
 @Composable
+private fun LocalNotificationsCard(
+    uiState: MainUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onRequestPermission: () -> Unit,
+    onOpenBatterySettings: () -> Unit,
+    onOpenAppSettings: () -> Unit,
+) {
+    val showPermissionButton = uiState.notificationPermissionRequired &&
+        !uiState.notificationsAllowed &&
+        uiState.localNotificationSettings.enabled
+
+    InfoCard(title = "Локальные уведомления") {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "Локальные уведомления включены",
+                style = MaterialTheme.typography.bodyLarge,
+            )
+            Switch(
+                checked = uiState.localNotificationSettings.enabled,
+                onCheckedChange = onEnabledChange,
+            )
+        }
+        Text(
+            text = "При каждой проверке отправляется тестовое уведомление (если включено и есть разрешение). События БС — только при подтверждённом включении или выключении.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        DetailLine(
+            "Разрешение Android",
+            permissionStatusLabel(
+                permissionRequired = uiState.notificationPermissionRequired,
+                notificationsAllowed = uiState.notificationsAllowed,
+            ),
+        )
+        val lastAttemptLabel = uiState.lastLocalNotificationResult?.let { result ->
+            result.toResultLabel()
+        } ?: "Локальные уведомления ещё не отправлялись"
+        DetailLine("Последняя попытка", lastAttemptLabel)
+
+        if (showPermissionButton) {
+            Button(
+                onClick = onRequestPermission,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Разрешить уведомления")
+            }
+        }
+        OutlinedButton(
+            onClick = onOpenBatterySettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Настройки ограничения активности")
+        }
+        OutlinedButton(
+            onClick = onOpenAppSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Настройки приложения")
+        }
+    }
+}
+
+@Composable
+private fun MonitoringCard(monitorState: WhitelistMonitorState?) {
+    InfoCard(title = "Мониторинг БС") {
+        if (monitorState == null) {
+            Text(
+                text = "Мониторинг ещё не инициализирован.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+            return@InfoCard
+        }
+
+        DetailLine(
+            "Последнее подтверждённое состояние",
+            monitorState.lastConfirmedState.toDisplayLabel(),
+        )
+        val pendingLabel = if (monitorState.pendingState == WhitelistState.UNKNOWN) {
+            "нет"
+        } else {
+            monitorState.pendingState.toDisplayLabel()
+        }
+        DetailLine("Ожидающее подтверждение", pendingLabel)
+        val confirmationsLabel = if (monitorState.pendingState == WhitelistState.UNKNOWN) {
+            "—"
+        } else {
+            "${monitorState.pendingStateCount}/${StateChangeDetector.REQUIRED_CONFIRMATION_COUNT}"
+        }
+        DetailLine("Подтверждений", confirmationsLabel)
+        DetailLine(
+            "Последнее подтверждение",
+            monitorState.lastConfirmedAtMillis?.let { formatCheckedAt(it) } ?: "—",
+        )
+    }
+}
+
+@Composable
+private fun StateChangeEventCard(event: WhitelistStateChangeEvent) {
+    InfoCard(title = "Событие состояния") {
+        Text(
+            text = event.type.toEventTitle(),
+            style = MaterialTheme.typography.titleMedium,
+        )
+        DetailLine("Было", event.oldState.toDisplayLabel())
+        DetailLine("Стало", event.newState.toDisplayLabel())
+        DetailLine("Время", formatCheckedAt(event.changedAtMillis))
+    }
+}
+
+@Composable
 private fun StatusCard(result: NetworkCheckResult) {
-    InfoCard(title = "Статус") {
+    InfoCard(title = "Текущий результат проверки") {
         Text(
             text = result.state.toDisplayLabel(),
             style = MaterialTheme.typography.titleMedium,
@@ -220,15 +386,6 @@ private fun DetailLine(label: String, value: String) {
 private fun TargetGroup.toDisplayLabel(): String = when (this) {
     TargetGroup.FOREIGN -> "Внешние"
     TargetGroup.LOCAL -> "Локальные"
-}
-
-private fun WhitelistState.toDisplayLabel(): String = when (this) {
-    WhitelistState.UNKNOWN -> "⚪ Неизвестное состояние"
-    WhitelistState.WHITELIST_OFF -> "🟢 Белые списки не обнаружены"
-    WhitelistState.WHITELIST_ON -> "🟠 Похоже на включённые белые списки"
-    WhitelistState.NO_MOBILE_INTERNET -> "🔴 Мобильного интернета нет"
-    WhitelistState.PARTIAL_PROBLEM -> "🟡 Частичная проблема сети"
-    WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> "⚪ Мобильная сеть недоступна"
 }
 
 private fun formatCheckedAt(millis: Long): String {
