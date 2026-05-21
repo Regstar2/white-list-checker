@@ -3,6 +3,7 @@ package com.whitelistchecker.ui.main
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
+import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.TelegramSendResult
 import com.whitelistchecker.domain.model.TelegramSettings
 import com.whitelistchecker.domain.model.TelegramTestResult
@@ -21,10 +22,13 @@ data class MainUiState(
     val telegramSettings: TelegramSettings = TelegramSettings(),
     val isTestingTelegram: Boolean = false,
     val isSendingTelegramTest: Boolean = false,
+    val isFlushingTelegramQueue: Boolean = false,
     val lastTelegramTestResult: TelegramTestResult? = null,
     val lastTelegramTestMessage: String? = null,
     val lastTelegramSendResult: TelegramSendResult? = null,
     val lastTelegramSendMessage: String? = null,
+    val lastQueueFlushResult: TelegramQueueFlushResult? = null,
+    val pendingReportsCount: Int = 0,
     val telegramChatDiscovery: TelegramChatDiscoveryUiState = TelegramChatDiscoveryUiState(),
     val errorMessage: String? = null,
 )

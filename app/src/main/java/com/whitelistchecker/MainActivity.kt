@@ -11,6 +11,8 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.targets.DefaultTargetsRepository
+import com.whitelistchecker.data.db.AppDatabase
+import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.checker.MobileSiteChecker
@@ -29,6 +31,7 @@ import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
+import com.whitelistchecker.domain.telegram.TelegramQueueProcessor
 import com.whitelistchecker.domain.telegram.TelegramReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.domain.telegram.WorkerUrlBuilder
@@ -80,6 +83,9 @@ class MainActivity : ComponentActivity() {
             localNotificationEventUseCase = localNotificationEventUseCase,
         )
         val telegramSettingsRepository = TelegramSettingsRepository(appContext)
+        val pendingTelegramReportRepository = PendingTelegramReportRepository(
+            dao = AppDatabase.getInstance(appContext).pendingTelegramReportDao(),
+        )
         val telegramWorkerClient = TelegramWorkerClient(
             httpClient = OkHttpClient.Builder()
                 .connectTimeout(10, TimeUnit.SECONDS)
@@ -98,15 +104,24 @@ class MainActivity : ComponentActivity() {
             settingsRepository = telegramSettingsRepository,
             telegramWorkerClient = telegramWorkerClient,
             reportFormatter = TelegramReportFormatter(),
+            pendingTelegramReportRepository = pendingTelegramReportRepository,
+        )
+        val telegramQueueProcessor = TelegramQueueProcessor(
+            pendingReportRepository = pendingTelegramReportRepository,
+            settingsRepository = telegramSettingsRepository,
+            telegramWorkerClient = telegramWorkerClient,
         )
         val checkAndNotifyUseCase = CheckAndNotifyUseCase(
             checkAndLocalNotifyUseCase = checkAndLocalNotifyUseCase,
             telegramEventNotifierUseCase = telegramEventNotifierUseCase,
+            telegramQueueProcessor = telegramQueueProcessor,
+            pendingTelegramReportRepository = pendingTelegramReportRepository,
         )
         MainViewModelFactory(
             checkAndNotifyUseCase = checkAndNotifyUseCase,
             localNotificationSettingsRepository = localNotificationSettingsRepository,
             telegramSettingsRepository = telegramSettingsRepository,
+            telegramEventNotifierUseCase = telegramEventNotifierUseCase,
             telegramWorkerClient = telegramWorkerClient,
             telegramChatIdResolverUseCase = telegramChatIdResolverUseCase,
             permissionChecker = permissionChecker,
@@ -130,6 +145,7 @@ class MainActivity : ComponentActivity() {
         private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
         private val localNotificationSettingsRepository: LocalNotificationSettingsRepository,
         private val telegramSettingsRepository: TelegramSettingsRepository,
+        private val telegramEventNotifierUseCase: TelegramEventNotifierUseCase,
         private val telegramWorkerClient: TelegramWorkerClient,
         private val telegramChatIdResolverUseCase: TelegramChatIdResolverUseCase,
         private val permissionChecker: LocalNotificationPermissionChecker,
@@ -143,6 +159,7 @@ class MainActivity : ComponentActivity() {
                     checkAndNotifyUseCase = checkAndNotifyUseCase,
                     localNotificationSettingsRepository = localNotificationSettingsRepository,
                     telegramSettingsRepository = telegramSettingsRepository,
+                    telegramEventNotifierUseCase = telegramEventNotifierUseCase,
                     telegramWorkerClient = telegramWorkerClient,
                     telegramChatIdResolverUseCase = telegramChatIdResolverUseCase,
                     permissionChecker = permissionChecker,

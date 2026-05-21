@@ -133,6 +133,8 @@ fun MainScreen(viewModel: MainViewModel) {
                 onFindRecentChats = viewModel::findRecentTelegramChats,
                 onResetChatDiscovery = viewModel::resetTelegramChatDiscovery,
                 onUseChat = viewModel::useTelegramChat,
+                onRetryQueue = viewModel::retryPendingTelegramReports,
+                onClearQueue = viewModel::clearPendingTelegramReports,
             )
 
             MonitoringCard(uiState.monitorState)
@@ -243,6 +245,8 @@ private fun TelegramCard(
     onFindRecentChats: () -> Unit,
     onResetChatDiscovery: () -> Unit,
     onUseChat: (TelegramChatCandidate) -> Unit,
+    onRetryQueue: () -> Unit,
+    onClearQueue: () -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
     InfoCard(title = "Telegram-уведомления") {
@@ -427,6 +431,89 @@ private fun TelegramCard(
         DetailLine("Telegram", uiState.telegramSettings.configurationStatusLabel())
         DetailLine("Последний тест", uiState.lastTelegramTestResult.toLastTestStatusLabel())
         DetailLine("Последняя отправка", uiState.lastTelegramSendResult.toLastSendStatusLabel())
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        TelegramQueueSection(
+            uiState = uiState,
+            onRetryQueue = onRetryQueue,
+            onClearQueue = onClearQueue,
+        )
+    }
+}
+
+@Composable
+private fun TelegramQueueSection(
+    uiState: MainUiState,
+    onRetryQueue: () -> Unit,
+    onClearQueue: () -> Unit,
+) {
+    Text(
+        text = "Очередь Telegram",
+        style = MaterialTheme.typography.titleSmall,
+    )
+    when {
+        !uiState.telegramSettings.enabled -> {
+            Text(
+                text = "Telegram-уведомления выключены. События БС не сохраняются в очередь.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+        }
+        !uiState.telegramSettings.isConfigured -> {
+            Text(
+                text = "Telegram не настроен. Новые события БС будут сохраняться в очередь, " +
+                    "но отправить их не получится до настройки Worker URL, Relay Secret и Chat ID.",
+                style = MaterialTheme.typography.bodySmall,
+            )
+            DetailLine("Неотправленных сообщений", uiState.pendingReportsCount.toString())
+        }
+        uiState.pendingReportsCount == 0 -> {
+            Text(
+                text = "Очередь Telegram пуста",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        }
+        else -> {
+            DetailLine("Неотправленных сообщений", uiState.pendingReportsCount.toString())
+            Text(
+                text = "Worker недоступен или отправка не удалась. Сообщения сохраняются в очередь. " +
+                    "Прямое подключение к Telegram не используется.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    uiState.lastQueueFlushResult?.let { flushResult ->
+        DetailLine("Отправлено", flushResult.sentCount.toString())
+        DetailLine("Ошибок", flushResult.failedCount.toString())
+        if (flushResult.skippedCount > 0) {
+            DetailLine("Пропущено", flushResult.skippedCount.toString())
+        }
+        flushResult.lastError?.let { error ->
+            DetailLine("Последняя ошибка", error)
+        }
+    }
+    OutlinedButton(
+        onClick = onRetryQueue,
+        enabled = !uiState.isFlushingTelegramQueue && uiState.pendingReportsCount > 0,
+        modifier = Modifier.fillMaxWidth(),
+    ) {
+        Text("Повторить отправку очереди")
+    }
+    if (uiState.pendingReportsCount > 0) {
+        Text(
+            text = "Очистка удалит все неотправленные сообщения без возможности восстановления.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedButton(
+            onClick = onClearQueue,
+            enabled = !uiState.isFlushingTelegramQueue,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Очистить очередь")
+        }
+    }
+    if (uiState.isFlushingTelegramQueue) {
+        CircularProgressIndicator()
     }
 }
 

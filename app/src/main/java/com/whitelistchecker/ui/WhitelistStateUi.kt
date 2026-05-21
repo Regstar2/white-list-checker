@@ -35,6 +35,8 @@ fun WhitelistState.toDescription(): String? = when (this) {
 fun WhitelistStateChangeType.toEventTitle(): String = when (this) {
     WhitelistStateChangeType.WHITELIST_TURNED_ON -> "🟠 Белые списки включились"
     WhitelistStateChangeType.WHITELIST_TURNED_OFF -> "🟢 Белые списки выключились"
+    WhitelistStateChangeType.MANUAL_CHECK -> "📊 Результат проверки"
+    WhitelistStateChangeType.TEST_MESSAGE -> "✉️ Тестовое сообщение"
     WhitelistStateChangeType.OTHER_CONFIRMED_CHANGE -> "⚪ Подтверждённое изменение состояния"
     WhitelistStateChangeType.NO_CONFIRMED_CHANGE -> ""
 }

@@ -31,6 +31,8 @@ class LocalNotificationFormatter {
     fun titleFor(event: WhitelistStateChangeEvent): String = when (event.type) {
         WhitelistStateChangeType.WHITELIST_TURNED_ON -> "Белые списки включились"
         WhitelistStateChangeType.WHITELIST_TURNED_OFF -> "Белые списки выключились"
+        WhitelistStateChangeType.MANUAL_CHECK -> "Результат проверки"
+        WhitelistStateChangeType.TEST_MESSAGE -> "Тестовое сообщение"
         WhitelistStateChangeType.OTHER_CONFIRMED_CHANGE -> "Состояние сети изменилось"
         WhitelistStateChangeType.NO_CONFIRMED_CHANGE -> ""
     }
@@ -45,7 +47,10 @@ class LocalNotificationFormatter {
             WhitelistStateChangeType.WHITELIST_TURNED_ON,
             WhitelistStateChangeType.WHITELIST_TURNED_OFF,
             -> "$conclusion. $summary."
-            WhitelistStateChangeType.OTHER_CONFIRMED_CHANGE -> "$conclusion. $summary."
+            WhitelistStateChangeType.MANUAL_CHECK,
+            WhitelistStateChangeType.TEST_MESSAGE,
+            WhitelistStateChangeType.OTHER_CONFIRMED_CHANGE,
+            -> "$conclusion. $summary."
             WhitelistStateChangeType.NO_CONFIRMED_CHANGE -> ""
         }
     }

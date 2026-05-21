@@ -16,6 +16,7 @@ import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChec
 import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
+import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.userMessage
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,7 @@ class MainViewModel(
     private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
     private val localNotificationSettingsRepository: LocalNotificationSettingsRepository,
     private val telegramSettingsRepository: TelegramSettingsRepository,
+    private val telegramEventNotifierUseCase: TelegramEventNotifierUseCase,
     private val telegramWorkerClient: TelegramWorkerClient,
     private val telegramChatIdResolverUseCase: TelegramChatIdResolverUseCase,
     private val permissionChecker: LocalNotificationPermissionChecker,
@@ -59,6 +61,8 @@ class MainViewModel(
                         lastStateChangeEvent = monitorResult.stateChangeEvent,
                         lastLocalNotificationResult = result.localNotificationResult,
                         lastTelegramSendResult = result.telegramSendResult,
+                        lastQueueFlushResult = result.queueFlushResult,
+                        pendingReportsCount = result.pendingReportsCount,
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                     )
                 }
@@ -134,7 +138,60 @@ class MainViewModel(
         viewModelScope.launch {
             try {
                 telegramSettingsRepository.saveSettings(_uiState.value.telegramSettings)
-                _uiState.update { it.copy(errorMessage = null) }
+                val flushResult = if (_uiState.value.telegramSettings.isConfigured) {
+                    checkAndNotifyUseCase.flushPendingReports()
+                } else {
+                    null
+                }
+                _uiState.update {
+                    it.copy(
+                        errorMessage = null,
+                        lastQueueFlushResult = flushResult,
+                        pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount(),
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
+                }
+            }
+        }
+    }
+
+    fun retryPendingTelegramReports() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isFlushingTelegramQueue = true, errorMessage = null) }
+            try {
+                val flushResult = checkAndNotifyUseCase.flushPendingReports()
+                _uiState.update {
+                    it.copy(
+                        isFlushingTelegramQueue = false,
+                        lastQueueFlushResult = flushResult,
+                        pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount(),
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isFlushingTelegramQueue = false,
+                        errorMessage = exception.message ?: exception.javaClass.simpleName,
+                    )
+                }
+            }
+        }
+    }
+
+    fun clearPendingTelegramReports() {
+        viewModelScope.launch {
+            try {
+                checkAndNotifyUseCase.clearPendingReports()
+                _uiState.update {
+                    it.copy(
+                        pendingReportsCount = 0,
+                        lastQueueFlushResult = null,
+                        errorMessage = null,
+                    )
+                }
             } catch (exception: Exception) {
                 _uiState.update {
                     it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
@@ -181,10 +238,7 @@ class MainViewModel(
             }
             try {
                 telegramSettingsRepository.saveSettings(state.telegramSettings)
-                val result = telegramWorkerClient.sendMessage(
-                    settings = state.telegramSettings,
-                    text = TEST_MESSAGE_TEXT,
-                )
+                val result = telegramEventNotifierUseCase.sendTestMessage(TEST_MESSAGE_TEXT)
                 _uiState.update {
                     it.copy(
                         isSendingTelegramTest = false,
@@ -192,7 +246,9 @@ class MainViewModel(
                         lastTelegramSendMessage = when (result) {
                             TelegramSendResult.Success -> "Тестовое сообщение отправлено"
                             is TelegramSendResult.Failure -> result.reason
+                            null -> "Telegram-уведомления выключены"
                         },
+                        pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount(),
                     )
                 }
             } catch (exception: Exception) {
@@ -399,6 +455,7 @@ class MainViewModel(
                 val telegramSettings = telegramSettingsRepository.getSettings()
                 val discoveryOffset = telegramSettingsRepository.getChatDiscoveryOffset()
                 val monitorState = checkAndNotifyUseCase.loadMonitorState()
+                val pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount()
                 _uiState.update {
                     it.copy(
                         localNotificationSettings = localSettings,
@@ -407,6 +464,7 @@ class MainViewModel(
                             discoveryOffset = discoveryOffset,
                         ),
                         monitorState = monitorState,
+                        pendingReportsCount = pendingReportsCount,
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                         notificationPermissionRequired = permissionChecker.requiresRuntimePermission(),
                     )
