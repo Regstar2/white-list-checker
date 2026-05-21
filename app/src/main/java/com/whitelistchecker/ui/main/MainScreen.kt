@@ -19,23 +19,26 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalClipboardManager
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import com.whitelistchecker.ui.permissionStatusLabel
-import com.whitelistchecker.ui.toResultLabel
 import com.whitelistchecker.domain.model.NetworkCheckResult
+import com.whitelistchecker.domain.model.TelegramChatCandidate
 import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroup
 import com.whitelistchecker.domain.model.TargetGroupSummary
@@ -44,12 +47,16 @@ import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
 import com.whitelistchecker.domain.model.WhitelistStateChangeType
 import com.whitelistchecker.domain.monitor.StateChangeDetector
+import com.whitelistchecker.ui.TelegramWorkerTemplate
+import com.whitelistchecker.ui.configurationStatusLabel
+import com.whitelistchecker.ui.permissionStatusLabel
+import com.whitelistchecker.ui.toDisplayDateTime
 import com.whitelistchecker.ui.toDisplayLabel
 import com.whitelistchecker.ui.toEventTitle
-import java.time.Instant
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
-import java.util.Locale
+import com.whitelistchecker.ui.displayName
+import com.whitelistchecker.ui.toLastSendStatusLabel
+import com.whitelistchecker.ui.toLastTestStatusLabel
+import com.whitelistchecker.ui.toResultLabel
 
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
@@ -108,6 +115,20 @@ fun MainScreen(viewModel: MainViewModel) {
                 },
                 onOpenBatterySettings = viewModel::openBatteryOptimizationSettings,
                 onOpenAppSettings = viewModel::openAppDetailsSettings,
+            )
+
+            TelegramCard(
+                uiState = uiState,
+                onEnabledChange = viewModel::updateTelegramEnabled,
+                onWorkerUrlChange = viewModel::updateTelegramWorkerUrl,
+                onRelaySecretChange = viewModel::updateTelegramRelaySecret,
+                onChatIdChange = viewModel::updateTelegramChatId,
+                onSaveSettings = viewModel::saveTelegramSettings,
+                onTestWorker = viewModel::testTelegramWorker,
+                onSendTestMessage = viewModel::sendTelegramTestMessage,
+                onPrepareChatDiscovery = viewModel::prepareTelegramChatDiscovery,
+                onFindChatId = viewModel::findTelegramChatId,
+                onUseChat = viewModel::useTelegramChat,
             )
 
             MonitoringCard(uiState.monitorState)
@@ -199,6 +220,217 @@ private fun LocalNotificationsCard(
             modifier = Modifier.fillMaxWidth(),
         ) {
             Text("Настройки приложения")
+        }
+    }
+}
+
+@Composable
+private fun TelegramCard(
+    uiState: MainUiState,
+    onEnabledChange: (Boolean) -> Unit,
+    onWorkerUrlChange: (String) -> Unit,
+    onRelaySecretChange: (String) -> Unit,
+    onChatIdChange: (String) -> Unit,
+    onSaveSettings: () -> Unit,
+    onTestWorker: () -> Unit,
+    onSendTestMessage: () -> Unit,
+    onPrepareChatDiscovery: () -> Unit,
+    onFindChatId: () -> Unit,
+    onUseChat: (TelegramChatCandidate) -> Unit,
+) {
+    val clipboardManager = LocalClipboardManager.current
+    InfoCard(title = "Telegram-уведомления") {
+        Text(
+            text = "Для Telegram-уведомлений нужен ваш собственный Cloudflare Worker relay. " +
+                "Bot token хранится только в Worker secrets и не вводится в приложение.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(text = "Включить Telegram-уведомления")
+            Switch(
+                checked = uiState.telegramSettings.enabled,
+                onCheckedChange = onEnabledChange,
+            )
+        }
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        Text(
+            text = "Как настроить Telegram через Cloudflare Worker",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            text = "Как настроить:\n" +
+                "1. Создай Telegram-бота через BotFather.\n" +
+                "2. Создай Cloudflare Worker.\n" +
+                "3. Добавь в Worker secrets:\n" +
+                "   BOT_TOKEN — токен Telegram-бота\n" +
+                "   RELAY_SECRET — секрет доступа к Worker\n" +
+                "4. Введи Worker URL и Relay Secret в приложении.\n" +
+                "5. Получи Chat ID через /start или введи вручную.",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        OutlinedButton(
+            onClick = {
+                clipboardManager.setText(AnnotatedString(TelegramWorkerTemplate.WORKER_JS_CODE))
+            },
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Скопировать шаблон Worker-кода")
+        }
+        OutlinedTextField(
+            value = uiState.telegramSettings.workerUrl,
+            onValueChange = onWorkerUrlChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Worker URL") },
+            placeholder = { Text(TelegramWorkerTemplate.EXAMPLE_WORKER_URL) },
+            singleLine = true,
+        )
+        OutlinedTextField(
+            value = uiState.telegramSettings.relaySecret,
+            onValueChange = onRelaySecretChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Relay Secret") },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+        )
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp))
+        Text(
+            text = "Получение chat_id",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            text = "Чтобы получить chat_id автоматически:\n" +
+                "1. Нажми «Начать получение chat_id».\n" +
+                "2. Открой Telegram.\n" +
+                "3. Напиши своему боту /start в личном чате.\n" +
+                "   Для группы: добавь бота в группу и напиши /start в группе.\n" +
+                "4. Вернись в приложение.\n" +
+                "5. Нажми «Получить chat_id».",
+            style = MaterialTheme.typography.bodySmall,
+        )
+        Text(
+            text = "Для групп chat_id обычно отрицательный и может начинаться с -100.",
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        Button(
+            onClick = onPrepareChatDiscovery,
+            enabled = !uiState.telegramChatDiscovery.isPreparing,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Начать получение chat_id")
+        }
+        Button(
+            onClick = onFindChatId,
+            enabled = !uiState.telegramChatDiscovery.isLoading,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Получить chat_id")
+        }
+        if (uiState.telegramChatDiscovery.isPreparing || uiState.telegramChatDiscovery.isLoading) {
+            CircularProgressIndicator()
+        }
+        uiState.telegramChatDiscovery.statusMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.primary,
+            )
+        }
+        uiState.telegramChatDiscovery.errorMessage?.let { error ->
+            Text(
+                text = error,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+        uiState.telegramChatDiscovery.candidates.forEach { candidate ->
+            TelegramChatCandidateCard(
+                candidate = candidate,
+                onUseChat = onUseChat,
+            )
+        }
+        if (uiState.telegramSettings.chatId.isNotBlank()) {
+            DetailLine("Текущий chat_id", uiState.telegramSettings.chatId)
+        }
+        OutlinedTextField(
+            value = uiState.telegramSettings.chatId,
+            onValueChange = onChatIdChange,
+            modifier = Modifier.fillMaxWidth(),
+            label = { Text("Chat ID") },
+            singleLine = true,
+            supportingText = {
+                Text("Можно ввести вручную или получить через /start выше")
+            },
+        )
+        Button(
+            onClick = onSaveSettings,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Сохранить настройки")
+        }
+        Button(
+            onClick = onTestWorker,
+            enabled = !uiState.isTestingTelegram,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Проверить Worker")
+        }
+        Button(
+            onClick = onSendTestMessage,
+            enabled = !uiState.isSendingTelegramTest,
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text("Отправить тестовое сообщение")
+        }
+        if (uiState.isTestingTelegram || uiState.isSendingTelegramTest) {
+            CircularProgressIndicator()
+        }
+        uiState.lastTelegramTestMessage?.let { message ->
+            DetailLine("Проверка Worker", message)
+        }
+        uiState.lastTelegramSendMessage?.let { message ->
+            DetailLine("Тестовая отправка", message)
+        }
+        DetailLine("Telegram", uiState.telegramSettings.configurationStatusLabel())
+        DetailLine("Последний тест", uiState.lastTelegramTestResult.toLastTestStatusLabel())
+        DetailLine("Последняя отправка", uiState.lastTelegramSendResult.toLastSendStatusLabel())
+    }
+}
+
+@Composable
+private fun TelegramChatCandidateCard(
+    candidate: TelegramChatCandidate,
+    onUseChat: (TelegramChatCandidate) -> Unit,
+) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant,
+        ),
+    ) {
+        Column(
+            modifier = Modifier.padding(12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            DetailLine("Тип", candidate.type.toDisplayLabel())
+            DetailLine("Название", candidate.displayName())
+            candidate.username?.let { username ->
+                DetailLine("Username", "@$username")
+            }
+            DetailLine("Chat ID", candidate.chatId)
+            candidate.sourceMessageText?.let { message ->
+                DetailLine("Последнее сообщение", message)
+            }
+            OutlinedButton(
+                onClick = { onUseChat(candidate) },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Использовать этот чат")
+            }
         }
     }
 }
@@ -388,9 +620,4 @@ private fun TargetGroup.toDisplayLabel(): String = when (this) {
     TargetGroup.LOCAL -> "Локальные"
 }
 
-private fun formatCheckedAt(millis: Long): String {
-    val formatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm", Locale("ru"))
-    return Instant.ofEpochMilli(millis)
-        .atZone(ZoneId.systemDefault())
-        .format(formatter)
-}
+private fun formatCheckedAt(millis: Long): String = millis.toDisplayDateTime()

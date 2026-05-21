@@ -11,6 +11,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.targets.DefaultTargetsRepository
+import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
@@ -24,9 +25,16 @@ import com.whitelistchecker.domain.notifications.LocalNotificationFormatter
 import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChecker
 import com.whitelistchecker.domain.notifications.LocalNotificationSender
 import com.whitelistchecker.domain.system.AppSettingsNavigator
+import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
+import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
+import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
+import com.whitelistchecker.domain.telegram.TelegramReportFormatter
+import com.whitelistchecker.domain.telegram.TelegramWorkerClient
+import com.whitelistchecker.domain.telegram.WorkerUrlBuilder
 import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
+import okhttp3.OkHttpClient
 
 class MainActivity : ComponentActivity() {
 
@@ -67,9 +75,30 @@ class MainActivity : ComponentActivity() {
             whitelistMonitorUseCase = whitelistMonitorUseCase,
             localNotificationEventUseCase = localNotificationEventUseCase,
         )
-        MainViewModelFactory(
+        val telegramSettingsRepository = TelegramSettingsRepository(appContext)
+        val telegramWorkerClient = TelegramWorkerClient(
+            httpClient = OkHttpClient.Builder().build(),
+            workerUrlBuilder = WorkerUrlBuilder(),
+        )
+        val telegramChatIdResolverUseCase = TelegramChatIdResolverUseCase(
+            settingsRepository = telegramSettingsRepository,
+            telegramWorkerClient = telegramWorkerClient,
+        )
+        val telegramEventNotifierUseCase = TelegramEventNotifierUseCase(
+            settingsRepository = telegramSettingsRepository,
+            telegramWorkerClient = telegramWorkerClient,
+            reportFormatter = TelegramReportFormatter(),
+        )
+        val checkAndNotifyUseCase = CheckAndNotifyUseCase(
             checkAndLocalNotifyUseCase = checkAndLocalNotifyUseCase,
+            telegramEventNotifierUseCase = telegramEventNotifierUseCase,
+        )
+        MainViewModelFactory(
+            checkAndNotifyUseCase = checkAndNotifyUseCase,
             localNotificationSettingsRepository = localNotificationSettingsRepository,
+            telegramSettingsRepository = telegramSettingsRepository,
+            telegramWorkerClient = telegramWorkerClient,
+            telegramChatIdResolverUseCase = telegramChatIdResolverUseCase,
             permissionChecker = permissionChecker,
             channelManager = channelManager,
             appSettingsNavigator = AppSettingsNavigator(appContext),
@@ -88,8 +117,11 @@ class MainActivity : ComponentActivity() {
     }
 
     private class MainViewModelFactory(
-        private val checkAndLocalNotifyUseCase: CheckAndLocalNotifyUseCase,
+        private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
         private val localNotificationSettingsRepository: LocalNotificationSettingsRepository,
+        private val telegramSettingsRepository: TelegramSettingsRepository,
+        private val telegramWorkerClient: TelegramWorkerClient,
+        private val telegramChatIdResolverUseCase: TelegramChatIdResolverUseCase,
         private val permissionChecker: LocalNotificationPermissionChecker,
         private val channelManager: LocalNotificationChannelManager,
         private val appSettingsNavigator: AppSettingsNavigator,
@@ -98,8 +130,11 @@ class MainActivity : ComponentActivity() {
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
             if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
                 return MainViewModel(
-                    checkAndLocalNotifyUseCase = checkAndLocalNotifyUseCase,
+                    checkAndNotifyUseCase = checkAndNotifyUseCase,
                     localNotificationSettingsRepository = localNotificationSettingsRepository,
+                    telegramSettingsRepository = telegramSettingsRepository,
+                    telegramWorkerClient = telegramWorkerClient,
+                    telegramChatIdResolverUseCase = telegramChatIdResolverUseCase,
                     permissionChecker = permissionChecker,
                     channelManager = channelManager,
                     appSettingsNavigator = appSettingsNavigator,

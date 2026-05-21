@@ -23,10 +23,10 @@ Build an Android app that:
    - whitelist OFF → whitelist ON;
    - whitelist ON → whitelist OFF.
 5. Supports local Android notifications.
-6. Supports optional Telegram Bot API notifications.
-7. Uses a user-provided Telegram bot token, chat ID, and local proxy settings.
-8. Sends Telegram API requests only through the configured local HTTP/SOCKS proxy.
-9. Never falls back to direct Telegram access.
+6. Supports optional Telegram notifications through a user-owned Cloudflare Worker relay.
+7. Each user creates their own Telegram bot and Worker; Android stores only Worker URL, Relay Secret, and Chat ID.
+8. `BOT_TOKEN` must never be stored in Android.
+9. No shared Worker, shared Relay Secret, or direct Telegram fallback from the app.
 10. Can later perform periodic checks through WorkManager.
 
 ---
@@ -46,7 +46,7 @@ Use:
 - DataStore for settings/state
 - Room only when structured queue/history storage is needed
 - WorkManager only for periodic checks
-- OkHttp only for Telegram Bot API through proxy
+- OkHttp only for HTTPS calls to the user's Cloudflare Worker relay (not direct Telegram Bot API from Android)
 
 Do not use unless explicitly requested:
 
@@ -262,51 +262,61 @@ Use a proper small notification icon. Do not use the launcher icon as the small 
 
 ## 8. Telegram notification rules
 
-Telegram notifications are optional.
+Telegram notifications are optional and use a **user-owned Cloudflare Worker relay**.
 
-User must provide:
+Each user must create:
 
 ```text
-Bot token
+1. Telegram bot (BotFather)
+2. Cloudflare Worker with secrets BOT_TOKEN and RELAY_SECRET
+```
+
+Android app stores only:
+
+```text
+Worker URL
+Relay Secret
 Chat ID
-Proxy type: HTTP / SOCKS
-Proxy host
-Proxy port
+enabled flag
 ```
 
-Telegram Bot API is still used:
+Worker endpoints (POST + header `X-Relay-Secret`):
 
 ```text
-https://api.telegram.org/bot<TOKEN>/sendMessage
-https://api.telegram.org/bot<TOKEN>/getMe
+<WORKER_URL>/tg/getMe
+<WORKER_URL>/tg/getUpdates
+<WORKER_URL>/tg/sendMessage
 ```
 
-But all Telegram requests must go through the configured local proxy.
-
-Correct:
-
-```text
-OkHttpClient.Builder()
-    .proxy(proxy)
-```
+`BOT_TOKEN` lives only in Worker secrets. Never in Android, logs, Room queue, or error messages.
 
 Forbidden:
 
 ```text
-Telegram direct fallback
-plain direct OkHttpClient for Telegram
-URL.openConnection for Telegram
-trying direct access after proxy failure
-logging bot token
-storing bot token in Room queue
+BOT_TOKEN in Android
+shared Worker URL or Relay Secret baked into APK
+local HTTP/SOCKS proxy for Telegram Bot API as main path
+direct api.telegram.org from Android
+logging relaySecret
+storing relaySecret in Room queue
 ```
 
-If proxy is unavailable:
+If Worker is unavailable:
 
 ```text
-Do not send directly.
-Save the report to queue if queue exists.
+Do not call Telegram directly from Android.
+Save the report to queue if queue exists (v0.5+).
 Show error in UI.
+```
+
+Manual test checklist:
+
+```text
+1. Worker URL and Relay Secret configured
+2. getMe via Worker succeeds
+3. chat_id obtained via /start + getUpdates
+4. test sendMessage works
+5. notification on whitelist state change via Worker
 ```
 
 ---
@@ -320,7 +330,8 @@ v0.1   Manual mobile-network check.
 v0.2   Group-based FOREIGN/LOCAL checks.
 v0.3   Debounce and confirmed state tracking.
 v0.3.5 Local Android notifications.
-v0.4   Telegram Bot API through local proxy.
+v0.4   Telegram (legacy local proxy; superseded by v0.4.2 Worker relay).
+v0.4.2 Telegram via user Cloudflare Worker relay.
 v0.5   Telegram pending-message queue.
 v0.6   WorkManager periodic checks.
 v0.7   UI cleanup, history, diagnostics, reliability improvements.
@@ -588,22 +599,22 @@ After installing v0.3.5, tell the user in Russian to test:
 10. Ожидаемо: уведомление не появляется.
 ```
 
-### v0.4 manual tests
+### v0.4.2 manual tests
 
-After installing v0.4, tell the user in Russian to test:
+After installing v0.4.2, tell the user in Russian to test:
 
 ```text
-1. Открой секцию Telegram.
-2. Введи bot token.
-3. Введи chat ID.
-4. Введи proxy type, host и port.
-5. Нажми "Проверить связь с Telegram".
-6. Ожидаемо при рабочем proxy/token: успешный getMe.
-7. Отключи proxy и повтори тест.
-8. Ожидаемо: ошибка proxy, direct fallback отсутствует.
-9. Создай подтверждённый переход БС.
-10. Ожидаемо: Telegram-сообщение отправляется только через proxy.
+1. Открой Telegram-секцию.
+2. Включи Telegram-уведомления.
+3. Введи Worker URL своего Cloudflare Worker.
+4. Введи Relay Secret.
+5. Нажми "Проверить Worker" — ожидаемо: Worker работает, бот доступен.
+6. "Начать получение chat_id" → /start боту → "Получить chat_id" → выбери чат.
+7. "Отправить тестовое сообщение" — сообщение в Telegram.
+8. Создай подтверждённый переход БС — уведомление через Worker.
 ```
+
+For groups: add bot to group, /start in group, discover group chat_id, test message to group.
 
 ### v0.5 manual tests
 
