@@ -28,7 +28,9 @@ export default {
 			return new Response("Not found", { status: 404 });
 		}
 
-		const method = url.pathname.replace("/tg/", "");
+		const method = url.pathname
+			.replace(/^\/tg\//, "")
+			.replace(/\/+$/, "");
 
 		if (!allowedMethods.has(method)) {
 			return new Response("Method not allowed", { status: 403 });

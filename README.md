@@ -1,10 +1,46 @@
 # WhiteListChecker
 
+![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)
+![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-blue)
+![Android](https://img.shields.io/badge/Android-minSdk%2026-green)
+![License](https://img.shields.io/badge/License-MIT-lightgrey)
+
 Android-приложение для проверки мобильной сети и обнаружения признаков режима белых списков.
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
 Текущая версия: **0.7.0**
+
+## Статус проекта
+
+Проект находится на стадии **MVP**.
+
+Уже реализовано:
+
+- ручная проверка мобильной сети;
+- классификация признаков белых списков;
+- локальные уведомления;
+- Telegram через пользовательский Cloudflare Worker;
+- очередь Telegram;
+- автопроверка через WorkManager;
+- диагностика;
+- редактируемые сайты.
+
+Возможны ложные срабатывания: приложение определяет **симптомы сетевого режима**, а не внутренние правила оператора.
+
+## Безопасность
+
+Не публикуйте:
+
+- `BOT_TOKEN`;
+- `RELAY_SECRET`;
+- `local.properties`;
+- release keystore;
+- реальные логи с секретами.
+
+`BOT_TOKEN` должен храниться только в Cloudflare Worker secrets.
+
+Подробнее: [SECURITY.md](SECURITY.md)
 
 ## Возможности
 
@@ -46,6 +82,9 @@ Android-приложение для проверки мобильной сети
 - [Текущий MVP](docs/WhiteListChecker%20-%20current%20MVP.md)
 - [Стек технологий](docs/stack.md)
 - [Cloudflare Worker relay](docs/cloudflare-worker/README.md)
+- [Changelog](CHANGELOG.md)
+- [Contributing](CONTRIBUTING.md)
+- [Security](SECURITY.md)
 - [Инструкции для агента](AGENTS.md)
 - Версии: [v0.1](docs/versions/v0.1.md) … [v0.6](docs/versions/v0.6.md)
 - Legacy: [архив](docs/archive/)
@@ -112,3 +151,7 @@ Android → user's Cloudflare Worker → Telegram Bot API
 | v0.5 | Очередь Telegram |
 | v0.6 | WorkManager автопроверка |
 | v0.7 | UI cleanup, редактируемые сайты, диагностика |
+
+## Лицензия
+
+Проект распространяется под лицензией MIT. См. [LICENSE](LICENSE).
