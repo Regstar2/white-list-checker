@@ -60,13 +60,23 @@ class TelegramWorkerClient(
     suspend fun sendMessage(
         settings: TelegramSettings,
         text: String,
+    ): TelegramSendResult {
+        val recipient = settings.enabledRecipients.firstOrNull()
+            ?: return TelegramSendResult.Failure("Chat ID не указан")
+        return sendMessageToChat(settings, recipient.chatId, text)
+    }
+
+    suspend fun sendMessageToChat(
+        settings: TelegramSettings,
+        chatId: String,
+        text: String,
     ): TelegramSendResult = withContext(Dispatchers.IO) {
-        when (val validation = validateConfigured(settings)) {
+        when (val validation = validateCanSend(settings, chatId)) {
             is ValidationResult.Failure -> return@withContext TelegramSendResult.Failure(validation.reason)
             ValidationResult.Ok -> Unit
         }
         val jsonBody = JSONObject()
-            .put("chat_id", settings.chatId)
+            .put("chat_id", chatId)
             .put("text", text)
         when (
             val response = executeWorkerRequestRaw(
@@ -216,7 +226,18 @@ class TelegramWorkerClient(
             is ValidationResult.Failure -> return base
             ValidationResult.Ok -> Unit
         }
-        if (settings.chatId.isBlank()) {
+        if (settings.enabledRecipients.isEmpty()) {
+            return ValidationResult.Failure("Нет включённых Telegram-получателей")
+        }
+        return ValidationResult.Ok
+    }
+
+    private fun validateCanSend(settings: TelegramSettings, chatId: String): ValidationResult {
+        when (val base = validateCanTest(settings)) {
+            is ValidationResult.Failure -> return base
+            ValidationResult.Ok -> Unit
+        }
+        if (chatId.isBlank()) {
             return ValidationResult.Failure("Chat ID не указан")
         }
         return ValidationResult.Ok

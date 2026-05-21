@@ -1,5 +1,6 @@
 package com.whitelistchecker.data.telegram
 
+import com.whitelistchecker.domain.model.TelegramRecipient
 import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
 import java.util.concurrent.TimeUnit
@@ -17,15 +18,17 @@ class PendingTelegramReportRepository(
         event: WhitelistStateChangeEvent,
         error: String?,
         attemptedSend: Boolean = false,
+        recipient: TelegramRecipient? = null,
     ) {
         saveMessage(
             text = text,
-            id = buildReportId(event),
+            id = buildReportId(event, recipient),
             eventType = event.type.name,
             oldState = event.oldState.name,
             newState = event.newState.name,
             error = error,
             attemptedSend = attemptedSend,
+            recipient = recipient,
         )
     }
 
@@ -37,6 +40,7 @@ class PendingTelegramReportRepository(
         attemptedSend: Boolean = false,
         oldState: String = WhitelistState.UNKNOWN.name,
         newState: String = WhitelistState.UNKNOWN.name,
+        recipient: TelegramRecipient? = null,
     ) {
         val nowMillis = System.currentTimeMillis()
         dao.insert(
@@ -46,6 +50,9 @@ class PendingTelegramReportRepository(
                 eventType = eventType,
                 oldState = oldState,
                 newState = newState,
+                recipientId = recipient?.id.orEmpty(),
+                chatId = recipient?.chatId.orEmpty(),
+                recipientName = recipient?.displayName.orEmpty(),
                 createdAtMillis = nowMillis,
                 attemptCount = if (attemptedSend) 1 else 0,
                 lastAttemptAtMillis = if (attemptedSend) nowMillis else null,
@@ -98,6 +105,15 @@ class PendingTelegramReportRepository(
 
         fun buildReportId(event: WhitelistStateChangeEvent): String {
             return "${event.type.name}_${event.changedAtMillis}"
+        }
+
+        fun buildReportId(event: WhitelistStateChangeEvent, recipient: TelegramRecipient?): String {
+            val base = buildReportId(event)
+            return if (recipient == null) base else "${base}_${recipient.id}"
+        }
+
+        fun buildReportId(baseId: String, recipient: TelegramRecipient): String {
+            return "${baseId}_${recipient.id}"
         }
     }
 }

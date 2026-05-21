@@ -6,6 +6,7 @@ data class TelegramSettings(
     val relaySecret: String = "",
     val chatId: String = "",
     val chatDiscoveryOffset: Long? = null,
+    val recipients: List<TelegramRecipient> = emptyList(),
 ) {
     val canTestWorker: Boolean
         get() = workerUrl.isNotBlank() && relaySecret.isNotBlank()
@@ -13,9 +14,12 @@ data class TelegramSettings(
     val isReadyForDiscovery: Boolean
         get() = canTestWorker
 
+    val enabledRecipients: List<TelegramRecipient>
+        get() = recipients.filter { it.enabled && it.chatId.isNotBlank() }
+
     val isConfigured: Boolean
         get() = enabled &&
             workerUrl.isNotBlank() &&
             relaySecret.isNotBlank() &&
-            chatId.isNotBlank()
+            enabledRecipients.isNotEmpty()
 }

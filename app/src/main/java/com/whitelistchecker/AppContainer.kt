@@ -7,7 +7,7 @@ import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.db.AppDatabase
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
-import com.whitelistchecker.data.targets.DefaultTargetsRepository
+import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
@@ -25,6 +25,8 @@ import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChec
 import com.whitelistchecker.domain.notifications.LocalNotificationSender
 import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
+import com.whitelistchecker.domain.telegram.DetailedReportFormatter
+import com.whitelistchecker.domain.telegram.TelegramBroadcastUseCase
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
 import com.whitelistchecker.domain.telegram.TelegramQueueProcessor
@@ -48,6 +50,7 @@ class AppContainer(context: Context) {
     val pendingTelegramReportRepository = PendingTelegramReportRepository(
         dao = database.pendingTelegramReportDao(),
     )
+    val checkTargetsRepository = CheckTargetsRepository(appContext)
     val backgroundCheckSettingsRepository = BackgroundCheckSettingsRepository(appContext)
     val backgroundCheckStatusRepository = BackgroundCheckStatusRepository(appContext)
 
@@ -73,7 +76,7 @@ class AppContainer(context: Context) {
 
     private val whitelistCheckUseCase = WhitelistCheckUseCase(
         connectivityManager = connectivityManager,
-        targetsRepository = DefaultTargetsRepository(),
+        targetsRepository = checkTargetsRepository,
         cellularNetworkProvider = CellularNetworkProvider(connectivityManager),
         mobileSiteChecker = MobileSiteChecker(),
         classifier = WhitelistStateClassifier(),
@@ -101,11 +104,15 @@ class AppContainer(context: Context) {
         localNotificationEventUseCase = localNotificationEventUseCase,
     )
 
-    private val telegramEventNotifierUseCase = TelegramEventNotifierUseCase(
+    private val telegramBroadcastUseCase = TelegramBroadcastUseCase(
         settingsRepository = telegramSettingsRepository,
         telegramWorkerClient = telegramWorkerClient,
-        reportFormatter = TelegramReportFormatter(),
         pendingTelegramReportRepository = pendingTelegramReportRepository,
+    )
+
+    private val telegramEventNotifierUseCase = TelegramEventNotifierUseCase(
+        telegramBroadcastUseCase = telegramBroadcastUseCase,
+        reportFormatter = TelegramReportFormatter(),
     )
 
     private val telegramQueueProcessor = TelegramQueueProcessor(
@@ -123,6 +130,7 @@ class AppContainer(context: Context) {
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)
 
+    val detailedReportFormatter = DetailedReportFormatter()
     val telegramWorkerClientForUi = telegramWorkerClient
     val telegramEventNotifierUseCaseForUi = telegramEventNotifierUseCase
 }

@@ -8,7 +8,7 @@ fun TelegramSettings.configurationStatusLabel(): String {
     return when {
         !enabled -> "выключены"
         isConfigured -> "настроены"
-        canTestWorker -> "Worker настроен, chat_id не указан"
+        canTestWorker && enabledRecipients.isEmpty() -> "Worker настроен, получатели не добавлены"
         else -> "не настроены"
     }
 }

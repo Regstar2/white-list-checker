@@ -70,7 +70,7 @@ class TelegramChatIdResolverUseCase(
     }
 
     suspend fun useChat(candidate: TelegramChatCandidate) {
-        settingsRepository.saveChatId(candidate.chatId)
+        settingsRepository.addRecipient(candidate)
     }
 
     private fun discoverySettingsError(settings: com.whitelistchecker.domain.model.TelegramSettings): String {

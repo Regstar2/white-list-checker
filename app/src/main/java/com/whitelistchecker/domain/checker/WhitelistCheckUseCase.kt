@@ -2,7 +2,7 @@ package com.whitelistchecker.domain.checker
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
-import com.whitelistchecker.data.targets.DefaultTargetsRepository
+import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
 import com.whitelistchecker.domain.model.CheckTarget
 import com.whitelistchecker.domain.model.NetworkCheckResult
@@ -16,7 +16,7 @@ import kotlinx.coroutines.coroutineScope
 
 class WhitelistCheckUseCase(
     private val connectivityManager: ConnectivityManager,
-    private val targetsRepository: DefaultTargetsRepository,
+    private val targetsRepository: CheckTargetsRepository,
     private val cellularNetworkProvider: CellularNetworkProvider,
     private val mobileSiteChecker: MobileSiteChecker,
     private val classifier: WhitelistStateClassifier,
@@ -27,7 +27,7 @@ class WhitelistCheckUseCase(
         val checkedAtMillis = System.currentTimeMillis()
         val activeNetworkLabel = resolveActiveNetworkLabel()
         val checkedNetworkLabel = "Mobile"
-        val targets = targetsRepository.getTargets()
+        val targets = targetsRepository.getEnabledTargets()
         val emptyForeignSummary = emptySummary(TargetGroup.FOREIGN, targets)
         val emptyLocalSummary = emptySummary(TargetGroup.LOCAL, targets)
 

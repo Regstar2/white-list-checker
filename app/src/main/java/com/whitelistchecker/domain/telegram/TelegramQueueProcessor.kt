@@ -39,8 +39,22 @@ class TelegramQueueProcessor(
         var lastError: String? = null
 
         for (report in sendableReports) {
+            val chatId = report.chatId.ifBlank {
+                settings.enabledRecipients.firstOrNull()?.chatId.orEmpty()
+            }
+            if (chatId.isBlank()) {
+                failedCount++
+                lastError = "Chat ID не указан"
+                pendingReportRepository.markAttempt(
+                    entity = report,
+                    error = lastError,
+                    nowMillis = System.currentTimeMillis(),
+                )
+                break
+            }
+
             attemptedCount++
-            when (val result = telegramWorkerClient.sendMessage(settings, report.text)) {
+            when (val result = telegramWorkerClient.sendMessageToChat(settings, chatId, report.text)) {
                 TelegramSendResult.Success -> {
                     sentCount++
                     pendingReportRepository.delete(report.id)

@@ -2,6 +2,7 @@ package com.whitelistchecker.ui.main
 
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.BackgroundCheckStatus
+import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
@@ -11,8 +12,10 @@ import com.whitelistchecker.domain.model.TelegramSettings
 import com.whitelistchecker.domain.model.TelegramTestResult
 import com.whitelistchecker.domain.model.WhitelistMonitorState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
+import com.whitelistchecker.ui.navigation.AppScreen
 
 data class MainUiState(
+    val currentScreen: AppScreen = AppScreen.HOME,
     val isChecking: Boolean = false,
     val result: NetworkCheckResult? = null,
     val monitorState: WhitelistMonitorState? = null,
@@ -34,6 +37,10 @@ data class MainUiState(
     val backgroundCheckSettings: BackgroundCheckSettings = BackgroundCheckSettings(),
     val backgroundCheckStatus: BackgroundCheckStatus = BackgroundCheckStatus(),
     val isSavingBackgroundSettings: Boolean = false,
+    val useCustomInterval: Boolean = false,
+    val customIntervalInput: String = "15",
+    val intervalError: String? = null,
+    val checkTargets: List<EditableCheckTarget> = emptyList(),
     val telegramChatDiscovery: TelegramChatDiscoveryUiState = TelegramChatDiscoveryUiState(),
     val errorMessage: String? = null,
 )

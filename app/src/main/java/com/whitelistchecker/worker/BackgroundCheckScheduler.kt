@@ -3,7 +3,9 @@ package com.whitelistchecker.worker
 import android.content.Context
 import androidx.work.Constraints
 import androidx.work.ExistingPeriodicWorkPolicy
+import androidx.work.ExistingWorkPolicy
 import androidx.work.NetworkType
+import androidx.work.OneTimeWorkRequestBuilder
 import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
@@ -18,9 +20,7 @@ class BackgroundCheckScheduler(
 
     fun schedule(intervalMinutes: Long) {
         val normalizedInterval = BackgroundCheckSettings(intervalMinutes = intervalMinutes).normalizedIntervalMinutes
-        val constraints = Constraints.Builder()
-            .setRequiredNetworkType(NetworkType.CONNECTED)
-            .build()
+        val constraints = connectedConstraints()
         val request = PeriodicWorkRequestBuilder<WhitelistCheckWorker>(
             normalizedInterval,
             TimeUnit.MINUTES,
@@ -28,14 +28,25 @@ class BackgroundCheckScheduler(
             .setConstraints(constraints)
             .build()
         workManager.enqueueUniquePeriodicWork(
-            UNIQUE_WORK_NAME,
+            PERIODIC_WORK_NAME,
             ExistingPeriodicWorkPolicy.UPDATE,
             request,
         )
     }
 
+    fun runNow() {
+        val request = OneTimeWorkRequestBuilder<WhitelistCheckWorker>()
+            .setConstraints(connectedConstraints())
+            .build()
+        workManager.enqueueUniqueWork(
+            ONE_TIME_WORK_NAME,
+            ExistingWorkPolicy.REPLACE,
+            request,
+        )
+    }
+
     fun cancel() {
-        workManager.cancelUniqueWork(UNIQUE_WORK_NAME)
+        workManager.cancelUniqueWork(PERIODIC_WORK_NAME)
     }
 
     fun reschedule(settings: BackgroundCheckSettings) {
@@ -47,6 +58,13 @@ class BackgroundCheckScheduler(
     }
 
     companion object {
-        private const val UNIQUE_WORK_NAME = "whitelist_periodic_check"
+        private const val PERIODIC_WORK_NAME = "whitelist_auto_check"
+        private const val ONE_TIME_WORK_NAME = "whitelist_auto_check_now"
+
+        private fun connectedConstraints(): Constraints {
+            return Constraints.Builder()
+                .setRequiredNetworkType(NetworkType.CONNECTED)
+                .build()
+        }
     }
 }

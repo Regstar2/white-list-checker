@@ -31,7 +31,7 @@ class BackgroundCheckSettingsRepository(
     suspend fun saveSettings(settings: BackgroundCheckSettings) {
         dataStore.edit { preferences ->
             preferences[Keys.ENABLED] = settings.enabled
-            preferences[Keys.INTERVAL_MINUTES] = settings.normalizedIntervalMinutes
+            preferences[Keys.INTERVAL_MINUTES] = settings.intervalMinutes
         }
     }
 
@@ -42,20 +42,14 @@ class BackgroundCheckSettingsRepository(
 
     suspend fun setIntervalMinutes(intervalMinutes: Long) {
         val current = getSettings()
-        saveSettings(
-            current.copy(
-                intervalMinutes = BackgroundCheckSettings(intervalMinutes = intervalMinutes).normalizedIntervalMinutes,
-            ),
-        )
+        saveSettings(current.copy(intervalMinutes = intervalMinutes))
     }
 
     private fun Preferences.toSettings(): BackgroundCheckSettings {
         return BackgroundCheckSettings(
             enabled = this[Keys.ENABLED] ?: false,
             intervalMinutes = this[Keys.INTERVAL_MINUTES] ?: 15L,
-        ).let { settings ->
-            settings.copy(intervalMinutes = settings.normalizedIntervalMinutes)
-        }
+        )
     }
 
     private object Keys {

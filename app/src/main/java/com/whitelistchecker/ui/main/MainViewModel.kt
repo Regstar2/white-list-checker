@@ -5,8 +5,10 @@ import androidx.lifecycle.viewModelScope
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
+import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
+import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.TelegramChatCandidate
@@ -18,9 +20,11 @@ import com.whitelistchecker.domain.notifications.LocalNotificationChannelManager
 import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChecker
 import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
+import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
+import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.userMessage
 import com.whitelistchecker.worker.BackgroundCheckScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -42,6 +46,8 @@ class MainViewModel(
     private val backgroundCheckSettingsRepository: BackgroundCheckSettingsRepository,
     private val backgroundCheckStatusRepository: BackgroundCheckStatusRepository,
     private val backgroundCheckScheduler: BackgroundCheckScheduler,
+    private val checkTargetsRepository: CheckTargetsRepository,
+    private val detailedReportFormatter: DetailedReportFormatter,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -52,6 +58,121 @@ class MainViewModel(
         refreshNotificationPermissionState()
         loadInitialState()
         observeBackgroundCheck()
+        observeCheckTargets()
+    }
+
+    fun openScreen(screen: AppScreen) {
+        _uiState.update { it.copy(currentScreen = screen, errorMessage = null) }
+    }
+
+    fun goHome() {
+        openScreen(AppScreen.HOME)
+    }
+
+    fun buildDetailedReport(): String {
+        val state = _uiState.value
+        val result = state.result ?: return ""
+        val event = state.lastStateChangeEvent
+        return if (event != null) {
+            detailedReportFormatter.formatStateChange(event, result)
+        } else {
+            detailedReportFormatter.formatCheckResult(result)
+        }
+    }
+
+    fun runBackgroundCheckNow() {
+        backgroundCheckScheduler.runNow()
+    }
+
+    private fun observeCheckTargets() {
+        viewModelScope.launch {
+            checkTargetsRepository.observeTargets().collect { targets ->
+                _uiState.update { it.copy(checkTargets = targets) }
+            }
+        }
+    }
+
+    fun setCheckTargetEnabled(id: String, enabled: Boolean) {
+        viewModelScope.launch {
+            checkTargetsRepository.setTargetEnabled(id, enabled)
+        }
+    }
+
+    fun addCheckTarget(target: EditableCheckTarget) {
+        viewModelScope.launch {
+            checkTargetsRepository.addTarget(target)
+        }
+    }
+
+    fun removeCheckTarget(id: String) {
+        viewModelScope.launch {
+            checkTargetsRepository.removeTarget(id)
+        }
+    }
+
+    fun resetCheckTargets() {
+        viewModelScope.launch {
+            checkTargetsRepository.resetToDefaults()
+        }
+    }
+
+    fun addTelegramRecipient(candidate: TelegramChatCandidate) {
+        viewModelScope.launch {
+            try {
+                telegramSettingsRepository.addRecipient(candidate)
+                val savedSettings = telegramSettingsRepository.getSettings()
+                _uiState.update {
+                    it.copy(
+                        telegramSettings = savedSettings,
+                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                            selectedCandidate = candidate,
+                            statusMessage = "Получатель добавлен",
+                            errorMessage = null,
+                        ),
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                            errorMessage = exception.message ?: exception.javaClass.simpleName,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun removeTelegramRecipient(recipientId: String) {
+        viewModelScope.launch {
+            telegramSettingsRepository.removeRecipient(recipientId)
+            _uiState.update { it.copy(telegramSettings = telegramSettingsRepository.getSettings()) }
+        }
+    }
+
+    fun setTelegramRecipientEnabled(recipientId: String, enabled: Boolean) {
+        viewModelScope.launch {
+            telegramSettingsRepository.setRecipientEnabled(recipientId, enabled)
+            _uiState.update { it.copy(telegramSettings = telegramSettingsRepository.getSettings()) }
+        }
+    }
+
+    fun selectPresetInterval(minutes: Long) {
+        _uiState.update {
+            it.copy(
+                useCustomInterval = false,
+                intervalError = null,
+                backgroundCheckSettings = it.backgroundCheckSettings.copy(intervalMinutes = minutes),
+            )
+        }
+    }
+
+    fun setUseCustomInterval(enabled: Boolean) {
+        _uiState.update { it.copy(useCustomInterval = enabled, intervalError = null) }
+    }
+
+    fun updateCustomIntervalInput(value: String) {
+        _uiState.update { it.copy(customIntervalInput = value.filter { ch -> ch.isDigit() }, intervalError = null) }
     }
 
     fun updateBackgroundCheckEnabled(enabled: Boolean) {
@@ -105,8 +226,13 @@ class MainViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingBackgroundSettings = true) }
             try {
+                val intervalMinutes = resolveIntervalMinutes()
+                if (intervalMinutes == null) {
+                    _uiState.update { it.copy(isSavingBackgroundSettings = false) }
+                    return@launch
+                }
                 val settings = _uiState.value.backgroundCheckSettings.copy(
-                    intervalMinutes = _uiState.value.backgroundCheckSettings.normalizedIntervalMinutes,
+                    intervalMinutes = intervalMinutes,
                 )
                 backgroundCheckSettingsRepository.saveSettings(settings)
                 backgroundCheckScheduler.reschedule(settings)
@@ -114,6 +240,7 @@ class MainViewModel(
                     it.copy(
                         backgroundCheckSettings = settings,
                         isSavingBackgroundSettings = false,
+                        intervalError = null,
                         errorMessage = null,
                     )
                 }
@@ -126,6 +253,23 @@ class MainViewModel(
                 }
             }
         }
+    }
+
+    private fun resolveIntervalMinutes(): Long? {
+        val state = _uiState.value
+        if (!state.useCustomInterval) {
+            return state.backgroundCheckSettings.intervalMinutes
+        }
+        val parsed = state.customIntervalInput.toLongOrNull()
+        if (parsed == null || parsed < BackgroundCheckSettings.MIN_INTERVAL_MINUTES) {
+            _uiState.update {
+                it.copy(
+                    intervalError = "Минимальный интервал фоновой проверки через WorkManager — 15 минут.",
+                )
+            }
+            return null
+        }
+        return parsed
     }
 
     fun rescheduleBackgroundCheck() {
@@ -369,15 +513,16 @@ class MainViewModel(
             try {
                 telegramSettingsRepository.saveSettings(state.telegramSettings)
                 val result = telegramEventNotifierUseCase.sendTestMessage(TEST_MESSAGE_TEXT)
+                val broadcastMessage = when (result) {
+                    TelegramSendResult.Success -> "Тестовое сообщение отправлено всем включённым получателям"
+                    is TelegramSendResult.Failure -> result.reason
+                    null -> "Telegram-уведомления выключены или нет включённых получателей"
+                }
                 _uiState.update {
                     it.copy(
                         isSendingTelegramTest = false,
                         lastTelegramSendResult = result,
-                        lastTelegramSendMessage = when (result) {
-                            TelegramSendResult.Success -> "Тестовое сообщение отправлено"
-                            is TelegramSendResult.Failure -> result.reason
-                            null -> "Telegram-уведомления выключены"
-                        },
+                        lastTelegramSendMessage = broadcastMessage,
                         pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount(),
                     )
                 }
@@ -552,30 +697,7 @@ class MainViewModel(
     }
 
     fun useTelegramChat(candidate: TelegramChatCandidate) {
-        viewModelScope.launch {
-            try {
-                telegramChatIdResolverUseCase.useChat(candidate)
-                val savedSettings = telegramSettingsRepository.getSettings()
-                _uiState.update {
-                    it.copy(
-                        telegramSettings = savedSettings,
-                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
-                            selectedCandidate = candidate,
-                            statusMessage = "Chat ID сохранён",
-                            errorMessage = null,
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
-                            errorMessage = exception.message ?: exception.javaClass.simpleName,
-                        ),
-                    )
-                }
-            }
-        }
+        addTelegramRecipient(candidate)
     }
 
     private fun loadInitialState() {
@@ -588,7 +710,9 @@ class MainViewModel(
                 val pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount()
                 val backgroundSettings = backgroundCheckSettingsRepository.getSettings()
                 val backgroundStatus = backgroundCheckStatusRepository.getStatus()
+                val checkTargets = checkTargetsRepository.getTargets()
                 backgroundCheckScheduler.reschedule(backgroundSettings)
+                val useCustom = !backgroundSettings.isPresetInterval
                 _uiState.update {
                     it.copy(
                         localNotificationSettings = localSettings,
@@ -600,6 +724,9 @@ class MainViewModel(
                         pendingReportsCount = pendingReportsCount,
                         backgroundCheckSettings = backgroundSettings,
                         backgroundCheckStatus = backgroundStatus,
+                        checkTargets = checkTargets,
+                        useCustomInterval = useCustom,
+                        customIntervalInput = backgroundSettings.intervalMinutes.toString(),
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                         notificationPermissionRequired = permissionChecker.requiresRuntimePermission(),
                     )
