@@ -20,6 +20,7 @@ import com.whitelistchecker.domain.model.TelegramTestResult
 import com.whitelistchecker.domain.notifications.LocalNotificationChannelManager
 import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChecker
 import com.whitelistchecker.domain.system.AppSettingsNavigator
+import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
@@ -329,9 +330,10 @@ class MainViewModel(
                 val result = checkAndNotifyUseCase.execute()
                 val monitorResult = result.monitorResult
                 _uiState.update {
+                    val checkResult = monitorResult.checkResult
                     it.copy(
                         isChecking = false,
-                        result = monitorResult.checkResult,
+                        result = checkResult,
                         monitorState = monitorResult.monitorState,
                         lastStateChangeEvent = monitorResult.stateChangeEvent,
                         lastLocalNotificationResult = result.localNotificationResult,
@@ -339,6 +341,11 @@ class MainViewModel(
                         lastQueueFlushResult = result.queueFlushResult,
                         pendingReportsCount = result.pendingReportsCount,
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
+                        errorMessage = if (checkResult.error == WhitelistCheckUseCase.CHANGE_NETWORK_STATE_DENIED_MESSAGE) {
+                            checkResult.error
+                        } else {
+                            null
+                        },
                     )
                 }
             } catch (exception: Exception) {

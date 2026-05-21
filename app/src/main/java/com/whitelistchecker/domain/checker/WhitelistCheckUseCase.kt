@@ -31,10 +31,16 @@ class WhitelistCheckUseCase(
         val emptyForeignSummary = emptySummary(TargetGroup.FOREIGN, targets)
         val emptyLocalSummary = emptySummary(TargetGroup.LOCAL, targets)
 
-        val cellularNetwork = cellularNetworkProvider.requestCellularNetwork()
+        val cellularRequest = cellularNetworkProvider.requestCellularNetwork()
+        val cellularNetwork = cellularRequest.network
 
         if (cellularNetwork == null) {
             cellularNetworkProvider.release()
+            val errorMessage = if (cellularRequest.permissionDenied) {
+                CHANGE_NETWORK_STATE_DENIED_MESSAGE
+            } else {
+                CELLULAR_UNAVAILABLE_MESSAGE
+            }
             return NetworkCheckResult(
                 siteResults = emptyList(),
                 foreignSummary = emptyForeignSummary,
@@ -43,7 +49,7 @@ class WhitelistCheckUseCase(
                 activeNetworkLabel = activeNetworkLabel,
                 checkedNetworkLabel = checkedNetworkLabel,
                 checkedAtMillis = checkedAtMillis,
-                error = CELLULAR_UNAVAILABLE_MESSAGE,
+                error = errorMessage,
             )
         }
 
@@ -119,5 +125,8 @@ class WhitelistCheckUseCase(
         const val CELLULAR_UNAVAILABLE_MESSAGE =
             "Мобильная сеть недоступна. Возможные причины: мобильные данные выключены, " +
                 "нет SIM, нет сигнала, оператор или прошивка не дали поднять cellular-сеть параллельно Wi-Fi."
+
+        const val CHANGE_NETWORK_STATE_DENIED_MESSAGE =
+            "Не хватает разрешения CHANGE_NETWORK_STATE для запроса мобильной сети. Проверьте AndroidManifest."
     }
 }

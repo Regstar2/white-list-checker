@@ -104,6 +104,11 @@ FOREIGN/LOCAL target checks
 WhitelistStateClassifier
 ```
 
+**Android permissions for cellular requests:**
+
+- Do not remove `CHANGE_NETWORK_STATE`. It is required for explicit cellular `Network` requests through `ConnectivityManager.requestNetwork()`.
+- Do not add `WRITE_SETTINGS` for this use case.
+
 ---
 
 ## 4. Target groups

@@ -24,8 +24,14 @@
 minSdk     = 26
 targetSdk  = 35
 compileSdk = 35
-versionName = 0.7.0
+versionName = 0.7.1
 ```
+
+## Android permissions
+
+`CHANGE_NETWORK_STATE` is required because the app calls `ConnectivityManager.requestNetwork()` to obtain a cellular `Network` while Wi-Fi may be active.
+
+Do **not** remove this permission. Do **not** add `WRITE_SETTINGS` for this use case.
 
 ## Что не используется
 

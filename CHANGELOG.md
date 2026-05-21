@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.7.1
+
+### Исправлено
+
+- Возвращено разрешение `CHANGE_NETWORK_STATE`, необходимое для `ConnectivityManager.requestNetwork()`.
+- Исправлен crash/ошибка при ручной проверке мобильной сети:
+  `was not granted either CHANGE_NETWORK_STATE or WRITE_SETTINGS`.
+- Добавлена защита от `SecurityException` при запросе cellular network.
+
+### Важно
+
+`WRITE_SETTINGS` не используется и не требуется.
+
+Подробнее: [docs/releases/v0.7.1-hotfix.md](docs/releases/v0.7.1-hotfix.md).
+
+---
+
 ## 0.7.0 MVP
 
 ### Добавлено

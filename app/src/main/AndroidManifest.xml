@@ -4,6 +4,10 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- Required for ConnectivityManager.requestNetwork() when explicitly requesting the cellular network while Wi-Fi is active. -->
+    <uses-permission android:name="android.permission.CHANGE_NETWORK_STATE" />
+
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.REQUEST_IGNORE_BATTERY_OPTIMIZATIONS" />
 

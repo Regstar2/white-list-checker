@@ -9,7 +9,9 @@ Android-приложение для проверки мобильной сети
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
-Текущая версия: **0.7.0**
+Текущая версия: **0.7.1**
+
+Последний релиз: [v0.7.1-hotfix](docs/releases/v0.7.1-hotfix.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
 
 ## Статус проекта
 
@@ -30,7 +32,15 @@ WhiteListChecker определяет **признаки сетевого реж
 - диагностика;
 - редактируемые сайты.
 
-Последний релиз: [v0.7.0-mvp](docs/releases/v0.7.0-mvp.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
+## Android permissions
+
+Приложение использует:
+
+- `INTERNET` — сетевые проверки;
+- `ACCESS_NETWORK_STATE` — чтение активной сети и состояния подключений;
+- `CHANGE_NETWORK_STATE` — требуется для `ConnectivityManager.requestNetwork()`, чтобы явно запросить мобильную сеть при активном Wi-Fi;
+- `POST_NOTIFICATIONS` — локальные уведомления на Android 13+;
+- `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — переход в настройки энергосбережения для автопроверки.
 
 ## Безопасность
 
@@ -87,7 +97,7 @@ WhiteListChecker определяет **признаки сетевого реж
 - [Стек технологий](docs/stack.md)
 - [Cloudflare Worker relay](docs/cloudflare-worker/README.md)
 - [Changelog](CHANGELOG.md)
-- [Release v0.7.0 MVP](docs/releases/v0.7.0-mvp.md)
+- [Release v0.7.1 Hotfix](docs/releases/v0.7.1-hotfix.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security](SECURITY.md)
 - [Инструкции для агента](AGENTS.md)
