@@ -8,6 +8,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.data.targets.DefaultTargetsRepository
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
@@ -20,11 +21,13 @@ class MainActivity : ComponentActivity() {
 
     private val viewModelFactory by lazy {
         val connectivityManager = getSystemService(ConnectivityManager::class.java)
+        val targetsRepository = DefaultTargetsRepository()
         val cellularNetworkProvider = CellularNetworkProvider(connectivityManager)
         val mobileSiteChecker = MobileSiteChecker()
         val classifier = WhitelistStateClassifier()
         val useCase = WhitelistCheckUseCase(
             connectivityManager = connectivityManager,
+            targetsRepository = targetsRepository,
             cellularNetworkProvider = cellularNetworkProvider,
             mobileSiteChecker = mobileSiteChecker,
             classifier = classifier,

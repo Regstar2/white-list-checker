@@ -2,12 +2,21 @@ package com.whitelistchecker.domain.checker
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.whitelistchecker.data.targets.DefaultTargetsRepository
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
+import com.whitelistchecker.domain.model.CheckTarget
 import com.whitelistchecker.domain.model.NetworkCheckResult
+import com.whitelistchecker.domain.model.SiteCheckResult
+import com.whitelistchecker.domain.model.TargetGroup
+import com.whitelistchecker.domain.model.TargetGroupSummary
 import com.whitelistchecker.domain.model.WhitelistState
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 
 class WhitelistCheckUseCase(
     private val connectivityManager: ConnectivityManager,
+    private val targetsRepository: DefaultTargetsRepository,
     private val cellularNetworkProvider: CellularNetworkProvider,
     private val mobileSiteChecker: MobileSiteChecker,
     private val classifier: WhitelistStateClassifier,
@@ -17,14 +26,18 @@ class WhitelistCheckUseCase(
         val checkedAtMillis = System.currentTimeMillis()
         val activeNetworkLabel = resolveActiveNetworkLabel()
         val checkedNetworkLabel = "Mobile"
+        val targets = targetsRepository.getTargets()
+        val emptyForeignSummary = emptySummary(TargetGroup.FOREIGN, targets)
+        val emptyLocalSummary = emptySummary(TargetGroup.LOCAL, targets)
 
         val cellularNetwork = cellularNetworkProvider.requestCellularNetwork()
 
         if (cellularNetwork == null) {
             cellularNetworkProvider.release()
             return NetworkCheckResult(
-                google = null,
-                yandex = null,
+                siteResults = emptyList(),
+                foreignSummary = emptyForeignSummary,
+                localSummary = emptyLocalSummary,
                 state = WhitelistState.CELLULAR_NETWORK_UNAVAILABLE,
                 activeNetworkLabel = activeNetworkLabel,
                 checkedNetworkLabel = checkedNetworkLabel,
@@ -34,20 +47,20 @@ class WhitelistCheckUseCase(
         }
 
         return try {
-            val google = mobileSiteChecker.check(
-                network = cellularNetwork,
-                name = MobileSiteChecker.GOOGLE_NAME,
-                url = MobileSiteChecker.GOOGLE_URL,
-            )
-            val yandex = mobileSiteChecker.check(
-                network = cellularNetwork,
-                name = MobileSiteChecker.YANDEX_NAME,
-                url = MobileSiteChecker.YANDEX_URL,
-            )
-            val state = classifier.classify(google, yandex)
+            val siteResults = coroutineScope {
+                targets.map { target ->
+                    async {
+                        mobileSiteChecker.checkTarget(cellularNetwork, target)
+                    }
+                }.awaitAll()
+            }
+            val foreignSummary = buildSummary(TargetGroup.FOREIGN, siteResults)
+            val localSummary = buildSummary(TargetGroup.LOCAL, siteResults)
+            val state = classifier.classify(foreignSummary, localSummary)
             NetworkCheckResult(
-                google = google,
-                yandex = yandex,
+                siteResults = siteResults,
+                foreignSummary = foreignSummary,
+                localSummary = localSummary,
                 state = state,
                 activeNetworkLabel = activeNetworkLabel,
                 checkedNetworkLabel = checkedNetworkLabel,
@@ -57,6 +70,27 @@ class WhitelistCheckUseCase(
         } finally {
             cellularNetworkProvider.release()
         }
+    }
+
+    private fun buildSummary(
+        group: TargetGroup,
+        results: List<SiteCheckResult>,
+    ): TargetGroupSummary {
+        val groupResults = results.filter { it.target.group == group }
+        return TargetGroupSummary(
+            group = group,
+            availableCount = groupResults.count { it.available },
+            totalCount = groupResults.size,
+        )
+    }
+
+    private fun emptySummary(group: TargetGroup, targets: List<CheckTarget>): TargetGroupSummary {
+        val totalCount = targets.count { it.group == group }
+        return TargetGroupSummary(
+            group = group,
+            availableCount = 0,
+            totalCount = totalCount,
+        )
     }
 
     private fun resolveActiveNetworkLabel(): String {

@@ -1,6 +1,7 @@
 package com.whitelistchecker.domain.checker
 
 import android.net.Network
+import com.whitelistchecker.domain.model.CheckTarget
 import com.whitelistchecker.domain.model.SiteCheckResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -9,32 +10,29 @@ import java.net.URL
 
 class MobileSiteChecker {
 
-    suspend fun check(
+    suspend fun checkTarget(
         network: Network,
-        name: String,
-        url: String,
+        target: CheckTarget,
     ): SiteCheckResult = withContext(Dispatchers.IO) {
         val startedAt = System.currentTimeMillis()
-        val headResult = runCheck(network, url, REQUEST_HEAD)
-        if (headResult.httpCode == HTTP_METHOD_NOT_ALLOWED) {
-            val getResult = runCheck(network, url, REQUEST_GET)
-            toSiteCheckResult(name, url, getResult, startedAt)
+        val headResult = runCheck(network, target.url, REQUEST_HEAD)
+        val raw = if (headResult.httpCode == HTTP_METHOD_NOT_ALLOWED) {
+            runCheck(network, target.url, REQUEST_GET)
         } else {
-            toSiteCheckResult(name, url, headResult, startedAt)
+            headResult
         }
+        toSiteCheckResult(target, raw, startedAt)
     }
 
     private fun toSiteCheckResult(
-        name: String,
-        url: String,
+        target: CheckTarget,
         raw: RawCheckResult,
         startedAt: Long,
     ): SiteCheckResult {
         val durationMs = System.currentTimeMillis() - startedAt
         val available = raw.httpCode != null && raw.httpCode in HTTP_AVAILABLE_RANGE
         return SiteCheckResult(
-            name = name,
-            url = url,
+            target = target,
             available = available,
             httpCode = raw.httpCode,
             error = raw.error,
@@ -75,10 +73,5 @@ class MobileSiteChecker {
         private const val READ_TIMEOUT_MS = 4_000
         private const val HTTP_METHOD_NOT_ALLOWED = 405
         val HTTP_AVAILABLE_RANGE = 200..399
-
-        const val GOOGLE_NAME = "Google"
-        const val GOOGLE_URL = "https://www.google.com/generate_204"
-        const val YANDEX_NAME = "Yandex"
-        const val YANDEX_URL = "https://ya.ru"
     }
 }

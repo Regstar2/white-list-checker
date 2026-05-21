@@ -11,6 +11,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -22,6 +23,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.SiteCheckResult
+import com.whitelistchecker.domain.model.TargetGroup
+import com.whitelistchecker.domain.model.TargetGroupSummary
 import com.whitelistchecker.domain.model.WhitelistState
 import java.time.Instant
 import java.time.ZoneId
@@ -64,15 +67,18 @@ fun MainScreen(viewModel: MainViewModel) {
 
             uiState.result?.let { result ->
                 StatusCard(result)
-                DetailsCard(result)
+                SummaryCard(result)
+                SitesCard(result)
             }
 
             uiState.errorMessage?.let { message ->
                 ErrorCard(message)
             }
 
-            uiState.result?.error?.let { message ->
-                ErrorCard(message)
+            if (uiState.result?.state == WhitelistState.CELLULAR_NETWORK_UNAVAILABLE) {
+                uiState.result?.error?.let { message ->
+                    ErrorCard(message)
+                }
             }
         }
     }
@@ -89,16 +95,82 @@ private fun StatusCard(result: NetworkCheckResult) {
 }
 
 @Composable
-private fun DetailsCard(result: NetworkCheckResult) {
-    InfoCard(title = "Детали проверки") {
+private fun SummaryCard(result: NetworkCheckResult) {
+    InfoCard(title = "Сводка") {
         DetailLine("Активная сеть телефона", result.activeNetworkLabel)
         DetailLine("Проверяемая сеть", result.checkedNetworkLabel)
-        SiteDetailBlock("Google", result.google)
-        SiteDetailBlock("Yandex", result.yandex)
+
+        if (result.siteResults.isEmpty()) {
+            Text(
+                text = "Проверка сайтов не выполнена: мобильная сеть недоступна.",
+                style = MaterialTheme.typography.bodyMedium,
+            )
+        } else {
+            GroupSummaryLine("Внешние сайты", result.foreignSummary)
+            GroupSummaryLine("Локальные сайты", result.localSummary)
+        }
+
         DetailLine(
             "Последняя проверка",
             formatCheckedAt(result.checkedAtMillis),
         )
+    }
+}
+
+@Composable
+private fun SitesCard(result: NetworkCheckResult) {
+    if (result.siteResults.isEmpty()) return
+
+    InfoCard(title = "Результаты по сайтам") {
+        val foreignResults = result.siteResults.filter { it.target.group == TargetGroup.FOREIGN }
+        val localResults = result.siteResults.filter { it.target.group == TargetGroup.LOCAL }
+
+        Text(
+            text = "Внешние сайты",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        foreignResults.forEach { site ->
+            SiteResultBlock(site)
+            if (site != foreignResults.last()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+
+        HorizontalDivider(modifier = Modifier.padding(vertical = 12.dp))
+
+        Text(
+            text = "Локальные сайты",
+            style = MaterialTheme.typography.titleSmall,
+        )
+        localResults.forEach { site ->
+            SiteResultBlock(site)
+            if (site != localResults.last()) {
+                HorizontalDivider(modifier = Modifier.padding(vertical = 8.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupSummaryLine(label: String, summary: TargetGroupSummary) {
+    DetailLine(
+        label,
+        "${summary.availableCount}/${summary.totalCount} доступно",
+    )
+}
+
+@Composable
+private fun SiteResultBlock(site: SiteCheckResult) {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(text = site.target.name, style = MaterialTheme.typography.titleSmall)
+        DetailLine("Группа", site.target.group.toDisplayLabel())
+        DetailLine(
+            "Статус",
+            if (site.available) "доступен" else "недоступен",
+        )
+        DetailLine("HTTP", site.httpCode?.toString() ?: "—")
+        DetailLine("Ошибка", site.error ?: "—")
+        DetailLine("Время", "${site.durationMs} мс")
     }
 }
 
@@ -145,29 +217,9 @@ private fun DetailLine(label: String, value: String) {
     }
 }
 
-@Composable
-private fun SiteDetailBlock(title: String, site: SiteCheckResult?) {
-    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text(text = "$title:", style = MaterialTheme.typography.labelMedium)
-        if (site == null) {
-            Text(text = "—", style = MaterialTheme.typography.bodyLarge)
-            return
-        }
-        Text(
-            text = if (site.available) "Доступен" else "Недоступен",
-            style = MaterialTheme.typography.bodyLarge,
-        )
-        site.httpCode?.let { code ->
-            Text(text = "HTTP: $code", style = MaterialTheme.typography.bodyMedium)
-        }
-        site.error?.let { error ->
-            Text(text = "Ошибка: $error", style = MaterialTheme.typography.bodyMedium)
-        }
-        Text(
-            text = "Время: ${site.durationMs} мс",
-            style = MaterialTheme.typography.bodyMedium,
-        )
-    }
+private fun TargetGroup.toDisplayLabel(): String = when (this) {
+    TargetGroup.FOREIGN -> "Внешние"
+    TargetGroup.LOCAL -> "Локальные"
 }
 
 private fun WhitelistState.toDisplayLabel(): String = when (this) {
