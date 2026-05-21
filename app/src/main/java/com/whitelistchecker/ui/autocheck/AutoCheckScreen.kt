@@ -2,14 +2,17 @@ package com.whitelistchecker.ui.autocheck
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Button
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilterChip
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -18,14 +21,17 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.domain.model.BackgroundCheckInterval
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
-import com.whitelistchecker.ui.components.DetailLine
+import com.whitelistchecker.ui.components.AppCard
+import com.whitelistchecker.ui.components.CompactDetailRow
 import com.whitelistchecker.ui.components.ErrorCard
-import com.whitelistchecker.ui.components.InfoCard
 import com.whitelistchecker.ui.components.ScreenScaffold
+import com.whitelistchecker.ui.components.StatusChip
+import com.whitelistchecker.ui.components.StatusTone
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.toDisplayDateTime
 import com.whitelistchecker.ui.toDisplayLabel
 
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun AutoCheckScreen(
     uiState: MainUiState,
@@ -39,94 +45,97 @@ fun AutoCheckScreen(
     onStop: () -> Unit,
 ) {
     ScreenScaffold(title = "Автопроверка", onBack = onBack) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            InfoCard(title = "Настройки") {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically,
+        AppCard(title = "Настройки") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text("Автопроверка", style = MaterialTheme.typography.bodyMedium)
+                Switch(
+                    checked = uiState.backgroundCheckSettings.enabled,
+                    onCheckedChange = onEnabledChange,
+                )
+            }
+            Text(
+                text = if (uiState.backgroundCheckSettings.enabled) {
+                    "Android может сдвигать время запуска из-за энергосбережения."
+                } else {
+                    "Автопроверка выключена."
+                },
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+            if (uiState.backgroundCheckSettings.enabled) {
+                Text("Интервал", style = MaterialTheme.typography.titleSmall)
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
-                    Text("Включить автопроверку")
-                    Switch(
-                        checked = uiState.backgroundCheckSettings.enabled,
-                        onCheckedChange = onEnabledChange,
+                    BackgroundCheckInterval.entries.forEach { interval ->
+                        FilterChip(
+                            selected = !uiState.useCustomInterval &&
+                                uiState.backgroundCheckSettings.intervalMinutes == interval.minutes,
+                            onClick = { onPresetIntervalChange(interval.minutes) },
+                            label = { Text(interval.label) },
+                        )
+                    }
+                    FilterChip(
+                        selected = uiState.useCustomInterval,
+                        onClick = { onUseCustomIntervalChange(true) },
+                        label = { Text("Другое") },
                     )
                 }
-                Text(
-                    text = if (uiState.backgroundCheckSettings.enabled) {
-                        "Автопроверка включена. Android может сдвигать время запуска из-за энергосбережения."
-                    } else {
-                        "Автопроверка выключена."
-                    },
-                    style = MaterialTheme.typography.bodySmall,
-                )
-                if (uiState.backgroundCheckSettings.enabled) {
-                    Text("Интервал", style = MaterialTheme.typography.titleSmall)
-                    BackgroundCheckInterval.entries.forEach { interval ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                        ) {
-                            RadioButton(
-                                selected = !uiState.useCustomInterval &&
-                                    uiState.backgroundCheckSettings.intervalMinutes == interval.minutes,
-                                onClick = { onPresetIntervalChange(interval.minutes) },
-                            )
-                            Text(interval.label)
-                        }
-                    }
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        RadioButton(
-                            selected = uiState.useCustomInterval,
-                            onClick = { onUseCustomIntervalChange(true) },
-                        )
-                        Text("Другое")
-                    }
-                    if (uiState.useCustomInterval) {
-                        OutlinedTextField(
-                            value = uiState.customIntervalInput,
-                            onValueChange = onCustomIntervalInputChange,
-                            modifier = Modifier.fillMaxWidth(),
-                            label = { Text("Интервал (минуты)") },
-                            singleLine = true,
-                            supportingText = {
-                                Text("Минимум ${BackgroundCheckSettings.MIN_INTERVAL_MINUTES} минут")
-                            },
-                        )
-                    }
-                    uiState.intervalError?.let { ErrorCard(it) }
+                if (uiState.useCustomInterval) {
+                    OutlinedTextField(
+                        value = uiState.customIntervalInput,
+                        onValueChange = onCustomIntervalInputChange,
+                        modifier = Modifier.fillMaxWidth(),
+                        label = { Text("Интервал, минут") },
+                        singleLine = true,
+                        supportingText = {
+                            Text("Минимум ${BackgroundCheckSettings.MIN_INTERVAL_MINUTES} минут")
+                        },
+                    )
                 }
-                Button(
-                    onClick = onSaveAndReschedule,
-                    enabled = uiState.backgroundCheckSettings.enabled && !uiState.isSavingBackgroundSettings,
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text("Сохранить и перепланировать")
-                }
-                Button(onClick = onRunNow, modifier = Modifier.fillMaxWidth()) {
-                    Text("Запустить проверку сейчас")
-                }
-                if (uiState.backgroundCheckSettings.enabled) {
-                    OutlinedButton(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
-                        Text("Остановить автопроверку")
-                    }
+                uiState.intervalError?.let { ErrorCard(it) }
+            }
+            Button(
+                onClick = onSaveAndReschedule,
+                enabled = uiState.backgroundCheckSettings.enabled && !uiState.isSavingBackgroundSettings,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Сохранить и перепланировать")
+            }
+            OutlinedButton(onClick = onRunNow, modifier = Modifier.fillMaxWidth()) {
+                Text("Запустить проверку сейчас")
+            }
+            if (uiState.backgroundCheckSettings.enabled) {
+                OutlinedButton(onClick = onStop, modifier = Modifier.fillMaxWidth()) {
+                    Text("Остановить автопроверку")
                 }
             }
+        }
 
-            InfoCard(title = "Статус") {
-                val status = uiState.backgroundCheckStatus
-                DetailLine("Последний запуск", status.lastRunAtMillis?.toDisplayDateTime() ?: "—")
-                DetailLine("Последнее завершение", status.lastFinishedAtMillis?.toDisplayDateTime() ?: "—")
-                DetailLine("Последний статус", status.lastState.toDisplayLabel())
-                DetailLine("Последняя ошибка", status.lastError ?: "нет")
-                DetailLine("Последняя отправка Telegram", status.lastTelegramSendResult ?: "нет")
-                status.lastQueueFlushSummary?.let { DetailLine("Последний flush очереди", it) }
-                DetailLine("Очередь Telegram", "${uiState.pendingReportsCount} сообщений")
+        AppCard(title = "Статус") {
+            val status = uiState.backgroundCheckStatus
+            CompactDetailRow("Последний запуск", status.lastRunAtMillis?.toDisplayDateTime() ?: "—")
+            CompactDetailRow("Завершение", status.lastFinishedAtMillis?.toDisplayDateTime() ?: "—")
+            CompactDetailRow("Статус", status.lastState.toDisplayLabel())
+            val errorText = status.lastError
+            if (errorText.isNullOrBlank()) {
+                StatusChip(text = "Ошибок нет", tone = StatusTone.SUCCESS)
+            } else {
+                CompactDetailRow("Последняя ошибка", errorText)
             }
-
-            OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text("← Назад")
+            CompactDetailRow(
+                "Telegram",
+                status.lastTelegramSendResult ?: "нет",
+            )
+            status.lastQueueFlushSummary?.let {
+                CompactDetailRow("Flush очереди", it)
             }
+            CompactDetailRow("Очередь", uiState.pendingReportsCount.toString())
         }
     }
 }

@@ -46,6 +46,7 @@ fun MainScreen(viewModel: MainViewModel) {
             uiState = uiState,
             onBack = viewModel::goHome,
             onLocalEnabledChange = viewModel::updateLocalNotificationsEnabled,
+            onSendLocalTest = viewModel::sendLocalTestNotification,
             onRequestPermission = {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)

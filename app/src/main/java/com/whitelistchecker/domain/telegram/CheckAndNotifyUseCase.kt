@@ -2,6 +2,7 @@ package com.whitelistchecker.domain.telegram
 
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.domain.model.CheckAndNotifyResult
+import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.notifications.CheckAndLocalNotifyUseCase
 
@@ -61,4 +62,7 @@ class CheckAndNotifyUseCase(
     }
 
     suspend fun loadMonitorState() = checkAndLocalNotifyUseCase.loadMonitorState()
+
+    suspend fun sendLocalTestNotification(checkResult: NetworkCheckResult) =
+        checkAndLocalNotifyUseCase.sendLocalTestNotification(checkResult)
 }

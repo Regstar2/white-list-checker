@@ -11,6 +11,7 @@ import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
+import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramChatCandidate
 import com.whitelistchecker.domain.model.TelegramChatDiscoveryResult
 import com.whitelistchecker.domain.model.TelegramSendResult
@@ -358,6 +359,38 @@ class MainViewModel(
                 it.copy(localNotificationSettings = LocalNotificationSettings(enabled = enabled))
             }
             refreshNotificationPermissionState()
+        }
+    }
+
+    fun sendLocalTestNotification() {
+        val checkResult = _uiState.value.result
+        if (checkResult == null) {
+            _uiState.update {
+                it.copy(lastLocalNotificationResult = LocalNotificationResult.Failure("Сначала выполните проверку мобильной сети"))
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSendingLocalTest = true) }
+            try {
+                val result = checkAndNotifyUseCase.sendLocalTestNotification(checkResult)
+                _uiState.update {
+                    it.copy(
+                        isSendingLocalTest = false,
+                        lastLocalNotificationResult = result,
+                        notificationsAllowed = permissionChecker.areNotificationsAllowed(),
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSendingLocalTest = false,
+                        lastLocalNotificationResult = LocalNotificationResult.Failure(
+                            exception.message ?: exception.javaClass.simpleName,
+                        ),
+                    )
+                }
+            }
         }
     }
 

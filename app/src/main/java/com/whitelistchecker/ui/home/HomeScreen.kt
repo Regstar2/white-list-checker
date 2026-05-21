@@ -2,6 +2,8 @@ package com.whitelistchecker.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -10,21 +12,26 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.whitelistchecker.ui.components.DetailLine
+import com.whitelistchecker.ui.components.ActionGrid
+import com.whitelistchecker.ui.components.ActionGridItem
+import com.whitelistchecker.ui.components.AppCard
+import com.whitelistchecker.ui.components.CompactDetailRow
+import com.whitelistchecker.ui.components.CompactPairRow
 import com.whitelistchecker.ui.components.ErrorCard
-import com.whitelistchecker.ui.components.InfoCard
+import com.whitelistchecker.ui.components.StatusChip
+import com.whitelistchecker.ui.components.StatusTone
 import com.whitelistchecker.ui.configurationStatusLabel
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.toDisplayDateTime
 import com.whitelistchecker.ui.toDisplayLabel
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     uiState: MainUiState,
@@ -36,14 +43,15 @@ fun HomeScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .padding(horizontal = 16.dp, vertical = 20.dp)
+                .padding(horizontal = 16.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Text(text = "Whitelist Checker", style = MaterialTheme.typography.headlineMedium)
+            Text(text = "Whitelist Checker", style = MaterialTheme.typography.headlineSmall)
             Text(
-                text = "Проверка выполняется через мобильную сеть, даже если телефон подключён к Wi-Fi.",
-                style = MaterialTheme.typography.bodyMedium,
+                text = "Проверка через мобильную сеть, даже при активном Wi-Fi.",
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
             Button(
@@ -54,47 +62,69 @@ fun HomeScreen(
                 Text("Проверить мобильную сеть")
             }
             if (uiState.isChecking) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(modifier = Modifier.padding(4.dp))
             }
 
-            InfoCard(title = "Последний результат") {
+            AppCard(title = "Последний результат") {
                 val result = uiState.result
                 if (result == null) {
-                    Text("Проверка ещё не выполнялась.")
+                    Text("Проверка ещё не выполнялась.", style = MaterialTheme.typography.bodyMedium)
                 } else {
                     Text(result.state.toDisplayLabel(), style = MaterialTheme.typography.titleMedium)
-                    DetailLine("Внешние сайты", "${result.foreignSummary.availableCount}/${result.foreignSummary.totalCount}")
-                    DetailLine("Локальные сайты", "${result.localSummary.availableCount}/${result.localSummary.totalCount}")
-                    DetailLine("Проверяемая сеть", result.checkedNetworkLabel)
-                    DetailLine("Активная сеть", result.activeNetworkLabel)
-                    DetailLine("Время", result.checkedAtMillis.toDisplayDateTime())
+                    CompactPairRow(
+                        leftLabel = "Внешние",
+                        leftValue = "${result.foreignSummary.availableCount}/${result.foreignSummary.totalCount}",
+                        rightLabel = "Локальные",
+                        rightValue = "${result.localSummary.availableCount}/${result.localSummary.totalCount}",
+                    )
+                    CompactPairRow(
+                        leftLabel = "Сеть",
+                        leftValue = result.checkedNetworkLabel,
+                        rightLabel = "Активная",
+                        rightValue = result.activeNetworkLabel,
+                    )
+                    CompactDetailRow("Время", result.checkedAtMillis.toDisplayDateTime())
                 }
             }
 
-            InfoCard(title = "Краткий статус") {
-                val localStatus = if (uiState.localNotificationSettings.enabled) "включены" else "выключены"
-                DetailLine("Локальные уведомления", localStatus)
-                DetailLine("Telegram", uiState.telegramSettings.configurationStatusLabel())
-                DetailLine(
-                    "Автопроверка",
-                    if (uiState.backgroundCheckSettings.enabled) "включена" else "выключена",
-                )
-                DetailLine("Очередь Telegram", "${uiState.pendingReportsCount} сообщений")
+            AppCard(title = "Краткий статус") {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    StatusChip(
+                        text = if (uiState.localNotificationSettings.enabled) "Локальные: вкл" else "Локальные: выкл",
+                        tone = if (uiState.localNotificationSettings.enabled) StatusTone.SUCCESS else StatusTone.NEUTRAL,
+                    )
+                    val telegramTone = when {
+                        uiState.telegramSettings.isConfigured -> StatusTone.SUCCESS
+                        uiState.telegramSettings.canTestWorker -> StatusTone.WARNING
+                        else -> StatusTone.NEUTRAL
+                    }
+                    StatusChip(
+                        text = "Telegram: ${uiState.telegramSettings.configurationStatusLabel()}",
+                        tone = telegramTone,
+                    )
+                    StatusChip(
+                        text = if (uiState.backgroundCheckSettings.enabled) "Авто: вкл" else "Авто: выкл",
+                        tone = if (uiState.backgroundCheckSettings.enabled) StatusTone.SUCCESS else StatusTone.NEUTRAL,
+                    )
+                    StatusChip(
+                        text = "Очередь: ${uiState.pendingReportsCount}",
+                        tone = if (uiState.pendingReportsCount > 0) StatusTone.WARNING else StatusTone.NEUTRAL,
+                    )
+                }
             }
 
             Text("Быстрые действия", style = MaterialTheme.typography.titleSmall)
-            OutlinedButton(onClick = { onOpenScreen(AppScreen.NOTIFICATIONS) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Уведомления")
-            }
-            OutlinedButton(onClick = { onOpenScreen(AppScreen.CHECK_SETTINGS) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Настройки проверки")
-            }
-            OutlinedButton(onClick = { onOpenScreen(AppScreen.AUTO_CHECK) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Автопроверка")
-            }
-            OutlinedButton(onClick = { onOpenScreen(AppScreen.DIAGNOSTICS) }, modifier = Modifier.fillMaxWidth()) {
-                Text("Диагностика")
-            }
+            ActionGrid(
+                items = listOf(
+                    ActionGridItem("Уведомления", subtitle = "Telegram") { onOpenScreen(AppScreen.NOTIFICATIONS) },
+                    ActionGridItem("Проверки", subtitle = "Сайты") { onOpenScreen(AppScreen.CHECK_SETTINGS) },
+                    ActionGridItem("Автопроверка", subtitle = "WorkManager") { onOpenScreen(AppScreen.AUTO_CHECK) },
+                    ActionGridItem("Диагностика", subtitle = "Подробно") { onOpenScreen(AppScreen.DIAGNOSTICS) },
+                ),
+            )
 
             uiState.errorMessage?.let { ErrorCard(it) }
         }

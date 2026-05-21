@@ -6,10 +6,10 @@ import com.whitelistchecker.domain.model.TelegramTestResult
 
 fun TelegramSettings.configurationStatusLabel(): String {
     return when {
-        !enabled -> "выключены"
-        isConfigured -> "настроены"
-        canTestWorker && enabledRecipients.isEmpty() -> "Worker настроен, получатели не добавлены"
-        else -> "не настроены"
+        !enabled -> "выкл"
+        isConfigured -> "настроен"
+        canTestWorker && enabledRecipients.isEmpty() -> "нет получателей"
+        else -> "не настроен"
     }
 }
 

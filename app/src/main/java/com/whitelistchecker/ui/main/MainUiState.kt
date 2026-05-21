@@ -27,6 +27,7 @@ data class MainUiState(
     val telegramSettings: TelegramSettings = TelegramSettings(),
     val isTestingTelegram: Boolean = false,
     val isSendingTelegramTest: Boolean = false,
+    val isSendingLocalTest: Boolean = false,
     val isSendingCheckReport: Boolean = false,
     val isFlushingTelegramQueue: Boolean = false,
     val lastTelegramTestResult: TelegramTestResult? = null,

@@ -11,6 +11,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -18,11 +19,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.style.TextOverflow
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.TargetGroup
+import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.ErrorCard
-import com.whitelistchecker.ui.components.InfoCard
 import com.whitelistchecker.ui.components.ScreenScaffold
 import com.whitelistchecker.ui.main.MainUiState
 
@@ -42,84 +43,79 @@ fun CheckSettingsScreen(
     var formError by remember { mutableStateOf<String?>(null) }
 
     ScreenScaffold(title = "Настройки проверки", onBack = onBack) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            TargetGroupSection(
-                title = "Внешние сайты",
-                targets = uiState.checkTargets.filter { it.group == TargetGroup.FOREIGN },
-                onToggleTarget = onToggleTarget,
-                onRemoveTarget = onRemoveTarget,
-            )
-            TargetGroupSection(
-                title = "Локальные сайты",
-                targets = uiState.checkTargets.filter { it.group == TargetGroup.LOCAL },
-                onToggleTarget = onToggleTarget,
-                onRemoveTarget = onRemoveTarget,
-            )
+        TargetGroupSection(
+            title = "Внешние сайты",
+            targets = uiState.checkTargets.filter { it.group == TargetGroup.FOREIGN },
+            onToggleTarget = onToggleTarget,
+            onRemoveTarget = onRemoveTarget,
+        )
+        TargetGroupSection(
+            title = "Локальные сайты",
+            targets = uiState.checkTargets.filter { it.group == TargetGroup.LOCAL },
+            onToggleTarget = onToggleTarget,
+            onRemoveTarget = onRemoveTarget,
+        )
 
-            if (showAddForm) {
-                InfoCard(title = "Новый сайт") {
-                    OutlinedTextField(
-                        value = newName,
-                        onValueChange = { newName = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("Название") },
-                        singleLine = true,
-                    )
-                    OutlinedTextField(
-                        value = newUrl,
-                        onValueChange = { newUrl = it },
-                        modifier = Modifier.fillMaxWidth(),
-                        label = { Text("URL") },
-                        singleLine = true,
-                    )
-                    Text("Группа", style = MaterialTheme.typography.labelMedium)
-                    TargetGroup.entries.forEach { group ->
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            RadioButton(
-                                selected = newGroup == group,
-                                onClick = { newGroup = group },
+        if (showAddForm) {
+            AppCard(title = "Новый сайт") {
+                OutlinedTextField(
+                    value = newName,
+                    onValueChange = { newName = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("Название") },
+                    singleLine = true,
+                )
+                OutlinedTextField(
+                    value = newUrl,
+                    onValueChange = { newUrl = it },
+                    modifier = Modifier.fillMaxWidth(),
+                    label = { Text("URL") },
+                    singleLine = true,
+                )
+                Text("Группа", style = MaterialTheme.typography.labelMedium)
+                TargetGroup.entries.forEach { group ->
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        RadioButton(
+                            selected = newGroup == group,
+                            onClick = { newGroup = group },
+                        )
+                        Text(if (group == TargetGroup.FOREIGN) "Внешние" else "Локальные")
+                    }
+                }
+                formError?.let { ErrorCard(it) }
+                Button(
+                    onClick = {
+                        val validation = validateTarget(newName, newUrl)
+                        if (validation != null) {
+                            formError = validation
+                        } else {
+                            onAddTarget(
+                                EditableCheckTarget.create(
+                                    name = newName.trim(),
+                                    url = newUrl.trim(),
+                                    group = newGroup,
+                                ),
                             )
-                            Text(if (group == TargetGroup.FOREIGN) "Внешние" else "Локальные")
+                            newName = ""
+                            newUrl = "https://"
+                            newGroup = TargetGroup.FOREIGN
+                            formError = null
+                            showAddForm = false
                         }
-                    }
-                    formError?.let { ErrorCard(it) }
-                    Button(
-                        onClick = {
-                            val validation = validateTarget(newName, newUrl)
-                            if (validation != null) {
-                                formError = validation
-                            } else {
-                                onAddTarget(
-                                    EditableCheckTarget.create(
-                                        name = newName.trim(),
-                                        url = newUrl.trim(),
-                                        group = newGroup,
-                                    ),
-                                )
-                                newName = ""
-                                newUrl = "https://"
-                                newGroup = TargetGroup.FOREIGN
-                                formError = null
-                                showAddForm = false
-                            }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                    ) {
-                        Text("Сохранить сайт")
-                    }
-                }
-            } else {
-                OutlinedButton(onClick = { showAddForm = true }, modifier = Modifier.fillMaxWidth()) {
-                    Text("Добавить сайт")
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Сохранить сайт")
                 }
             }
+        } else {
+            OutlinedButton(onClick = { showAddForm = true }, modifier = Modifier.fillMaxWidth()) {
+                Text("Добавить сайт")
+            }
+        }
 
-            OutlinedButton(onClick = onResetDefaults, modifier = Modifier.fillMaxWidth()) {
-                Text("Сбросить сайты по умолчанию")
-            }
-            OutlinedButton(onClick = onBack, modifier = Modifier.fillMaxWidth()) {
-                Text("← Назад")
-            }
+        OutlinedButton(onClick = onResetDefaults, modifier = Modifier.fillMaxWidth()) {
+            Text("Сбросить сайты по умолчанию")
         }
     }
 }
@@ -131,24 +127,31 @@ private fun TargetGroupSection(
     onToggleTarget: (String, Boolean) -> Unit,
     onRemoveTarget: (String) -> Unit,
 ) {
-    InfoCard(title = title) {
+    AppCard(title = title) {
         if (targets.isEmpty()) {
-            Text("Нет сайтов в этой группе.")
+            Text("Нет сайтов в этой группе.", style = MaterialTheme.typography.bodySmall)
         } else {
             targets.forEach { target ->
                 Row(
                     modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
+                    verticalAlignment = Alignment.Top,
                 ) {
                     Checkbox(
                         checked = target.enabled,
                         onCheckedChange = { onToggleTarget(target.id, it) },
                     )
                     Column(modifier = Modifier.weight(1f)) {
-                        Text("${target.name} — ${target.url}", style = MaterialTheme.typography.bodyMedium)
+                        Text(target.name, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = target.url,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
                     }
                     if (!target.builtIn) {
-                        OutlinedButton(onClick = { onRemoveTarget(target.id) }) {
+                        TextButton(onClick = { onRemoveTarget(target.id) }) {
                             Text("Удалить")
                         }
                     }

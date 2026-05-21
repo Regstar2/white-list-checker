@@ -1,6 +1,7 @@
 package com.whitelistchecker.domain.notifications
 
 import com.whitelistchecker.domain.model.CheckAndLocalNotifyResult
+import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.monitor.WhitelistMonitorUseCase
 
 class CheckAndLocalNotifyUseCase(
@@ -10,19 +11,18 @@ class CheckAndLocalNotifyUseCase(
 
     suspend fun execute(): CheckAndLocalNotifyResult {
         val monitorResult = whitelistMonitorUseCase.checkAndUpdateState()
-        val testNotificationResult = localNotificationEventUseCase.sendTestOnManualCheck(
-            checkResult = monitorResult.checkResult,
-        )
         val eventNotificationResult = localNotificationEventUseCase.notifyIfNeeded(
             event = monitorResult.stateChangeEvent,
             checkResult = monitorResult.checkResult,
         )
-        val localNotificationResult = eventNotificationResult ?: testNotificationResult
         return CheckAndLocalNotifyResult(
             monitorResult = monitorResult,
-            localNotificationResult = localNotificationResult,
+            localNotificationResult = eventNotificationResult,
         )
     }
+
+    suspend fun sendLocalTestNotification(checkResult: NetworkCheckResult) =
+        localNotificationEventUseCase.sendTestOnManualCheck(checkResult)
 
     suspend fun loadMonitorState() = whitelistMonitorUseCase.loadMonitorState()
 }
