@@ -537,6 +537,46 @@ class MainViewModel(
         }
     }
 
+    fun sendTelegramCheckReport() {
+        val state = _uiState.value
+        val checkResult = state.result
+        if (checkResult == null) {
+            _uiState.update {
+                it.copy(lastTelegramSendMessage = "Сначала выполните проверку мобильной сети")
+            }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update {
+                it.copy(isSendingCheckReport = true, errorMessage = null, lastTelegramSendMessage = null)
+            }
+            try {
+                telegramSettingsRepository.saveSettings(state.telegramSettings)
+                val result = telegramEventNotifierUseCase.sendOnManualCheck(checkResult)
+                val message = when (result) {
+                    TelegramSendResult.Success -> "Отчёт о проверке отправлен всем включённым получателям"
+                    is TelegramSendResult.Failure -> result.reason
+                    null -> "Telegram-уведомления выключены или нет включённых получателей"
+                }
+                _uiState.update {
+                    it.copy(
+                        isSendingCheckReport = false,
+                        lastTelegramSendResult = result,
+                        lastTelegramSendMessage = message,
+                        pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount(),
+                    )
+                }
+            } catch (exception: Exception) {
+                _uiState.update {
+                    it.copy(
+                        isSendingCheckReport = false,
+                        lastTelegramSendMessage = exception.message ?: exception.javaClass.simpleName,
+                    )
+                }
+            }
+        }
+    }
+
     fun prepareTelegramChatDiscovery() {
         val state = _uiState.value
         if (!state.telegramSettings.isReadyForDiscovery) {

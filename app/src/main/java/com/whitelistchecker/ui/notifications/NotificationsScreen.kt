@@ -40,7 +40,6 @@ import com.whitelistchecker.ui.displayName
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.permissionStatusLabel
 import com.whitelistchecker.ui.toDisplayLabel
-import com.whitelistchecker.ui.toLastSendStatusLabel
 import com.whitelistchecker.ui.toLastTestStatusLabel
 
 @Composable
@@ -57,6 +56,7 @@ fun NotificationsScreen(
     onSaveTelegramSettings: () -> Unit,
     onTestWorker: () -> Unit,
     onSendTestMessage: () -> Unit,
+    onSendCheckReport: () -> Unit,
     onPrepareChatDiscovery: () -> Unit,
     onFindChatId: () -> Unit,
     onFindRecentChats: () -> Unit,
@@ -211,11 +211,20 @@ fun NotificationsScreen(
                         )
                     }
                 }
-                Button(onClick = onSendTestMessage, enabled = !uiState.isSendingTelegramTest, modifier = Modifier.fillMaxWidth()) {
+                Button(onClick = onSendTestMessage, enabled = !uiState.isSendingTelegramTest && !uiState.isSendingCheckReport, modifier = Modifier.fillMaxWidth()) {
                     Text("Отправить тестовое сообщение")
                 }
-                uiState.lastTelegramSendMessage?.let { DetailLine("Тестовая отправка", it) }
-                DetailLine("Последняя отправка", uiState.lastTelegramSendResult.toLastSendStatusLabel())
+                OutlinedButton(
+                    onClick = onSendCheckReport,
+                    enabled = !uiState.isSendingCheckReport && !uiState.isSendingTelegramTest && uiState.result != null,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text("Отправить отчёт о последней проверке")
+                }
+                if (uiState.isSendingTelegramTest || uiState.isSendingCheckReport) {
+                    CircularProgressIndicator()
+                }
+                uiState.lastTelegramSendMessage?.let { DetailLine("Последняя отправка", it) }
             }
 
             InfoCard(title = "Очередь Telegram") {

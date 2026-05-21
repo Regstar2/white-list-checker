@@ -59,6 +59,7 @@ fun MainScreen(viewModel: MainViewModel) {
             onSaveTelegramSettings = viewModel::saveTelegramSettings,
             onTestWorker = viewModel::testTelegramWorker,
             onSendTestMessage = viewModel::sendTelegramTestMessage,
+            onSendCheckReport = viewModel::sendTelegramCheckReport,
             onPrepareChatDiscovery = viewModel::prepareTelegramChatDiscovery,
             onFindChatId = viewModel::findTelegramChatId,
             onFindRecentChats = viewModel::findRecentTelegramChats,

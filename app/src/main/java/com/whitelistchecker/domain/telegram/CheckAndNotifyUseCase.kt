@@ -26,9 +26,6 @@ class CheckAndNotifyUseCase(
         }
 
         val localResult = checkAndLocalNotifyUseCase.execute()
-        val manualCheckResult = telegramEventNotifierUseCase.sendOnManualCheck(
-            checkResult = localResult.monitorResult.checkResult,
-        )
         val eventResult = telegramEventNotifierUseCase.notifyIfNeeded(
             event = localResult.monitorResult.stateChangeEvent,
             checkResult = localResult.monitorResult.checkResult,
@@ -37,7 +34,7 @@ class CheckAndNotifyUseCase(
         return CheckAndNotifyResult(
             monitorResult = localResult.monitorResult,
             localNotificationResult = localResult.localNotificationResult,
-            telegramSendResult = eventResult ?: manualCheckResult,
+            telegramSendResult = eventResult,
             queueFlushResult = queueFlushResult,
             pendingReportsCount = pendingTelegramReportRepository.count(),
         )
