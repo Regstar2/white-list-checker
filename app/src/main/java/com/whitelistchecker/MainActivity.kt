@@ -40,6 +40,7 @@ class MainActivity : ComponentActivity() {
             if (modelClass.isAssignableFrom(MainViewModel::class.java)) {
                 return MainViewModel(
                     checkAndNotifyUseCase = appContainer.checkAndNotifyUseCase,
+                    lastCheckRepository = appContainer.lastCheckRepository,
                     localNotificationSettingsRepository = appContainer.localNotificationSettingsRepository,
                     telegramSettingsRepository = appContainer.telegramSettingsRepository,
                     telegramEventNotifierUseCase = appContainer.telegramEventNotifierUseCaseForUi,

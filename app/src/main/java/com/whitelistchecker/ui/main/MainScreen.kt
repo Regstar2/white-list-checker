@@ -41,6 +41,7 @@ fun MainScreen(viewModel: MainViewModel) {
             uiState = uiState,
             onCheckMobileNetwork = viewModel::checkMobileNetwork,
             onOpenScreen = viewModel::openScreen,
+            onRefreshLastCheckPresentation = viewModel::refreshLastCheckPresentation,
         )
         AppScreen.NOTIFICATIONS -> NotificationsScreen(
             uiState = uiState,

@@ -3,11 +3,15 @@ package com.whitelistchecker.ui.main
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
+import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
+import com.whitelistchecker.domain.check.LastCheckStateResolver
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
+import com.whitelistchecker.domain.model.LastCheckDisplayState
+import com.whitelistchecker.domain.model.LastCheckLoadResult
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
@@ -37,6 +41,8 @@ import kotlinx.coroutines.launch
 
 class MainViewModel(
     private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
+    private val lastCheckRepository: LastCheckRepository,
+    private val lastCheckStateResolver: LastCheckStateResolver = LastCheckStateResolver(),
     private val localNotificationSettingsRepository: LocalNotificationSettingsRepository,
     private val telegramSettingsRepository: TelegramSettingsRepository,
     private val telegramEventNotifierUseCase: TelegramEventNotifierUseCase,
@@ -54,6 +60,7 @@ class MainViewModel(
 
     private val _uiState = MutableStateFlow(MainUiState())
     val uiState: StateFlow<MainUiState> = _uiState.asStateFlow()
+    private var lastCheckLoadFailed: Boolean = false
 
     init {
         channelManager.ensureChannelsCreated()
@@ -322,10 +329,30 @@ class MainViewModel(
         }
     }
 
+    fun refreshLastCheckPresentation() {
+        _uiState.update { state ->
+            state.copy(
+                lastCheckDisplayState = resolveLastCheckDisplayState(
+                    isChecking = state.isChecking,
+                    lastCheck = state.result,
+                ),
+            )
+        }
+    }
+
     fun checkMobileNetwork() {
         if (_uiState.value.isChecking) return
         viewModelScope.launch {
-            _uiState.update { it.copy(isChecking = true, errorMessage = null) }
+            _uiState.update {
+                it.copy(
+                    isChecking = true,
+                    errorMessage = null,
+                    lastCheckDisplayState = resolveLastCheckDisplayState(
+                        isChecking = true,
+                        lastCheck = it.result,
+                    ),
+                )
+            }
             try {
                 val result = checkAndNotifyUseCase.execute()
                 val monitorResult = result.monitorResult
@@ -346,6 +373,10 @@ class MainViewModel(
                         } else {
                             null
                         },
+                        lastCheckDisplayState = resolveLastCheckDisplayState(
+                            isChecking = false,
+                            lastCheck = checkResult,
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -353,6 +384,10 @@ class MainViewModel(
                     it.copy(
                         isChecking = false,
                         errorMessage = exception.message ?: exception.javaClass.simpleName,
+                        lastCheckDisplayState = resolveLastCheckDisplayState(
+                            isChecking = false,
+                            lastCheck = it.result,
+                        ),
                     )
                 }
             }
@@ -783,6 +818,21 @@ class MainViewModel(
     private fun loadInitialState() {
         viewModelScope.launch {
             try {
+                val lastCheckLoad = lastCheckRepository.load()
+                val persistedResult = when (lastCheckLoad) {
+                    is LastCheckLoadResult.Success -> {
+                        lastCheckLoadFailed = false
+                        lastCheckLoad.result
+                    }
+                    is LastCheckLoadResult.Error -> {
+                        lastCheckLoadFailed = true
+                        null
+                    }
+                    LastCheckLoadResult.None -> {
+                        lastCheckLoadFailed = false
+                        null
+                    }
+                }
                 val localSettings = localNotificationSettingsRepository.getSettings()
                 val telegramSettings = telegramSettingsRepository.getSettings()
                 val discoveryOffset = telegramSettingsRepository.getChatDiscoveryOffset()
@@ -793,13 +843,15 @@ class MainViewModel(
                 val checkTargets = checkTargetsRepository.getTargets()
                 backgroundCheckScheduler.reschedule(backgroundSettings)
                 val useCustom = !backgroundSettings.isPresetInterval
-                _uiState.update {
-                    it.copy(
+                _uiState.update { state ->
+                    val restoredResult = persistedResult ?: state.result
+                    state.copy(
                         localNotificationSettings = localSettings,
                         telegramSettings = telegramSettings,
-                        telegramChatDiscovery = it.telegramChatDiscovery.copy(
+                        telegramChatDiscovery = state.telegramChatDiscovery.copy(
                             discoveryOffset = discoveryOffset,
                         ),
+                        result = restoredResult,
                         monitorState = monitorState,
                         pendingReportsCount = pendingReportsCount,
                         backgroundCheckSettings = backgroundSettings,
@@ -809,6 +861,10 @@ class MainViewModel(
                         customIntervalInput = backgroundSettings.intervalMinutes.toString(),
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                         notificationPermissionRequired = permissionChecker.requiresRuntimePermission(),
+                        lastCheckDisplayState = resolveLastCheckDisplayState(
+                            isChecking = state.isChecking,
+                            lastCheck = restoredResult,
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -900,6 +956,18 @@ class MainViewModel(
             settings.relaySecret.isBlank() -> "Relay Secret не указан"
             else -> "Настройки Telegram неполные"
         }
+    }
+
+    private fun resolveLastCheckDisplayState(
+        isChecking: Boolean,
+        lastCheck: NetworkCheckResult?,
+    ): LastCheckDisplayState {
+        return lastCheckStateResolver.resolve(
+            isChecking = isChecking,
+            loadFailed = lastCheckLoadFailed,
+            lastCheck = lastCheck,
+            nowMillis = System.currentTimeMillis(),
+        )
     }
 
     companion object {

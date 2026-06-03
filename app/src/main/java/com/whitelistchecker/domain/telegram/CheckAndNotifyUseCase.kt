@@ -1,5 +1,6 @@
 package com.whitelistchecker.domain.telegram
 
+import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.domain.model.CheckAndNotifyResult
 import com.whitelistchecker.domain.model.NetworkCheckResult
@@ -11,6 +12,7 @@ class CheckAndNotifyUseCase(
     private val telegramEventNotifierUseCase: TelegramEventNotifierUseCase,
     private val telegramQueueProcessor: TelegramQueueProcessor,
     private val pendingTelegramReportRepository: PendingTelegramReportRepository,
+    private val lastCheckRepository: LastCheckRepository,
 ) {
 
     suspend fun execute(): CheckAndNotifyResult {
@@ -27,6 +29,7 @@ class CheckAndNotifyUseCase(
         }
 
         val localResult = checkAndLocalNotifyUseCase.execute()
+        lastCheckRepository.save(localResult.monitorResult.checkResult)
         val eventResult = telegramEventNotifierUseCase.notifyIfNeeded(
             event = localResult.monitorResult.stateChangeEvent,
             checkResult = localResult.monitorResult.checkResult,

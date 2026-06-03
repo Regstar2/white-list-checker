@@ -3,6 +3,7 @@ package com.whitelistchecker
 import android.content.Context
 import android.net.ConnectivityManager
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
+import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.db.AppDatabase
 import com.whitelistchecker.data.monitor.MonitorStateRepository
@@ -45,6 +46,7 @@ class AppContainer(context: Context) {
     val database: AppDatabase = AppDatabase.getInstance(appContext)
 
     val monitorStateRepository = MonitorStateRepository(appContext)
+    val lastCheckRepository = LastCheckRepository(appContext)
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
     val pendingTelegramReportRepository = PendingTelegramReportRepository(
@@ -126,6 +128,7 @@ class AppContainer(context: Context) {
         telegramEventNotifierUseCase = telegramEventNotifierUseCase,
         telegramQueueProcessor = telegramQueueProcessor,
         pendingTelegramReportRepository = pendingTelegramReportRepository,
+        lastCheckRepository = lastCheckRepository,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

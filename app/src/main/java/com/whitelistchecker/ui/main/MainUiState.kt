@@ -5,6 +5,7 @@ import com.whitelistchecker.domain.model.BackgroundCheckStatus
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
+import com.whitelistchecker.domain.model.LastCheckDisplayState
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.TelegramSendResult
@@ -18,6 +19,7 @@ data class MainUiState(
     val currentScreen: AppScreen = AppScreen.HOME,
     val isChecking: Boolean = false,
     val result: NetworkCheckResult? = null,
+    val lastCheckDisplayState: LastCheckDisplayState = LastCheckDisplayState.NoCheck,
     val monitorState: WhitelistMonitorState? = null,
     val lastStateChangeEvent: WhitelistStateChangeEvent? = null,
     val localNotificationSettings: LocalNotificationSettings = LocalNotificationSettings(),

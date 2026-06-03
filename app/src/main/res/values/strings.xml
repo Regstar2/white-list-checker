@@ -1,4 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Whitelist Checker</string>
+
+    <string name="last_check_never_run">Проверка ещё не выполнялась.</string>
+    <string name="last_check_running">Проверка выполняется…</string>
+    <string name="last_check_load_error">Не удалось загрузить состояние последней проверки</string>
+    <string name="last_check_title_with_age">Последняя проверка: %1$s</string>
+    <string name="last_check_status_success">Статус: успешно</string>
+    <string name="last_check_status_failure">Статус: ошибка</string>
+    <string name="last_check_data_stale">Данные устарели</string>
+    <string name="last_check_error_detail">Ошибка: %1$s</string>
+    <string name="last_check_age_just_now">только что</string>
+    <string name="last_check_age_minutes">%1$d мин. назад</string>
+    <string name="last_check_age_hours">%1$d ч. назад</string>
+    <string name="last_check_age_days">%1$d дн. назад</string>
 </resources>

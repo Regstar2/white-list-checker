@@ -48,5 +48,8 @@ captures/
 # Log
 *.log
 
+# Syncthing / sync tool conflict copies
+*sync-conflict*
+
 # Local release artifacts (APK for GitHub upload)
 release/

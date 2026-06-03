@@ -20,16 +20,12 @@ import androidx.compose.ui.unit.dp
 import com.whitelistchecker.ui.components.ActionGrid
 import com.whitelistchecker.ui.components.ActionGridItem
 import com.whitelistchecker.ui.components.AppCard
-import com.whitelistchecker.ui.components.CompactDetailRow
-import com.whitelistchecker.ui.components.CompactPairRow
 import com.whitelistchecker.ui.components.ErrorCard
 import com.whitelistchecker.ui.components.StatusChip
 import com.whitelistchecker.ui.components.StatusTone
 import com.whitelistchecker.ui.configurationStatusLabel
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.navigation.AppScreen
-import com.whitelistchecker.ui.toDisplayDateTime
-import com.whitelistchecker.ui.toDisplayLabel
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -37,6 +33,7 @@ fun HomeScreen(
     uiState: MainUiState,
     onCheckMobileNetwork: () -> Unit,
     onOpenScreen: (AppScreen) -> Unit,
+    onRefreshLastCheckPresentation: () -> Unit,
 ) {
     Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
         Column(
@@ -65,27 +62,10 @@ fun HomeScreen(
                 CircularProgressIndicator(modifier = Modifier.padding(4.dp))
             }
 
-            AppCard(title = "Последний результат") {
-                val result = uiState.result
-                if (result == null) {
-                    Text("Проверка ещё не выполнялась.", style = MaterialTheme.typography.bodyMedium)
-                } else {
-                    Text(result.state.toDisplayLabel(), style = MaterialTheme.typography.titleMedium)
-                    CompactPairRow(
-                        leftLabel = "Внешние",
-                        leftValue = "${result.foreignSummary.availableCount}/${result.foreignSummary.totalCount}",
-                        rightLabel = "Локальные",
-                        rightValue = "${result.localSummary.availableCount}/${result.localSummary.totalCount}",
-                    )
-                    CompactPairRow(
-                        leftLabel = "Сеть",
-                        leftValue = result.checkedNetworkLabel,
-                        rightLabel = "Активная",
-                        rightValue = result.activeNetworkLabel,
-                    )
-                    CompactDetailRow("Время", result.checkedAtMillis.toDisplayDateTime())
-                }
-            }
+            LastCheckResultCard(
+                displayState = uiState.lastCheckDisplayState,
+                onRefreshPresentation = onRefreshLastCheckPresentation,
+            )
 
             AppCard(title = "Краткий статус") {
                 FlowRow(
