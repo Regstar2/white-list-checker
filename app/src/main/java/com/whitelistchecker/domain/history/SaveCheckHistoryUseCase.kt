@@ -14,7 +14,7 @@ class SaveCheckHistoryUseCase(
         triggerType: CheckTriggerType,
         startedAtMillis: Long,
         finishedAtMillis: Long,
-    ) {
+    ): SavedCheckHistory {
         val (checkRun, targetResults) = mapper.toCheckRun(
             result = result,
             triggerType = triggerType,
@@ -24,5 +24,6 @@ class SaveCheckHistoryUseCase(
         )
         checkHistoryRepository.saveCheckRun(checkRun, targetResults)
         checkHistoryRepository.applyRetentionPolicy(finishedAtMillis)
+        return SavedCheckHistory(checkRun = checkRun, targetResults = targetResults)
     }
 }

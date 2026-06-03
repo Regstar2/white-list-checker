@@ -12,10 +12,14 @@ import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.data.history.RoomCheckHistoryRepository
+import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.system.PackageAppVersionProvider
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
+import com.whitelistchecker.domain.statistics.CheckStatisticsCalculator
+import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
+import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
@@ -58,6 +62,19 @@ class AppContainer(context: Context) {
         checkHistoryRepository = checkHistoryRepository,
         mapper = CheckHistoryFromNetworkResultMapper(),
         appVersionProvider = PackageAppVersionProvider(appContext)::versionName,
+    )
+    private val checkStatisticsRepository = RoomCheckStatisticsRepository(
+        database = database,
+        dao = database.checkStatisticsDao(),
+        calculator = CheckStatisticsCalculator(),
+    )
+    val localStatisticsWriter = LocalStatisticsWriter(
+        checkStatisticsRepository = checkStatisticsRepository,
+    )
+    val rebuildCheckStatisticsUseCase = RebuildCheckStatisticsUseCase(
+        checkHistoryRepository = checkHistoryRepository,
+        checkStatisticsRepository = checkStatisticsRepository,
+        calculator = CheckStatisticsCalculator(),
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
@@ -142,6 +159,7 @@ class AppContainer(context: Context) {
         pendingTelegramReportRepository = pendingTelegramReportRepository,
         lastCheckRepository = lastCheckRepository,
         saveCheckHistoryUseCase = saveCheckHistoryUseCase,
+        localStatisticsWriter = localStatisticsWriter,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

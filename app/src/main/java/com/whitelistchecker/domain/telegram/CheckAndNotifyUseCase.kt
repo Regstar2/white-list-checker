@@ -4,6 +4,7 @@ import android.util.Log
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
+import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
 import com.whitelistchecker.domain.model.CheckAndNotifyResult
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
@@ -17,6 +18,7 @@ class CheckAndNotifyUseCase(
     private val pendingTelegramReportRepository: PendingTelegramReportRepository,
     private val lastCheckRepository: LastCheckRepository,
     private val saveCheckHistoryUseCase: SaveCheckHistoryUseCase,
+    private val localStatisticsWriter: LocalStatisticsWriter,
 ) {
 
     suspend fun execute(
@@ -39,7 +41,7 @@ class CheckAndNotifyUseCase(
         val finishedAtMillis = System.currentTimeMillis()
         val checkResult = localResult.monitorResult.checkResult
         lastCheckRepository.save(checkResult)
-        runCatching {
+        val savedHistory = runCatching {
             saveCheckHistoryUseCase.saveCompletedCheck(
                 result = checkResult,
                 triggerType = triggerType,
@@ -48,6 +50,17 @@ class CheckAndNotifyUseCase(
             )
         }.onFailure { exception ->
             Log.w(TAG, "Failed to save check history", exception)
+        }.getOrNull()
+
+        if (savedHistory != null) {
+            runCatching {
+                localStatisticsWriter.onCheckRunSaved(
+                    checkRun = savedHistory.checkRun,
+                    targetResults = savedHistory.targetResults,
+                )
+            }.onFailure { exception ->
+                Log.w(TAG, "Failed to update check statistics", exception)
+            }
         }
         val eventResult = telegramEventNotifierUseCase.notifyIfNeeded(
             event = localResult.monitorResult.stateChangeEvent,
