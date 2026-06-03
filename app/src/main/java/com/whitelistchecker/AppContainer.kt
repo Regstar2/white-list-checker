@@ -11,7 +11,11 @@ import com.whitelistchecker.data.notifications.LocalNotificationSettingsReposito
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
+import com.whitelistchecker.data.history.RoomCheckHistoryRepository
+import com.whitelistchecker.data.system.PackageAppVersionProvider
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
+import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
+import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
@@ -47,6 +51,14 @@ class AppContainer(context: Context) {
 
     val monitorStateRepository = MonitorStateRepository(appContext)
     val lastCheckRepository = LastCheckRepository(appContext)
+    private val checkHistoryRepository = RoomCheckHistoryRepository(
+        dao = database.checkHistoryDao(),
+    )
+    val saveCheckHistoryUseCase = SaveCheckHistoryUseCase(
+        checkHistoryRepository = checkHistoryRepository,
+        mapper = CheckHistoryFromNetworkResultMapper(),
+        appVersionProvider = PackageAppVersionProvider(appContext)::versionName,
+    )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
     val pendingTelegramReportRepository = PendingTelegramReportRepository(
@@ -129,6 +141,7 @@ class AppContainer(context: Context) {
         telegramQueueProcessor = telegramQueueProcessor,
         pendingTelegramReportRepository = pendingTelegramReportRepository,
         lastCheckRepository = lastCheckRepository,
+        saveCheckHistoryUseCase = saveCheckHistoryUseCase,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

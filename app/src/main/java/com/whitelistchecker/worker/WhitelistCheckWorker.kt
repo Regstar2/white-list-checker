@@ -5,6 +5,7 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.domain.model.WhitelistState
+import com.whitelistchecker.domain.model.history.CheckTriggerType
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 
 class WhitelistCheckWorker(
@@ -19,7 +20,7 @@ class WhitelistCheckWorker(
         backgroundCheckStatusRepository.saveRunStarted(startedAt)
 
         return try {
-            val result = checkAndNotifyUseCase.execute()
+            val result = checkAndNotifyUseCase.execute(CheckTriggerType.BACKGROUND)
             backgroundCheckStatusRepository.saveRunFinished(
                 finishedAtMillis = System.currentTimeMillis(),
                 state = result.monitorResult.checkResult.state,
