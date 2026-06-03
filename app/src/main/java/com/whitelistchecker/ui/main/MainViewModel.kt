@@ -1,5 +1,6 @@
 package com.whitelistchecker.ui.main
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
@@ -29,8 +30,13 @@ import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
+import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
+import com.whitelistchecker.domain.statistics.StatisticsDashboard
+import com.whitelistchecker.domain.statistics.StatisticsLoadResult
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.statistics.HomeStatisticsUiState
+import com.whitelistchecker.ui.statistics.StatisticsUiState
 import com.whitelistchecker.ui.userMessage
 import com.whitelistchecker.worker.BackgroundCheckScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -56,6 +62,7 @@ class MainViewModel(
     private val backgroundCheckScheduler: BackgroundCheckScheduler,
     private val checkTargetsRepository: CheckTargetsRepository,
     private val detailedReportFormatter: DetailedReportFormatter,
+    private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -66,12 +73,37 @@ class MainViewModel(
         channelManager.ensureChannelsCreated()
         refreshNotificationPermissionState()
         loadInitialState()
+        refreshStatistics()
         observeBackgroundCheck()
         observeCheckTargets()
     }
 
     fun openScreen(screen: AppScreen) {
         _uiState.update { it.copy(currentScreen = screen, errorMessage = null) }
+        if (screen == AppScreen.STATISTICS) {
+            refreshStatistics(forStatisticsScreen = true)
+        }
+    }
+
+    fun retryStatisticsLoad() {
+        refreshStatistics(forStatisticsScreen = true)
+    }
+
+    fun refreshStatistics(forStatisticsScreen: Boolean = false) {
+        viewModelScope.launch {
+            if (forStatisticsScreen) {
+                _uiState.update { it.copy(statisticsUiState = StatisticsUiState.Loading) }
+            }
+            _uiState.update { state ->
+                val homeLoading = state.homeStatisticsUiState !is HomeStatisticsUiState.Content
+                if (homeLoading) {
+                    state.copy(homeStatisticsUiState = HomeStatisticsUiState.Loading)
+                } else {
+                    state
+                }
+            }
+            applyStatisticsLoadResult(loadStatisticsDashboardUseCase.load())
+        }
     }
 
     fun goHome() {
@@ -379,6 +411,7 @@ class MainViewModel(
                         ),
                     )
                 }
+                refreshStatistics()
             } catch (exception: Exception) {
                 _uiState.update {
                     it.copy(
@@ -970,7 +1003,54 @@ class MainViewModel(
         )
     }
 
+    private fun applyStatisticsLoadResult(result: StatisticsLoadResult) {
+        when (result) {
+            StatisticsLoadResult.Empty -> {
+                _uiState.update {
+                    it.copy(
+                        statisticsUiState = StatisticsUiState.Empty,
+                        homeStatisticsUiState = HomeStatisticsUiState.Hidden,
+                    )
+                }
+            }
+            is StatisticsLoadResult.Success -> {
+                _uiState.update {
+                    it.copy(
+                        statisticsUiState = StatisticsUiState.Content(result.dashboard),
+                        homeStatisticsUiState = toHomeStatisticsUiState(result.dashboard),
+                    )
+                }
+            }
+            is StatisticsLoadResult.Failure -> {
+                Log.w(TAG, "Statistics load failed", result.cause)
+                val message = result.cause.message ?: result.cause.javaClass.simpleName
+                _uiState.update { state ->
+                    state.copy(
+                        statisticsUiState = if (state.currentScreen == AppScreen.STATISTICS) {
+                            StatisticsUiState.Error(message)
+                        } else {
+                            state.statisticsUiState
+                        },
+                        homeStatisticsUiState = HomeStatisticsUiState.Error,
+                    )
+                }
+            }
+        }
+    }
+
+    private fun toHomeStatisticsUiState(dashboard: StatisticsDashboard): HomeStatisticsUiState.Content {
+        val summary = dashboard.summary
+        return HomeStatisticsUiState.Content(
+            totalRuns = summary.totalRuns,
+            successRate = summary.successRate,
+            lastSuccessAt = summary.lastSuccessAt,
+            consecutiveFailureCount = summary.consecutiveFailureCount,
+            isStale = dashboard.isStale,
+        )
+    }
+
     companion object {
+        private const val TAG = "MainViewModel"
         private const val PREPARE_SUCCESS_MESSAGE =
             "Поиск chat_id начат. Теперь отправь боту новое сообщение, например /start или id test, " +
                 "затем нажми «Получить chat_id»."

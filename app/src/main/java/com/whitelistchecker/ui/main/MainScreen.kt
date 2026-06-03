@@ -18,6 +18,7 @@ import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
 import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.notifications.NotificationsScreen
+import com.whitelistchecker.ui.statistics.StatisticsScreen
 
 @Composable
 fun MainScreen(viewModel: MainViewModel) {
@@ -42,6 +43,11 @@ fun MainScreen(viewModel: MainViewModel) {
             onCheckMobileNetwork = viewModel::checkMobileNetwork,
             onOpenScreen = viewModel::openScreen,
             onRefreshLastCheckPresentation = viewModel::refreshLastCheckPresentation,
+        )
+        AppScreen.STATISTICS -> StatisticsScreen(
+            uiState = uiState.statisticsUiState,
+            onBack = viewModel::goHome,
+            onRetry = viewModel::retryStatisticsLoad,
         )
         AppScreen.NOTIFICATIONS -> NotificationsScreen(
             uiState = uiState,

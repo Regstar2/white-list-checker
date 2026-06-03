@@ -54,6 +54,7 @@ class MainActivity : ComponentActivity() {
                     backgroundCheckScheduler = appContainer.backgroundCheckScheduler,
                     checkTargetsRepository = appContainer.checkTargetsRepository,
                     detailedReportFormatter = appContainer.detailedReportFormatter,
+                    loadStatisticsDashboardUseCase = appContainer.loadStatisticsDashboardUseCase,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

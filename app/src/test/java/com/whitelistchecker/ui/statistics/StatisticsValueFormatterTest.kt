@@ -1,0 +1,22 @@
+package com.whitelistchecker.ui.statistics
+
+import org.junit.Assert.assertEquals
+import org.junit.Test
+
+class StatisticsValueFormatterTest {
+
+    @Test
+    fun `formatSuccessRate rounds whole percent`() {
+        assertEquals("85%", StatisticsValueFormatter.formatSuccessRate(0.85))
+    }
+
+    @Test
+    fun `formatSuccessRate shows one decimal when needed`() {
+        assertEquals("12.5%", StatisticsValueFormatter.formatSuccessRate(0.125))
+    }
+
+    @Test
+    fun `formatSuccessRate returns empty for null`() {
+        assertEquals("", StatisticsValueFormatter.formatSuccessRate(null))
+    }
+}

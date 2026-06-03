@@ -6,4 +6,5 @@ enum class AppScreen(val title: String) {
     CHECK_SETTINGS("Настройки проверки"),
     AUTO_CHECK("Автопроверка"),
     DIAGNOSTICS("Диагностика"),
+    STATISTICS("Статистика"),
 }

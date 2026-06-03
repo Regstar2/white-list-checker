@@ -26,6 +26,7 @@ import com.whitelistchecker.ui.components.StatusTone
 import com.whitelistchecker.ui.configurationStatusLabel
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.statistics.HomeStatisticsSummaryCard
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
@@ -65,6 +66,11 @@ fun HomeScreen(
             LastCheckResultCard(
                 displayState = uiState.lastCheckDisplayState,
                 onRefreshPresentation = onRefreshLastCheckPresentation,
+            )
+
+            HomeStatisticsSummaryCard(
+                uiState = uiState.homeStatisticsUiState,
+                onOpenStatistics = { onOpenScreen(AppScreen.STATISTICS) },
             )
 
             AppCard(title = "Краткий статус") {

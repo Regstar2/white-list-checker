@@ -19,6 +19,7 @@ import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
 import com.whitelistchecker.domain.statistics.CheckStatisticsCalculator
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
+import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
@@ -75,6 +76,9 @@ class AppContainer(context: Context) {
         checkHistoryRepository = checkHistoryRepository,
         checkStatisticsRepository = checkStatisticsRepository,
         calculator = CheckStatisticsCalculator(),
+    )
+    val loadStatisticsDashboardUseCase = LoadStatisticsDashboardUseCase(
+        checkStatisticsRepository = checkStatisticsRepository,
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
