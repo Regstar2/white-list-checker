@@ -4,6 +4,7 @@ import android.util.Log
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityWriter
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
 import com.whitelistchecker.domain.model.CheckAndNotifyResult
 import com.whitelistchecker.domain.model.NetworkCheckResult
@@ -19,6 +20,7 @@ class CheckAndNotifyUseCase(
     private val lastCheckRepository: LastCheckRepository,
     private val saveCheckHistoryUseCase: SaveCheckHistoryUseCase,
     private val localStatisticsWriter: LocalStatisticsWriter,
+    private val whitelistAvailabilityWriter: WhitelistAvailabilityWriter,
 ) {
 
     suspend fun execute(
@@ -60,6 +62,14 @@ class CheckAndNotifyUseCase(
                 )
             }.onFailure { exception ->
                 Log.w(TAG, "Failed to update check statistics", exception)
+            }
+            runCatching {
+                whitelistAvailabilityWriter.onCheckRunSaved(
+                    checkRun = savedHistory.checkRun,
+                    targetResults = savedHistory.targetResults,
+                )
+            }.onFailure { exception ->
+                Log.w(TAG, "Failed to update whitelist availability statistics", exception)
             }
         }
         val eventResult = telegramEventNotifierUseCase.notifyIfNeeded(

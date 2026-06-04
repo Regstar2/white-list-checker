@@ -1,5 +1,6 @@
 package com.whitelistchecker.ui.statistics
 
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard
 import com.whitelistchecker.domain.statistics.StatisticsDashboard
 
 sealed class StatisticsUiState {
@@ -9,6 +10,8 @@ sealed class StatisticsUiState {
 
     data class Content(
         val dashboard: StatisticsDashboard,
+        val whitelistAvailability: WhitelistAvailabilityDashboard? = null,
+        val whitelistAvailabilityEmpty: Boolean = false,
     ) : StatisticsUiState()
 
     data class Error(

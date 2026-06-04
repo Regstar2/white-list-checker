@@ -30,6 +30,9 @@ import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
+import com.whitelistchecker.domain.availability.LoadWhitelistAvailabilityDashboardUseCase
+import com.whitelistchecker.domain.availability.RebuildWhitelistAvailabilityUseCase
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityLoadResult
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
 import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
@@ -71,6 +74,8 @@ class MainViewModel(
     private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
     private val loadStatisticsDiagnosticsUseCase: LoadStatisticsDiagnosticsUseCase,
     private val rebuildCheckStatisticsUseCase: RebuildCheckStatisticsUseCase,
+    private val rebuildWhitelistAvailabilityUseCase: RebuildWhitelistAvailabilityUseCase,
+    private val loadWhitelistAvailabilityDashboardUseCase: LoadWhitelistAvailabilityDashboardUseCase,
     private val statisticsDiagnosticsMetaRepository: StatisticsDiagnosticsMetaRepository,
 ) : ViewModel() {
 
@@ -132,8 +137,9 @@ class MainViewModel(
                     ),
                 )
             }
-            when (val result = rebuildCheckStatisticsUseCase.rebuildFromHistory()) {
+            when (val checkRebuild = rebuildCheckStatisticsUseCase.rebuildFromHistory()) {
                 RebuildStatisticsResult.Success -> {
+                    rebuildWhitelistAvailabilityUseCase.rebuildFromHistory()
                     val rebuiltAt = System.currentTimeMillis()
                     statisticsDiagnosticsMetaRepository.recordRebuildCompleted(rebuiltAt)
                     refreshStatistics()
@@ -159,8 +165,8 @@ class MainViewModel(
                     }
                 }
                 is RebuildStatisticsResult.Failure -> {
-                    Log.w(TAG, "Statistics rebuild failed", result.cause)
-                    val message = result.cause.message ?: result.cause.javaClass.simpleName
+                    Log.w(TAG, "Statistics rebuild failed", checkRebuild.cause)
+                    val message = checkRebuild.cause.message ?: checkRebuild.cause.javaClass.simpleName
                     _uiState.update { state ->
                         val diagnosticsState = state.statisticsDiagnosticsUiState
                         if (diagnosticsState is StatisticsDiagnosticsUiState.Content) {
@@ -195,7 +201,9 @@ class MainViewModel(
                     state
                 }
             }
-            applyStatisticsLoadResult(loadStatisticsDashboardUseCase.load())
+            val checkResult = loadStatisticsDashboardUseCase.load()
+            val whitelistResult = loadWhitelistAvailabilityDashboardUseCase.load()
+            applyStatisticsLoadResult(checkResult, whitelistResult)
         }
     }
 
@@ -1096,39 +1104,80 @@ class MainViewModel(
         )
     }
 
-    private fun applyStatisticsLoadResult(result: StatisticsLoadResult) {
-        when (result) {
+    private fun applyStatisticsLoadResult(
+        checkResult: StatisticsLoadResult,
+        whitelistResult: WhitelistAvailabilityLoadResult,
+    ) {
+        if (checkResult is StatisticsLoadResult.Failure) {
+            Log.w(TAG, "Statistics load failed", checkResult.cause)
+            val message = checkResult.cause.message ?: checkResult.cause.javaClass.simpleName
+            _uiState.update { state ->
+                state.copy(
+                    statisticsUiState = if (state.currentScreen == AppScreen.STATISTICS) {
+                        StatisticsUiState.Error(message)
+                    } else {
+                        state.statisticsUiState
+                    },
+                    homeStatisticsUiState = HomeStatisticsUiState.Error,
+                )
+            }
+            return
+        }
+
+        val whitelistDashboard = when (whitelistResult) {
+            is WhitelistAvailabilityLoadResult.Success -> whitelistResult.dashboard
+            else -> null
+        }
+        val whitelistEmpty = whitelistResult is WhitelistAvailabilityLoadResult.Empty
+
+        when (checkResult) {
             StatisticsLoadResult.Empty -> {
-                _uiState.update {
-                    it.copy(
-                        statisticsUiState = StatisticsUiState.Empty,
-                        homeStatisticsUiState = HomeStatisticsUiState.Hidden,
-                    )
+                if (whitelistDashboard != null) {
+                    _uiState.update {
+                        it.copy(
+                            statisticsUiState = StatisticsUiState.Content(
+                                dashboard = emptyCheckStatisticsDashboard(),
+                                whitelistAvailability = whitelistDashboard,
+                                whitelistAvailabilityEmpty = false,
+                            ),
+                            homeStatisticsUiState = HomeStatisticsUiState.Hidden,
+                        )
+                    }
+                } else {
+                    _uiState.update {
+                        it.copy(
+                            statisticsUiState = StatisticsUiState.Empty,
+                            homeStatisticsUiState = HomeStatisticsUiState.Hidden,
+                        )
+                    }
                 }
             }
             is StatisticsLoadResult.Success -> {
                 _uiState.update {
                     it.copy(
-                        statisticsUiState = StatisticsUiState.Content(result.dashboard),
-                        homeStatisticsUiState = toHomeStatisticsUiState(result.dashboard),
+                        statisticsUiState = StatisticsUiState.Content(
+                            dashboard = checkResult.dashboard,
+                            whitelistAvailability = whitelistDashboard,
+                            whitelistAvailabilityEmpty = whitelistEmpty,
+                        ),
+                        homeStatisticsUiState = toHomeStatisticsUiState(checkResult.dashboard),
                     )
                 }
             }
-            is StatisticsLoadResult.Failure -> {
-                Log.w(TAG, "Statistics load failed", result.cause)
-                val message = result.cause.message ?: result.cause.javaClass.simpleName
-                _uiState.update { state ->
-                    state.copy(
-                        statisticsUiState = if (state.currentScreen == AppScreen.STATISTICS) {
-                            StatisticsUiState.Error(message)
-                        } else {
-                            state.statisticsUiState
-                        },
-                        homeStatisticsUiState = HomeStatisticsUiState.Error,
-                    )
-                }
-            }
+            is StatisticsLoadResult.Failure -> Unit
         }
+    }
+
+    private fun emptyCheckStatisticsDashboard(): StatisticsDashboard {
+        return StatisticsDashboard(
+            summary = com.whitelistchecker.domain.model.statistics.CheckStatisticsSummary(),
+            targets = emptyList(),
+            routeKinds = emptyList(),
+            networks = emptyList(),
+            daily = emptyList(),
+            isStale = false,
+            lastUpdatedAt = null,
+        )
     }
 
     private fun toHomeStatisticsUiState(dashboard: StatisticsDashboard): HomeStatisticsUiState.Content {

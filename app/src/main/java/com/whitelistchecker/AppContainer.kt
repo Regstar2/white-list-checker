@@ -12,6 +12,7 @@ import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.data.history.RoomCheckHistoryRepository
+import com.whitelistchecker.data.availability.RoomWhitelistAvailabilityRepository
 import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
@@ -20,6 +21,10 @@ import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
 import com.whitelistchecker.domain.statistics.CheckStatisticsCalculator
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
+import com.whitelistchecker.domain.availability.LoadWhitelistAvailabilityDashboardUseCase
+import com.whitelistchecker.domain.availability.RebuildWhitelistAvailabilityUseCase
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityCalculator
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityWriter
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
 import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
@@ -88,6 +93,22 @@ class AppContainer(context: Context) {
         checkHistoryRepository = checkHistoryRepository,
         checkStatisticsRepository = checkStatisticsRepository,
         diagnosticsMetaRepository = statisticsDiagnosticsMetaRepository,
+    )
+    private val whitelistAvailabilityRepository = RoomWhitelistAvailabilityRepository(
+        database = database,
+        dao = database.whitelistAvailabilityDao(),
+        calculator = WhitelistAvailabilityCalculator(),
+    )
+    val whitelistAvailabilityWriter = WhitelistAvailabilityWriter(
+        repository = whitelistAvailabilityRepository,
+    )
+    val rebuildWhitelistAvailabilityUseCase = RebuildWhitelistAvailabilityUseCase(
+        checkHistoryRepository = checkHistoryRepository,
+        whitelistAvailabilityRepository = whitelistAvailabilityRepository,
+        calculator = WhitelistAvailabilityCalculator(),
+    )
+    val loadWhitelistAvailabilityDashboardUseCase = LoadWhitelistAvailabilityDashboardUseCase(
+        repository = whitelistAvailabilityRepository,
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
@@ -173,6 +194,7 @@ class AppContainer(context: Context) {
         lastCheckRepository = lastCheckRepository,
         saveCheckHistoryUseCase = saveCheckHistoryUseCase,
         localStatisticsWriter = localStatisticsWriter,
+        whitelistAvailabilityWriter = whitelistAvailabilityWriter,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

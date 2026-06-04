@@ -9,6 +9,11 @@ import androidx.sqlite.db.SupportSQLiteDatabase
 import com.whitelistchecker.data.history.CheckHistoryDao
 import com.whitelistchecker.data.history.CheckRunEntity
 import com.whitelistchecker.data.history.CheckTargetResultEntity
+import com.whitelistchecker.data.availability.WhitelistAvailabilityDao
+import com.whitelistchecker.data.availability.WhitelistAvailabilityEventEntity
+import com.whitelistchecker.data.availability.WhitelistAvailabilitySummaryEntity
+import com.whitelistchecker.data.availability.WhitelistDailyAvailabilityEntity
+import com.whitelistchecker.data.availability.WhitelistTargetAvailabilityEntity
 import com.whitelistchecker.data.statistics.CheckStatisticsDao
 import com.whitelistchecker.data.statistics.CheckStatisticsSummaryEntity
 import com.whitelistchecker.data.statistics.DailyCheckStatisticsEntity
@@ -28,8 +33,12 @@ import com.whitelistchecker.data.telegram.PendingTelegramReportEntity
         RouteKindStatisticsEntity::class,
         NetworkStatisticsEntity::class,
         DailyCheckStatisticsEntity::class,
+        WhitelistAvailabilityEventEntity::class,
+        WhitelistAvailabilitySummaryEntity::class,
+        WhitelistDailyAvailabilityEntity::class,
+        WhitelistTargetAvailabilityEntity::class,
     ],
-    version = 4,
+    version = 5,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -39,6 +48,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checkHistoryDao(): CheckHistoryDao
 
     abstract fun checkStatisticsDao(): CheckStatisticsDao
+
+    abstract fun whitelistAvailabilityDao(): WhitelistAvailabilityDao
 
     companion object {
         @Volatile
@@ -213,6 +224,90 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_4_5 = object : Migration(4, 5) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS whitelist_availability_events (
+                        id TEXT NOT NULL PRIMARY KEY,
+                        targetId TEXT NOT NULL,
+                        targetLabel TEXT NOT NULL,
+                        previousState TEXT NOT NULL,
+                        newState TEXT NOT NULL,
+                        transitionType TEXT NOT NULL,
+                        detectedAt INTEGER NOT NULL,
+                        checkRunId TEXT NOT NULL,
+                        routeKind TEXT,
+                        networkType TEXT,
+                        operatorName TEXT,
+                        latencyMs INTEGER,
+                        errorCode TEXT,
+                        createdAt INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_whitelist_availability_events_detectedAt ON whitelist_availability_events(detectedAt)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_whitelist_availability_events_targetId ON whitelist_availability_events(targetId)",
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS whitelist_availability_summary (
+                        id INTEGER NOT NULL PRIMARY KEY,
+                        totalTargets INTEGER NOT NULL,
+                        currentlyAvailableTargets INTEGER NOT NULL,
+                        currentlyUnavailableTargets INTEGER NOT NULL,
+                        unknownTargets INTEGER NOT NULL,
+                        totalBecameAvailableEvents INTEGER NOT NULL,
+                        totalBecameUnavailableEvents INTEGER NOT NULL,
+                        availabilityPercent REAL,
+                        lastBecameAvailableAt INTEGER,
+                        lastBecameUnavailableAt INTEGER,
+                        lastUpdatedAt INTEGER NOT NULL,
+                        dataRangeStart INTEGER,
+                        dataRangeEnd INTEGER,
+                        mostStableTargetLabel TEXT,
+                        mostUnstableTargetLabel TEXT,
+                        schemaVersion INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS whitelist_daily_availability (
+                        date TEXT NOT NULL PRIMARY KEY,
+                        availableTargetCount INTEGER NOT NULL,
+                        unavailableTargetCount INTEGER NOT NULL,
+                        becameAvailableCount INTEGER NOT NULL,
+                        becameUnavailableCount INTEGER NOT NULL,
+                        availabilityPercent REAL,
+                        checkRunCount INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS whitelist_target_availability (
+                        targetId TEXT NOT NULL PRIMARY KEY,
+                        displayLabel TEXT NOT NULL,
+                        currentState TEXT NOT NULL,
+                        becameAvailableCount INTEGER NOT NULL,
+                        becameUnavailableCount INTEGER NOT NULL,
+                        availabilityPercent REAL,
+                        lastBecameAvailableAt INTEGER,
+                        lastBecameUnavailableAt INTEGER,
+                        lastSeenAt INTEGER,
+                        unstableScore INTEGER NOT NULL,
+                        availableChecks INTEGER NOT NULL,
+                        unavailableChecks INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -220,7 +315,7 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "whitelist_checker.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
                     .build()
                     .also { instance = it }
             }

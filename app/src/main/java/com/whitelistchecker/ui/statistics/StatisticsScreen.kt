@@ -67,14 +67,22 @@ fun StatisticsScreen(
                 }
             }
             is StatisticsUiState.Content -> {
-                StatisticsContent(dashboard = uiState.dashboard)
+                StatisticsContent(
+                    dashboard = uiState.dashboard,
+                    whitelistAvailability = uiState.whitelistAvailability,
+                    whitelistAvailabilityEmpty = uiState.whitelistAvailabilityEmpty,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun StatisticsContent(dashboard: StatisticsDashboard) {
+private fun StatisticsContent(
+    dashboard: StatisticsDashboard,
+    whitelistAvailability: com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard?,
+    whitelistAvailabilityEmpty: Boolean,
+) {
     val resources = LocalContext.current.resources
     val nowMillis = remember(dashboard.lastUpdatedAt) { System.currentTimeMillis() }
 
@@ -127,6 +135,11 @@ private fun StatisticsContent(dashboard: StatisticsDashboard) {
             )
         }
     }
+
+    WhitelistAvailabilitySection(
+        dashboard = whitelistAvailability,
+        isEmpty = whitelistAvailabilityEmpty && whitelistAvailability == null,
+    )
 
     if (dashboard.targets.isNotEmpty()) {
         AppCard(title = stringResource(R.string.statistics_section_targets)) {

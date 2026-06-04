@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
                     loadStatisticsDashboardUseCase = appContainer.loadStatisticsDashboardUseCase,
                     loadStatisticsDiagnosticsUseCase = appContainer.loadStatisticsDiagnosticsUseCase,
                     rebuildCheckStatisticsUseCase = appContainer.rebuildCheckStatisticsUseCase,
+                    rebuildWhitelistAvailabilityUseCase = appContainer.rebuildWhitelistAvailabilityUseCase,
+                    loadWhitelistAvailabilityDashboardUseCase = appContainer.loadWhitelistAvailabilityDashboardUseCase,
                     statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
                 ) as T
             }
