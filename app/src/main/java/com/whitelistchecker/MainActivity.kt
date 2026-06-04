@@ -55,6 +55,9 @@ class MainActivity : ComponentActivity() {
                     checkTargetsRepository = appContainer.checkTargetsRepository,
                     detailedReportFormatter = appContainer.detailedReportFormatter,
                     loadStatisticsDashboardUseCase = appContainer.loadStatisticsDashboardUseCase,
+                    loadStatisticsDiagnosticsUseCase = appContainer.loadStatisticsDiagnosticsUseCase,
+                    rebuildCheckStatisticsUseCase = appContainer.rebuildCheckStatisticsUseCase,
+                    statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

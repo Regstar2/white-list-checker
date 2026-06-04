@@ -18,6 +18,16 @@ interface CheckStatisticsRepository {
 
     suspend fun getSummary(): CheckStatisticsSummary
 
+    suspend fun summaryExists(): Boolean
+
+    suspend fun countTargetStatistics(): Int
+
+    suspend fun countRouteKindStatistics(): Int
+
+    suspend fun countNetworkStatistics(): Int
+
+    suspend fun countDailyStatistics(): Int
+
     suspend fun getTargetStatistics(limit: Int = Int.MAX_VALUE): List<TargetStatistics>
 
     suspend fun getRouteKindStatistics(): List<RouteKindStatistics>

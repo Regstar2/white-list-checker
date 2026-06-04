@@ -79,6 +79,16 @@ class LoadStatisticsDashboardUseCaseTest {
             return summary
         }
 
+        override suspend fun summaryExists(): Boolean = summary.totalRuns > 0
+
+        override suspend fun countTargetStatistics(): Int = targets.size
+
+        override suspend fun countRouteKindStatistics(): Int = 0
+
+        override suspend fun countNetworkStatistics(): Int = 0
+
+        override suspend fun countDailyStatistics(): Int = 0
+
         override suspend fun getTargetStatistics(limit: Int): List<TargetStatistics> = targets.take(limit)
 
         override suspend fun getRouteKindStatistics(): List<RouteKindStatistics> = emptyList()

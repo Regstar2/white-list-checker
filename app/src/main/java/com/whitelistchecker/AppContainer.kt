@@ -13,6 +13,7 @@ import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.data.history.RoomCheckHistoryRepository
 import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
+import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
@@ -20,6 +21,7 @@ import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
 import com.whitelistchecker.domain.statistics.CheckStatisticsCalculator
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
+import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
@@ -59,10 +61,12 @@ class AppContainer(context: Context) {
     private val checkHistoryRepository = RoomCheckHistoryRepository(
         dao = database.checkHistoryDao(),
     )
+    val statisticsDiagnosticsMetaRepository = StatisticsDiagnosticsMetaDataStore(appContext)
     val saveCheckHistoryUseCase = SaveCheckHistoryUseCase(
         checkHistoryRepository = checkHistoryRepository,
         mapper = CheckHistoryFromNetworkResultMapper(),
         appVersionProvider = PackageAppVersionProvider(appContext)::versionName,
+        diagnosticsMetaRepository = statisticsDiagnosticsMetaRepository,
     )
     private val checkStatisticsRepository = RoomCheckStatisticsRepository(
         database = database,
@@ -79,6 +83,11 @@ class AppContainer(context: Context) {
     )
     val loadStatisticsDashboardUseCase = LoadStatisticsDashboardUseCase(
         checkStatisticsRepository = checkStatisticsRepository,
+    )
+    val loadStatisticsDiagnosticsUseCase = LoadStatisticsDiagnosticsUseCase(
+        checkHistoryRepository = checkHistoryRepository,
+        checkStatisticsRepository = checkStatisticsRepository,
+        diagnosticsMetaRepository = statisticsDiagnosticsMetaRepository,
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)

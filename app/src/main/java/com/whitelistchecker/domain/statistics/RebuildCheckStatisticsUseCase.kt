@@ -9,10 +9,15 @@ class RebuildCheckStatisticsUseCase(
     private val calculator: CheckStatisticsCalculator,
 ) {
 
-    suspend fun rebuildFromHistory() {
-        val runs = checkHistoryRepository.getRecentCheckRuns(CheckHistoryConfig.MAX_CHECK_RUNS)
-            .asReversed()
-        val snapshot = calculator.rebuildFromHistory(runs)
-        checkStatisticsRepository.replaceAll(snapshot)
+    suspend fun rebuildFromHistory(): RebuildStatisticsResult {
+        return try {
+            val runs = checkHistoryRepository.getRecentCheckRuns(CheckHistoryConfig.MAX_CHECK_RUNS)
+                .asReversed()
+            val snapshot = calculator.rebuildFromHistory(runs)
+            checkStatisticsRepository.replaceAll(snapshot)
+            RebuildStatisticsResult.Success
+        } catch (exception: Exception) {
+            RebuildStatisticsResult.Failure(exception)
+        }
     }
 }

@@ -202,9 +202,12 @@ private fun TargetStatisticsBlock(
             .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = target.targetLabel, style = MaterialTheme.typography.titleSmall)
         Text(
-            text = target.targetHost,
+            text = StatisticsValueFormatter.formatTextLabel(resources, target.targetLabel),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        Text(
+            text = StatisticsValueFormatter.formatTextLabel(resources, target.targetHost),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
@@ -260,7 +263,10 @@ private fun RouteKindBlock(
             .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = route.routeKind, style = MaterialTheme.typography.titleSmall)
+        Text(
+            text = StatisticsValueFormatter.formatTextLabel(resources, route.routeKind),
+            style = MaterialTheme.typography.titleSmall,
+        )
         CompactDetailRow(stringResource(R.string.statistics_total_checks), route.totalChecks.toString())
         CompactDetailRow(
             stringResource(R.string.statistics_success_rate),
@@ -291,7 +297,10 @@ private fun NetworkBlock(
             .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(text = network.networkType, style = MaterialTheme.typography.titleSmall)
+        Text(
+            text = StatisticsValueFormatter.formatTextLabel(resources, network.networkType),
+            style = MaterialTheme.typography.titleSmall,
+        )
         CompactDetailRow(
             stringResource(R.string.statistics_operator),
             network.operatorName?.takeIf { it.isNotBlank() }

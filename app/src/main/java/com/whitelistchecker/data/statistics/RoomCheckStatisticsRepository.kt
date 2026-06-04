@@ -37,6 +37,21 @@ class RoomCheckStatisticsRepository(
             ?: CheckStatisticsSummary()
     }
 
+    override suspend fun summaryExists(): Boolean {
+        if (dao.countSummaryRows(CheckStatisticsConfig.SUMMARY_ROW_ID) == 0) {
+            return false
+        }
+        return getSummary().totalRuns > 0
+    }
+
+    override suspend fun countTargetStatistics(): Int = dao.countTargets()
+
+    override suspend fun countRouteKindStatistics(): Int = dao.countRouteKinds()
+
+    override suspend fun countNetworkStatistics(): Int = dao.countNetworks()
+
+    override suspend fun countDailyStatistics(): Int = dao.countDaily()
+
     override suspend fun getTargetStatistics(limit: Int): List<TargetStatistics> {
         return dao.getTargets(limit).map(CheckStatisticsEntityMapper::toDomain)
     }

@@ -14,6 +14,7 @@ import com.whitelistchecker.domain.model.TelegramTestResult
 import com.whitelistchecker.domain.model.WhitelistMonitorState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.diagnostics.StatisticsDiagnosticsUiState
 import com.whitelistchecker.ui.statistics.HomeStatisticsUiState
 import com.whitelistchecker.ui.statistics.StatisticsUiState
 
@@ -51,4 +52,5 @@ data class MainUiState(
     val errorMessage: String? = null,
     val statisticsUiState: StatisticsUiState = StatisticsUiState.Loading,
     val homeStatisticsUiState: HomeStatisticsUiState = HomeStatisticsUiState.Loading,
+    val statisticsDiagnosticsUiState: StatisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Idle,
 )

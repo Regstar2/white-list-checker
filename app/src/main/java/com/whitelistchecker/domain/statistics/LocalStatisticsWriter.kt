@@ -10,7 +10,12 @@ class LocalStatisticsWriter(
     suspend fun onCheckRunSaved(
         checkRun: CheckRun,
         targetResults: List<CheckTargetResult>,
-    ) {
-        checkStatisticsRepository.updateFromCheckRun(checkRun, targetResults)
+    ): Boolean {
+        return try {
+            checkStatisticsRepository.updateFromCheckRun(checkRun, targetResults)
+            true
+        } catch (_: Exception) {
+            false
+        }
     }
 }

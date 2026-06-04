@@ -16,6 +16,11 @@ class StatisticsValueFormatterTest {
     }
 
     @Test
+    fun `formatSuccessRate hides invalid rate`() {
+        assertEquals("", StatisticsValueFormatter.formatSuccessRate(-0.2))
+    }
+
+    @Test
     fun `formatSuccessRate returns empty for null`() {
         assertEquals("", StatisticsValueFormatter.formatSuccessRate(null))
     }

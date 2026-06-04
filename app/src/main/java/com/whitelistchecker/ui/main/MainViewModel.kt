@@ -31,10 +31,16 @@ import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
+import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
+import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
+import com.whitelistchecker.domain.statistics.RebuildStatisticsResult
 import com.whitelistchecker.domain.statistics.StatisticsDashboard
+import com.whitelistchecker.domain.statistics.StatisticsDiagnosticsMetaRepository
 import com.whitelistchecker.domain.statistics.StatisticsLoadResult
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.diagnostics.RebuildStatisticsUiState
+import com.whitelistchecker.ui.diagnostics.StatisticsDiagnosticsUiState
 import com.whitelistchecker.ui.statistics.HomeStatisticsUiState
 import com.whitelistchecker.ui.statistics.StatisticsUiState
 import com.whitelistchecker.ui.userMessage
@@ -63,6 +69,9 @@ class MainViewModel(
     private val checkTargetsRepository: CheckTargetsRepository,
     private val detailedReportFormatter: DetailedReportFormatter,
     private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
+    private val loadStatisticsDiagnosticsUseCase: LoadStatisticsDiagnosticsUseCase,
+    private val rebuildCheckStatisticsUseCase: RebuildCheckStatisticsUseCase,
+    private val statisticsDiagnosticsMetaRepository: StatisticsDiagnosticsMetaRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -80,8 +89,92 @@ class MainViewModel(
 
     fun openScreen(screen: AppScreen) {
         _uiState.update { it.copy(currentScreen = screen, errorMessage = null) }
-        if (screen == AppScreen.STATISTICS) {
-            refreshStatistics(forStatisticsScreen = true)
+        when (screen) {
+            AppScreen.STATISTICS -> refreshStatistics(forStatisticsScreen = true)
+            AppScreen.DIAGNOSTICS -> loadStatisticsDiagnostics()
+            else -> Unit
+        }
+    }
+
+    fun loadStatisticsDiagnostics() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(statisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Loading) }
+            try {
+                val diagnostics = loadStatisticsDiagnosticsUseCase.load()
+                _uiState.update {
+                    it.copy(
+                        statisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Content(
+                            diagnostics = diagnostics,
+                        ),
+                    )
+                }
+            } catch (exception: Exception) {
+                Log.w(TAG, "Statistics diagnostics load failed", exception)
+                _uiState.update {
+                    it.copy(
+                        statisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Error(
+                            message = exception.message ?: exception.javaClass.simpleName,
+                        ),
+                    )
+                }
+            }
+        }
+    }
+
+    fun rebuildStatisticsFromHistory() {
+        viewModelScope.launch {
+            val current = _uiState.value.statisticsDiagnosticsUiState
+            if (current !is StatisticsDiagnosticsUiState.Content) return@launch
+            _uiState.update {
+                it.copy(
+                    statisticsDiagnosticsUiState = current.copy(
+                        rebuildState = RebuildStatisticsUiState.Running,
+                    ),
+                )
+            }
+            when (val result = rebuildCheckStatisticsUseCase.rebuildFromHistory()) {
+                RebuildStatisticsResult.Success -> {
+                    val rebuiltAt = System.currentTimeMillis()
+                    statisticsDiagnosticsMetaRepository.recordRebuildCompleted(rebuiltAt)
+                    refreshStatistics()
+                    try {
+                        val diagnostics = loadStatisticsDiagnosticsUseCase.load(nowMillis = rebuiltAt)
+                        _uiState.update {
+                            it.copy(
+                                statisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Content(
+                                    diagnostics = diagnostics,
+                                    rebuildState = RebuildStatisticsUiState.Success,
+                                ),
+                            )
+                        }
+                    } catch (exception: Exception) {
+                        Log.w(TAG, "Statistics diagnostics reload after rebuild failed", exception)
+                        _uiState.update {
+                            it.copy(
+                                statisticsDiagnosticsUiState = StatisticsDiagnosticsUiState.Error(
+                                    message = exception.message ?: exception.javaClass.simpleName,
+                                ),
+                            )
+                        }
+                    }
+                }
+                is RebuildStatisticsResult.Failure -> {
+                    Log.w(TAG, "Statistics rebuild failed", result.cause)
+                    val message = result.cause.message ?: result.cause.javaClass.simpleName
+                    _uiState.update { state ->
+                        val diagnosticsState = state.statisticsDiagnosticsUiState
+                        if (diagnosticsState is StatisticsDiagnosticsUiState.Content) {
+                            state.copy(
+                                statisticsDiagnosticsUiState = diagnosticsState.copy(
+                                    rebuildState = RebuildStatisticsUiState.Failure(message),
+                                ),
+                            )
+                        } else {
+                            state
+                        }
+                    }
+                }
+            }
         }
     }
 

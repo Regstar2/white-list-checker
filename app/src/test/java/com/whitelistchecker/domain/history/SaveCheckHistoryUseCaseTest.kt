@@ -9,6 +9,7 @@ import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.history.CheckRun
 import com.whitelistchecker.domain.model.history.CheckRunWithTargetResults
 import com.whitelistchecker.domain.model.history.CheckTargetResult
+import com.whitelistchecker.domain.history.CheckRunTimeRange
 import com.whitelistchecker.domain.model.history.CheckTriggerType
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
@@ -104,8 +105,15 @@ class SaveCheckHistoryUseCaseTest {
 
         override suspend fun getRecentCheckRuns(limit: Int): List<CheckRunWithTargetResults> = emptyList()
 
-        override suspend fun applyRetentionPolicy(nowMillis: Long) {
+        override suspend fun countCheckRuns(): Int = savedRuns.size
+
+        override suspend fun countTargetResults(): Int = savedTargets.sumOf { it.size }
+
+        override suspend fun getCheckRunTimeRange(): CheckRunTimeRange? = null
+
+        override suspend fun applyRetentionPolicy(nowMillis: Long): Int {
             retentionCalls++
+            return 0
         }
     }
 }

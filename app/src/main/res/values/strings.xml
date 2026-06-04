@@ -51,4 +51,38 @@
     <string name="statistics_open_screen">Статистика</string>
     <string name="statistics_value_not_available">Нет данных</string>
     <string name="statistics_latency_ms">%1$d мс</string>
+    <string name="statistics_value_unknown">Неизвестно</string>
+    <string name="statistics_value_corrupted">Данные повреждены</string>
+
+    <string name="statistics_diagnostics_title">Диагностика статистики</string>
+    <string name="statistics_diagnostics_load">Показать диагностику</string>
+    <string name="statistics_diagnostics_load_error">Не удалось загрузить диагностику</string>
+    <string name="statistics_diagnostics_check_runs">Записей проверок</string>
+    <string name="statistics_diagnostics_target_results">Результатов целей</string>
+    <string name="statistics_diagnostics_target_aggregates">Агрегатов endpoint</string>
+    <string name="statistics_diagnostics_route_aggregates">Агрегатов маршрутов</string>
+    <string name="statistics_diagnostics_network_aggregates">Агрегатов сети</string>
+    <string name="statistics_diagnostics_daily_aggregates">Дневных агрегатов</string>
+    <string name="statistics_diagnostics_last_statistics_update">Последнее обновление статистики</string>
+    <string name="statistics_diagnostics_last_rebuild">Последний пересчёт</string>
+    <string name="statistics_diagnostics_last_cleanup">Последняя очистка</string>
+    <string name="statistics_consistency_ok">Данные согласованы</string>
+    <string name="statistics_consistency_warnings">Есть предупреждения</string>
+    <string name="statistics_rebuild_action">Пересчитать статистику</string>
+    <string name="statistics_rebuild_confirm_title">Пересчитать статистику?</string>
+    <string name="statistics_rebuild_confirm_message">Статистика будет пересчитана из сохранённой истории проверок. История проверок не удаляется.</string>
+    <string name="statistics_rebuild_confirm_action">Пересчитать</string>
+    <string name="statistics_rebuild_confirm_cancel">Отмена</string>
+    <string name="statistics_rebuild_success">Статистика пересчитана</string>
+    <string name="statistics_rebuild_failure">Не удалось пересчитать статистику</string>
+
+    <string name="statistics_warning_check_runs_without_summary">Есть проверки в истории, но сводка статистики пуста</string>
+    <string name="statistics_warning_total_runs_exceeds_history">Всего проверок в статистике больше, чем записей в истории</string>
+    <string name="statistics_warning_outcome_sum_exceeds_total">Сумма исходов превышает всего проверок в сводке</string>
+    <string name="statistics_warning_target_stats_without_results">Есть агрегаты endpoint без результатов целей в истории</string>
+    <string name="statistics_warning_last_run_in_future">Дата последней проверки в будущем</string>
+    <string name="statistics_warning_statistics_updated_before_last_run">Статистика обновлена раньше последней проверки</string>
+    <string name="statistics_warning_invalid_success_rate">Некорректная успешность в сводке</string>
+    <string name="statistics_warning_invalid_average_latency">Некорректная средняя задержка в сводке</string>
+    <string name="statistics_warning_negative_consecutive_failures">Отрицательная серия ошибок в сводке</string>
 </resources>

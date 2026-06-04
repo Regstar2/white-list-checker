@@ -2,6 +2,7 @@ package com.whitelistchecker.ui.statistics
 
 import android.content.res.Resources
 import com.whitelistchecker.R
+import com.whitelistchecker.domain.statistics.StatisticsNumericSanitizer
 import com.whitelistchecker.ui.home.LastCheckAgeFormatter
 import java.util.Locale
 import kotlin.math.roundToInt
@@ -9,8 +10,8 @@ import kotlin.math.roundToInt
 object StatisticsValueFormatter {
 
     fun formatSuccessRate(rate: Double?): String {
-        if (rate == null) return ""
-        val percent = rate * 100.0
+        val sanitized = StatisticsNumericSanitizer.sanitizeSuccessRate(rate) ?: return ""
+        val percent = sanitized * 100.0
         return if (percent == percent.roundToInt().toDouble()) {
             "${percent.roundToInt()}%"
         } else {
@@ -19,10 +20,19 @@ object StatisticsValueFormatter {
     }
 
     fun formatLatency(resources: Resources, latencyMs: Long?): String {
-        if (latencyMs == null) {
-            return resources.getString(R.string.statistics_value_not_available)
+        val sanitized = StatisticsNumericSanitizer.sanitizeLatencyMs(latencyMs)
+            ?: return resources.getString(R.string.statistics_value_not_available)
+        return resources.getString(R.string.statistics_latency_ms, sanitized)
+    }
+
+    fun formatTextLabel(resources: Resources, value: String?): String {
+        val trimmed = value?.trim().orEmpty()
+        return when {
+            trimmed.isEmpty() -> resources.getString(R.string.statistics_value_unknown)
+            trimmed.equals("null", ignoreCase = true) ->
+                resources.getString(R.string.statistics_value_unknown)
+            else -> trimmed
         }
-        return resources.getString(R.string.statistics_latency_ms, latencyMs)
     }
 
     fun formatRelativeTime(resources: Resources, epochMillis: Long?, nowMillis: Long): String {

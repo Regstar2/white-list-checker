@@ -47,6 +47,8 @@ fun DiagnosticsScreen(
     uiState: MainUiState,
     onBack: () -> Unit,
     detailedReport: String,
+    onLoadStatisticsDiagnostics: () -> Unit,
+    onRebuildStatistics: () -> Unit,
 ) {
     val clipboardManager = LocalClipboardManager.current
     ScreenScaffold(title = "Диагностика", onBack = onBack) {
@@ -67,6 +69,12 @@ fun DiagnosticsScreen(
                 StateChangeEventCard(event)
             }
         }
+
+        StatisticsDiagnosticsSection(
+            uiState = uiState.statisticsDiagnosticsUiState,
+            onLoad = onLoadStatisticsDiagnostics,
+            onRebuildConfirmed = onRebuildStatistics,
+        )
 
         Button(
             onClick = { clipboardManager.setText(AnnotatedString(detailedReport)) },

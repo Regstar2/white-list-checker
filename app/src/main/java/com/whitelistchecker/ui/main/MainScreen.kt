@@ -101,6 +101,8 @@ fun MainScreen(viewModel: MainViewModel) {
             uiState = uiState,
             onBack = viewModel::goHome,
             detailedReport = viewModel.buildDetailedReport(),
+            onLoadStatisticsDiagnostics = viewModel::loadStatisticsDiagnostics,
+            onRebuildStatistics = viewModel::rebuildStatisticsFromHistory,
         )
     }
 }

@@ -49,6 +49,15 @@ interface CheckHistoryDao {
     @Query("SELECT COUNT(*) FROM check_runs")
     suspend fun countRuns(): Int
 
+    @Query("SELECT COUNT(*) FROM check_target_results")
+    suspend fun countTargetResults(): Int
+
+    @Query("SELECT MIN(finishedAtMillis) FROM check_runs")
+    suspend fun getOldestRunAt(): Long?
+
+    @Query("SELECT MAX(finishedAtMillis) FROM check_runs")
+    suspend fun getNewestRunAt(): Long?
+
     @Query("DELETE FROM check_runs WHERE id IN (:runIds)")
     suspend fun deleteRunsByIds(runIds: List<String>)
 }

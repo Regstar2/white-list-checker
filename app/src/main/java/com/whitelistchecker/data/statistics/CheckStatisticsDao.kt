@@ -27,6 +27,21 @@ interface CheckStatisticsDao {
     @Query("SELECT * FROM check_statistics_summary WHERE id = :id LIMIT 1")
     suspend fun getSummary(id: Int): CheckStatisticsSummaryEntity?
 
+    @Query("SELECT COUNT(*) FROM check_statistics_summary WHERE id = :id")
+    suspend fun countSummaryRows(id: Int): Int
+
+    @Query("SELECT COUNT(*) FROM target_statistics")
+    suspend fun countTargets(): Int
+
+    @Query("SELECT COUNT(*) FROM route_kind_statistics")
+    suspend fun countRouteKinds(): Int
+
+    @Query("SELECT COUNT(*) FROM network_statistics")
+    suspend fun countNetworks(): Int
+
+    @Query("SELECT COUNT(*) FROM daily_check_statistics")
+    suspend fun countDaily(): Int
+
     @Query("SELECT * FROM target_statistics ORDER BY lastCheckedAt DESC LIMIT :limit")
     suspend fun getTargets(limit: Int): List<TargetStatisticsEntity>
 

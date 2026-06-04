@@ -15,5 +15,11 @@ interface CheckHistoryRepository {
 
     suspend fun getRecentCheckRuns(limit: Int): List<CheckRunWithTargetResults>
 
-    suspend fun applyRetentionPolicy(nowMillis: Long)
+    suspend fun countCheckRuns(): Int
+
+    suspend fun countTargetResults(): Int
+
+    suspend fun getCheckRunTimeRange(): CheckRunTimeRange?
+
+    suspend fun applyRetentionPolicy(nowMillis: Long): Int
 }
