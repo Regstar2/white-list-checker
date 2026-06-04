@@ -26,9 +26,11 @@ sealed class HomeStatisticsUiState {
 
     data class Content(
         val totalRuns: Int,
-        val successRate: Double?,
-        val lastSuccessAt: Long?,
-        val consecutiveFailureCount: Int,
+        val fullySuccessfulRate: Double?,
+        val partialFailureRuns: Int,
+        val failureRuns: Int,
+        val lastRunAt: Long?,
+        val consecutiveFullFailureCount: Int,
         val isStale: Boolean,
     ) : HomeStatisticsUiState()
 

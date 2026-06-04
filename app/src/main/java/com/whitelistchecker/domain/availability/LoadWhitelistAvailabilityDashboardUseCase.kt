@@ -21,9 +21,7 @@ class LoadWhitelistAvailabilityDashboardUseCase(
                 .filter { (it.availabilityPercent ?: 0.0) > 0.0 }
                 .sortedByDescending { it.availabilityPercent ?: 0.0 }
                 .take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
-            val topUnstable = targets
-                .sortedByDescending { it.unstableScore }
-                .take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
+            val topUnstable = filterTopUnstableTargets(targets)
 
             val dashboard = WhitelistAvailabilityDashboard(
                 summary = summary,
@@ -37,5 +35,17 @@ class LoadWhitelistAvailabilityDashboardUseCase(
         } catch (exception: Exception) {
             WhitelistAvailabilityLoadResult.Failure(exception)
         }
+    }
+
+    private fun filterTopUnstableTargets(
+        targets: List<WhitelistTargetAvailabilityStats>,
+    ): List<WhitelistTargetAvailabilityStats> {
+        if (targets.isEmpty()) return emptyList()
+        val sorted = targets.sortedByDescending { it.unstableScore }
+        val distinctScores = sorted.map { it.unstableScore }.distinct()
+        if (distinctScores.size <= 1 || sorted.first().unstableScore <= 0.0) {
+            return emptyList()
+        }
+        return sorted.take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
     }
 }

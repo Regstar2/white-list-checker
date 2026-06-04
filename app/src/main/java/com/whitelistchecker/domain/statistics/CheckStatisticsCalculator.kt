@@ -327,10 +327,10 @@ class CheckStatisticsCalculator {
         status: CheckRunOverallStatus,
     ): Int {
         return when (status) {
-            CheckRunOverallStatus.SUCCESS -> 0
-            CheckRunOverallStatus.FAILURE,
+            CheckRunOverallStatus.SUCCESS,
             CheckRunOverallStatus.PARTIAL_FAILURE,
-            -> current + 1
+            -> 0
+            CheckRunOverallStatus.FAILURE -> current + 1
             CheckRunOverallStatus.CANCELLED,
             CheckRunOverallStatus.UNKNOWN,
             -> current
@@ -338,8 +338,7 @@ class CheckStatisticsCalculator {
     }
 
     private fun isFailureRun(status: CheckRunOverallStatus): Boolean {
-        return status == CheckRunOverallStatus.FAILURE ||
-            status == CheckRunOverallStatus.PARTIAL_FAILURE
+        return status == CheckRunOverallStatus.FAILURE
     }
 
     private fun isCountableTargetFailure(status: CheckTargetResultStatus): Boolean {

@@ -42,13 +42,12 @@ fun HomeStatisticsSummaryCard(
         }
         is HomeStatisticsUiState.Content -> {
             val resources = LocalContext.current.resources
-            val nowMillis = remember(uiState.lastSuccessAt) { System.currentTimeMillis() }
-            val successRateLabel = StatisticsValueFormatter.formatSuccessRate(uiState.successRate).ifBlank {
-                stringResource(R.string.statistics_value_not_available)
-            }
-            val lastSuccessLabel = StatisticsValueFormatter.formatRelativeTime(
+            val nowMillis = remember(uiState.lastRunAt) { System.currentTimeMillis() }
+            val fullySuccessfulLabel = StatisticsValueFormatter.formatSuccessRate(uiState.fullySuccessfulRate)
+                .ifBlank { stringResource(R.string.statistics_value_not_available) }
+            val lastRunLabel = StatisticsValueFormatter.formatRelativeTime(
                 resources,
-                uiState.lastSuccessAt,
+                uiState.lastRunAt,
                 nowMillis,
             )
             AppCard(title = stringResource(R.string.statistics_title)) {
@@ -64,19 +63,25 @@ fun HomeStatisticsSummaryCard(
                         uiState.totalRuns.toString(),
                     )
                     CompactDetailRow(
-                        stringResource(R.string.statistics_success_rate),
-                        successRateLabel,
+                        stringResource(R.string.statistics_fully_successful_rate),
+                        fullySuccessfulLabel,
                     )
-                    CompactDetailRow(
-                        stringResource(R.string.statistics_last_success),
-                        lastSuccessLabel,
-                    )
-                    if (uiState.consecutiveFailureCount > 0) {
+                    if (uiState.partialFailureRuns > 0) {
                         CompactDetailRow(
-                            stringResource(R.string.statistics_consecutive_failures),
-                            uiState.consecutiveFailureCount.toString(),
+                            stringResource(R.string.statistics_partial_failure_runs),
+                            uiState.partialFailureRuns.toString(),
                         )
                     }
+                    if (uiState.consecutiveFullFailureCount > 0) {
+                        CompactDetailRow(
+                            stringResource(R.string.statistics_consecutive_full_failures),
+                            uiState.consecutiveFullFailureCount.toString(),
+                        )
+                    }
+                    CompactDetailRow(
+                        stringResource(R.string.statistics_last_run),
+                        lastRunLabel,
+                    )
                     Button(
                         onClick = onOpenStatistics,
                         modifier = Modifier.fillMaxWidth(),

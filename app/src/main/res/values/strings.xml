@@ -6,8 +6,8 @@
     <string name="last_check_running">Проверка выполняется…</string>
     <string name="last_check_load_error">Не удалось загрузить состояние последней проверки</string>
     <string name="last_check_title_with_age">Последняя проверка: %1$s</string>
-    <string name="last_check_status_success">Статус: успешно</string>
-    <string name="last_check_status_failure">Статус: ошибка</string>
+    <string name="last_check_status_success">Статус: проверка завершена</string>
+    <string name="last_check_status_failure">Статус: ошибка проверки</string>
     <string name="last_check_data_stale">Данные устарели</string>
     <string name="last_check_error_detail">Ошибка: %1$s</string>
     <string name="last_check_age_just_now">только что</string>
@@ -17,8 +17,17 @@
 
     <string name="statistics_title">Статистика</string>
     <string name="statistics_section_summary">Общая статистика</string>
-    <string name="statistics_section_recent">Последние показатели</string>
-    <string name="statistics_section_targets">Endpoints</string>
+    <string name="statistics_section_checks">Проверки</string>
+    <string name="statistics_section_recent">Актуальность данных</string>
+    <string name="statistics_section_targets">Цели</string>
+    <string name="statistics_fully_successful_rate">Полностью успешные проверки</string>
+    <string name="statistics_consecutive_full_failures">Серия полных ошибок</string>
+    <string name="statistics_targets_show_all">Показать все (%1$d)</string>
+    <string name="statistics_targets_show_less">Свернуть</string>
+    <string name="statistics_chart_insufficient_data">Недостаточно различий в данных для графика</string>
+    <string name="statistics_duration_seconds">%1$d с</string>
+    <string name="statistics_duration_seconds_float">%.1f с</string>
+    <string name="statistics_target_success_rate">Успешность цели</string>
     <string name="statistics_section_route_kinds">Маршруты</string>
     <string name="statistics_section_network">Сеть и оператор</string>
     <string name="statistics_section_daily">По дням</string>
@@ -26,12 +35,12 @@
     <string name="statistics_success_runs">Успешных</string>
     <string name="statistics_partial_failure_runs">Частично успешных</string>
     <string name="statistics_failure_runs">Ошибочных</string>
-    <string name="statistics_success_rate">Успешность</string>
+    <string name="statistics_success_rate">Полностью успешные проверки</string>
     <string name="statistics_average_latency">Средняя задержка</string>
     <string name="statistics_last_run">Последняя проверка</string>
     <string name="statistics_last_success">Последняя успешная</string>
     <string name="statistics_last_failure">Последняя ошибка</string>
-    <string name="statistics_consecutive_failures">Серия ошибок</string>
+    <string name="statistics_consecutive_failures">Серия полных ошибок</string>
     <string name="statistics_total_checks">Всего проверок</string>
     <string name="statistics_last_check">Последняя проверка</string>
     <string name="statistics_last_status">Последний статус</string>
@@ -86,7 +95,7 @@
     <string name="statistics_warning_invalid_average_latency">Некорректная средняя задержка в сводке</string>
     <string name="statistics_warning_negative_consecutive_failures">Отрицательная серия ошибок в сводке</string>
 
-    <string name="whitelist_availability_title">Статистика белых списков</string>
+    <string name="whitelist_availability_title">Доступность целей (белые списки)</string>
     <string name="whitelist_availability_empty_message">Недостаточно данных</string>
     <string name="whitelist_availability_empty_hint">Выполните несколько проверок, чтобы увидеть статистику появления белых списков.</string>
     <string name="whitelist_availability_current_available">Сейчас доступно</string>
@@ -97,10 +106,11 @@
     <string name="whitelist_availability_became_unavailable">Выключений за период</string>
     <string name="whitelist_availability_last_available">Последнее включение</string>
     <string name="whitelist_availability_last_unavailable">Последнее выключение</string>
-    <string name="whitelist_availability_most_stable">Самый стабильный target</string>
-    <string name="whitelist_availability_most_unstable">Самый нестабильный target</string>
+    <string name="whitelist_availability_most_stable">Самая стабильная цель</string>
+    <string name="whitelist_availability_most_unstable">Самая нестабильная цель</string>
+    <string name="whitelist_availability_targets_available_hint">Сейчас доступно — число целей, отвечающих в последней проверке</string>
     <string name="whitelist_availability_chart_daily_percent">Доступность по дням</string>
     <string name="whitelist_availability_chart_transitions">Включения и выключения по дням</string>
-    <string name="whitelist_availability_chart_top_unstable">Топ нестабильных targets</string>
-    <string name="whitelist_availability_chart_top_available">Топ targets по доступности</string>
+    <string name="whitelist_availability_chart_top_unstable">Самые нестабильные цели</string>
+    <string name="whitelist_availability_chart_top_available">Цели с наибольшей доступностью</string>
 </resources>

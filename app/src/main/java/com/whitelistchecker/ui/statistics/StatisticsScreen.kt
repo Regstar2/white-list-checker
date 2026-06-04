@@ -8,13 +8,18 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.R
+import com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard
 import com.whitelistchecker.domain.model.statistics.DailyCheckStatistics
 import com.whitelistchecker.domain.model.statistics.NetworkStatistics
 import com.whitelistchecker.domain.model.statistics.RouteKindStatistics
@@ -25,6 +30,9 @@ import com.whitelistchecker.ui.components.CompactDetailRow
 import com.whitelistchecker.ui.components.ScreenScaffold
 import com.whitelistchecker.ui.components.StatusChip
 import com.whitelistchecker.ui.components.StatusTone
+
+private const val TARGETS_COLLAPSED_LIMIT = 5
+
 @Composable
 fun StatisticsScreen(
     uiState: StatisticsUiState,
@@ -80,61 +88,14 @@ fun StatisticsScreen(
 @Composable
 private fun StatisticsContent(
     dashboard: StatisticsDashboard,
-    whitelistAvailability: com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard?,
+    whitelistAvailability: WhitelistAvailabilityDashboard?,
     whitelistAvailabilityEmpty: Boolean,
 ) {
     val resources = LocalContext.current.resources
     val nowMillis = remember(dashboard.lastUpdatedAt) { System.currentTimeMillis() }
 
-    FreshnessCard(dashboard = dashboard, nowMillis = nowMillis)
-
-    AppCard(title = stringResource(R.string.statistics_section_summary)) {
-        val summary = dashboard.summary
-        CompactDetailRow(
-            stringResource(R.string.statistics_total_runs),
-            summary.totalRuns.toString(),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_success_runs),
-            summary.successRuns.toString(),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_partial_failure_runs),
-            summary.partialFailureRuns.toString(),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_failure_runs),
-            summary.failureRuns.toString(),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_success_rate),
-            StatisticsValueFormatter.formatSuccessRate(summary.successRate).ifBlank {
-                stringResource(R.string.statistics_value_not_available)
-            },
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_average_latency),
-            StatisticsValueFormatter.formatLatency(resources, summary.averageLatencyMs),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_last_run),
-            StatisticsValueFormatter.formatRelativeTime(resources, summary.lastRunAt, nowMillis),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_last_success),
-            StatisticsValueFormatter.formatRelativeTime(resources, summary.lastSuccessAt, nowMillis),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_last_failure),
-            StatisticsValueFormatter.formatRelativeTime(resources, summary.lastFailureAt, nowMillis),
-        )
-        if (summary.consecutiveFailureCount > 0) {
-            CompactDetailRow(
-                stringResource(R.string.statistics_consecutive_failures),
-                summary.consecutiveFailureCount.toString(),
-            )
-        }
-    }
+    StatisticsFreshnessHeader(dashboard = dashboard, nowMillis = nowMillis)
+    CheckStatisticsSection(dashboard = dashboard, resources = resources, nowMillis = nowMillis)
 
     WhitelistAvailabilitySection(
         dashboard = whitelistAvailability,
@@ -142,11 +103,11 @@ private fun StatisticsContent(
     )
 
     if (dashboard.targets.isNotEmpty()) {
-        AppCard(title = stringResource(R.string.statistics_section_targets)) {
-            dashboard.targets.forEach { target ->
-                TargetStatisticsBlock(target, resources, nowMillis)
-            }
-        }
+        CollapsibleTargetsSection(
+            targets = dashboard.targets,
+            resources = resources,
+            nowMillis = nowMillis,
+        )
     }
 
     if (dashboard.routeKinds.isNotEmpty()) {
@@ -175,13 +136,9 @@ private fun StatisticsContent(
 }
 
 @Composable
-private fun FreshnessCard(dashboard: StatisticsDashboard, nowMillis: Long) {
+private fun StatisticsFreshnessHeader(dashboard: StatisticsDashboard, nowMillis: Long) {
     val resources = LocalContext.current.resources
-    AppCard(title = stringResource(R.string.statistics_section_recent)) {
-        CompactDetailRow(
-            stringResource(R.string.statistics_updated_at),
-            StatisticsValueFormatter.formatRelativeTime(resources, dashboard.lastUpdatedAt, nowMillis),
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
         if (dashboard.isStale) {
             StatusChip(
                 text = stringResource(R.string.statistics_data_stale),
@@ -200,6 +157,94 @@ private fun FreshnessCard(dashboard: StatisticsDashboard, nowMillis: Long) {
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
+        CompactDetailRow(
+            stringResource(R.string.statistics_updated_at),
+            StatisticsValueFormatter.formatRelativeTime(resources, dashboard.lastUpdatedAt, nowMillis),
+        )
+    }
+}
+
+@Composable
+private fun CheckStatisticsSection(
+    dashboard: StatisticsDashboard,
+    resources: android.content.res.Resources,
+    nowMillis: Long,
+) {
+    val summary = dashboard.summary
+    AppCard(title = stringResource(R.string.statistics_section_checks)) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            CompactDetailRow(
+                stringResource(R.string.statistics_total_runs),
+                summary.totalRuns.toString(),
+            )
+            CompactDetailRow(
+                stringResource(R.string.statistics_success_runs),
+                summary.successRuns.toString(),
+            )
+            if (summary.partialFailureRuns > 0) {
+                CompactDetailRow(
+                    stringResource(R.string.statistics_partial_failure_runs),
+                    summary.partialFailureRuns.toString(),
+                )
+            }
+            CompactDetailRow(
+                stringResource(R.string.statistics_failure_runs),
+                summary.failureRuns.toString(),
+            )
+            CompactDetailRow(
+                stringResource(R.string.statistics_fully_successful_rate),
+                StatisticsValueFormatter.formatSuccessRate(summary.successRate).ifBlank {
+                    stringResource(R.string.statistics_value_not_available)
+                },
+            )
+            CompactDetailRow(
+                stringResource(R.string.statistics_average_latency),
+                StatisticsValueFormatter.formatLatency(resources, summary.averageLatencyMs),
+            )
+            CompactDetailRow(
+                stringResource(R.string.statistics_last_run),
+                StatisticsValueFormatter.formatRelativeTime(resources, summary.lastRunAt, nowMillis),
+            )
+            if (summary.consecutiveFailureCount > 0) {
+                CompactDetailRow(
+                    stringResource(R.string.statistics_consecutive_full_failures),
+                    summary.consecutiveFailureCount.toString(),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CollapsibleTargetsSection(
+    targets: List<TargetStatistics>,
+    resources: android.content.res.Resources,
+    nowMillis: Long,
+) {
+    var expanded by remember(targets.size) { mutableStateOf(false) }
+    val canExpand = targets.size > TARGETS_COLLAPSED_LIMIT
+    val visibleTargets = if (expanded || !canExpand) targets else targets.take(TARGETS_COLLAPSED_LIMIT)
+
+    AppCard(title = stringResource(R.string.statistics_section_targets)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            visibleTargets.forEach { target ->
+                TargetStatisticsBlock(target, resources, nowMillis)
+            }
+            if (canExpand) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        if (expanded) {
+                            stringResource(R.string.statistics_targets_show_less)
+                        } else {
+                            stringResource(R.string.statistics_targets_show_all, targets.size)
+                        },
+                    )
+                }
+            }
+        }
     }
 }
 
@@ -209,27 +254,24 @@ private fun TargetStatisticsBlock(
     resources: android.content.res.Resources,
     nowMillis: Long,
 ) {
+    val endpointLabel = StatisticsValueFormatter.formatEndpointLabel(
+        resources,
+        target.targetLabel,
+        target.targetHost,
+    )
     Column(
         modifier = Modifier
             .fillMaxWidth()
             .padding(vertical = 6.dp),
         verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        Text(
-            text = StatisticsValueFormatter.formatTextLabel(resources, target.targetLabel),
-            style = MaterialTheme.typography.titleSmall,
-        )
-        Text(
-            text = StatisticsValueFormatter.formatTextLabel(resources, target.targetHost),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        Text(text = endpointLabel, style = MaterialTheme.typography.titleSmall)
         CompactDetailRow(
             stringResource(R.string.statistics_total_checks),
             target.totalChecks.toString(),
         )
         CompactDetailRow(
-            stringResource(R.string.statistics_success_rate),
+            stringResource(R.string.statistics_target_success_rate),
             StatisticsValueFormatter.formatSuccessRate(target.successRate).ifBlank {
                 stringResource(R.string.statistics_value_not_available)
             },
@@ -250,9 +292,7 @@ private fun TargetStatisticsBlock(
 }
 
 @Composable
-private fun targetLastStatusLabel(
-    target: TargetStatistics,
-): String {
+private fun targetLastStatusLabel(target: TargetStatistics): String {
     val lastSuccess = target.lastSuccessAt
     val lastFailure = target.lastFailureAt
     return when {
@@ -282,7 +322,7 @@ private fun RouteKindBlock(
         )
         CompactDetailRow(stringResource(R.string.statistics_total_checks), route.totalChecks.toString())
         CompactDetailRow(
-            stringResource(R.string.statistics_success_rate),
+            stringResource(R.string.statistics_target_success_rate),
             StatisticsValueFormatter.formatSuccessRate(route.successRate).ifBlank {
                 stringResource(R.string.statistics_value_not_available)
             },
@@ -321,7 +361,7 @@ private fun NetworkBlock(
         )
         CompactDetailRow(stringResource(R.string.statistics_total_runs), network.totalRuns.toString())
         CompactDetailRow(
-            stringResource(R.string.statistics_success_rate),
+            stringResource(R.string.statistics_fully_successful_rate),
             StatisticsValueFormatter.formatSuccessRate(network.successRate).ifBlank {
                 stringResource(R.string.statistics_value_not_available)
             },
@@ -355,7 +395,7 @@ private fun DailyBlock(day: DailyCheckStatistics, resources: android.content.res
         CompactDetailRow(stringResource(R.string.statistics_success_runs), day.successRuns.toString())
         CompactDetailRow(stringResource(R.string.statistics_failure_runs), day.failureRuns.toString())
         CompactDetailRow(
-            stringResource(R.string.statistics_success_rate),
+            stringResource(R.string.statistics_fully_successful_rate),
             StatisticsValueFormatter.formatSuccessRate(successRate).ifBlank {
                 stringResource(R.string.statistics_value_not_available)
             },

@@ -42,9 +42,8 @@ fun WhitelistAvailabilitySection(
     val resources = LocalContext.current.resources
     val nowMillis = System.currentTimeMillis()
     val summary = dashboard.summary
-    val availabilityLabel = StatisticsValueFormatter.formatSuccessRate(summary.availabilityPercent).ifBlank {
-        stringResource(R.string.statistics_value_not_available)
-    }
+    val availabilityLabel = StatisticsValueFormatter.formatPercentFraction(summary.availabilityPercent)
+        .ifBlank { stringResource(R.string.statistics_value_not_available) }
 
     AppCard(title = stringResource(R.string.whitelist_availability_title)) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -54,6 +53,11 @@ fun WhitelistAvailabilitySection(
                     tone = StatusTone.WARNING,
                 )
             }
+            Text(
+                text = stringResource(R.string.whitelist_availability_targets_available_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
             CompactDetailRow(
                 stringResource(R.string.whitelist_availability_current_available),
                 summary.currentlyAvailableTargets.toString(),
@@ -62,30 +66,26 @@ fun WhitelistAvailabilitySection(
                 stringResource(R.string.whitelist_availability_current_unavailable),
                 summary.currentlyUnavailableTargets.toString(),
             )
-            CompactDetailRow(
-                stringResource(R.string.whitelist_availability_current_unknown),
-                summary.unknownTargets.toString(),
-            )
+            if (summary.unknownTargets > 0) {
+                CompactDetailRow(
+                    stringResource(R.string.whitelist_availability_current_unknown),
+                    summary.unknownTargets.toString(),
+                )
+            }
             CompactDetailRow(
                 stringResource(R.string.whitelist_availability_percent),
                 availabilityLabel,
             )
-            CompactDetailRow(
-                stringResource(R.string.whitelist_availability_became_available),
-                summary.totalBecameAvailableEvents.toString(),
-            )
-            CompactDetailRow(
-                stringResource(R.string.whitelist_availability_became_unavailable),
-                summary.totalBecameUnavailableEvents.toString(),
-            )
-            CompactDetailRow(
-                stringResource(R.string.whitelist_availability_last_available),
-                StatisticsValueFormatter.formatRelativeTime(resources, summary.lastBecameAvailableAt, nowMillis),
-            )
-            CompactDetailRow(
-                stringResource(R.string.whitelist_availability_last_unavailable),
-                StatisticsValueFormatter.formatRelativeTime(resources, summary.lastBecameUnavailableAt, nowMillis),
-            )
+            if (summary.totalBecameAvailableEvents > 0 || summary.totalBecameUnavailableEvents > 0) {
+                CompactDetailRow(
+                    stringResource(R.string.whitelist_availability_became_available),
+                    summary.totalBecameAvailableEvents.toString(),
+                )
+                CompactDetailRow(
+                    stringResource(R.string.whitelist_availability_became_unavailable),
+                    summary.totalBecameUnavailableEvents.toString(),
+                )
+            }
             summary.mostStableTargetLabel?.let { label ->
                 CompactDetailRow(
                     stringResource(R.string.whitelist_availability_most_stable),
@@ -102,34 +102,39 @@ fun WhitelistAvailabilitySection(
     }
 
     if (dashboard.daily.isNotEmpty()) {
+        val dailyPercents = dashboard.daily.map { day ->
+            ((day.availabilityPercent ?: 0.0) * 100.0).toFloat()
+        }
         AppCard(title = stringResource(R.string.whitelist_availability_chart_daily_percent)) {
             DailyPercentBars(
                 labels = dashboard.daily.map { it.date },
-                values = dashboard.daily.map { day ->
-                    ((day.availabilityPercent ?: 0.0) * 100.0).toFloat()
-                },
+                percents = dailyPercents,
                 barColor = MaterialTheme.colorScheme.primary,
             )
         }
-        AppCard(title = stringResource(R.string.whitelist_availability_chart_transitions)) {
-            val maxTransitions = dashboard.daily.maxOf {
-                maxOf(it.becameAvailableCount, it.becameUnavailableCount)
-            }.coerceAtLeast(1).toFloat()
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                dashboard.daily.forEach { day ->
-                    Text(day.date, style = MaterialTheme.typography.labelSmall)
-                    HorizontalBarChart(
-                        label = stringResource(R.string.whitelist_availability_became_available),
-                        value = day.becameAvailableCount.toFloat(),
-                        maxValue = maxTransitions,
-                        barColor = MaterialTheme.colorScheme.primary,
-                    )
-                    HorizontalBarChart(
-                        label = stringResource(R.string.whitelist_availability_became_unavailable),
-                        value = day.becameUnavailableCount.toFloat(),
-                        maxValue = maxTransitions,
-                        barColor = MaterialTheme.colorScheme.error,
-                    )
+
+        val transitionCounts = dashboard.daily.flatMap {
+            listOf(it.becameAvailableCount, it.becameUnavailableCount)
+        }
+        if (hasMeaningfulCountChart(transitionCounts)) {
+            AppCard(title = stringResource(R.string.whitelist_availability_chart_transitions)) {
+                val maxTransitions = transitionCounts.maxOrNull()?.coerceAtLeast(1)?.toFloat() ?: 1f
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    dashboard.daily.forEach { day ->
+                        Text(day.date, style = MaterialTheme.typography.labelSmall)
+                        CountBarChart(
+                            label = stringResource(R.string.whitelist_availability_became_available),
+                            count = day.becameAvailableCount,
+                            maxCount = maxTransitions,
+                            barColor = MaterialTheme.colorScheme.primary,
+                        )
+                        CountBarChart(
+                            label = stringResource(R.string.whitelist_availability_became_unavailable),
+                            count = day.becameUnavailableCount,
+                            maxCount = maxTransitions,
+                            barColor = MaterialTheme.colorScheme.error,
+                        )
+                    }
                 }
             }
         }
@@ -137,41 +142,65 @@ fun WhitelistAvailabilitySection(
 
     if (dashboard.topUnstableTargets.isNotEmpty()) {
         AppCard(title = stringResource(R.string.whitelist_availability_chart_top_unstable)) {
-            TargetBarList(
-                targets = dashboard.topUnstableTargets,
-                valueSelector = { it.unstableScore.toFloat() },
-            )
+            TargetUnstableBarList(targets = dashboard.topUnstableTargets)
+        }
+    } else if (dashboard.summary.mostUnstableTargetLabel != null) {
+        AppCard(title = stringResource(R.string.whitelist_availability_chart_top_unstable)) {
+            ChartInsufficientDataMessage()
         }
     }
 
     if (dashboard.topAvailableTargets.isNotEmpty()) {
+        val percents = dashboard.topAvailableTargets.map {
+            ((it.availabilityPercent ?: 0.0) * 100.0).toFloat()
+        }
         AppCard(title = stringResource(R.string.whitelist_availability_chart_top_available)) {
-            TargetBarList(
-                targets = dashboard.topAvailableTargets,
-                valueSelector = { ((it.availabilityPercent ?: 0.0) * 100.0).toFloat() },
+            if (allPercentValuesAtLeast(percents, 99f)) {
+                ChartInsufficientDataMessage()
+            } else {
+                TargetAvailabilityBarList(targets = dashboard.topAvailableTargets)
+            }
+        }
+    }
+}
+
+@Composable
+private fun TargetUnstableBarList(targets: List<WhitelistTargetAvailabilityStats>) {
+    val resources = LocalContext.current.resources
+    val scores = targets.map { it.unstableScore }
+    val max = scores.maxOrNull()?.coerceAtLeast(1) ?: 1
+    if (allCountValuesEqual(scores)) {
+        ChartInsufficientDataMessage()
+        return
+    }
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        targets.zip(scores).forEach { (target, score) ->
+            CountBarChart(
+                label = StatisticsValueFormatter.formatTextLabel(resources, target.displayLabel),
+                count = score,
+                maxCount = max.toFloat(),
+                barColor = MaterialTheme.colorScheme.tertiary,
             )
         }
     }
 }
 
 @Composable
-private fun TargetBarList(
-    targets: List<WhitelistTargetAvailabilityStats>,
-    valueSelector: (WhitelistTargetAvailabilityStats) -> Float,
-) {
+private fun TargetAvailabilityBarList(targets: List<WhitelistTargetAvailabilityStats>) {
     val resources = LocalContext.current.resources
-    val values = targets.map(valueSelector)
-    val max = values.maxOrNull()?.coerceAtLeast(1f) ?: 1f
     Column(
         modifier = Modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        targets.zip(values).forEach { (target, value) ->
-            HorizontalBarChart(
+        targets.forEach { target ->
+            val percent = ((target.availabilityPercent ?: 0.0) * 100.0).toFloat()
+            PercentBarChart(
                 label = StatisticsValueFormatter.formatTextLabel(resources, target.displayLabel),
-                value = value,
-                maxValue = max,
-                barColor = MaterialTheme.colorScheme.tertiary,
+                percent = percent,
+                barColor = MaterialTheme.colorScheme.primary,
             )
         }
     }

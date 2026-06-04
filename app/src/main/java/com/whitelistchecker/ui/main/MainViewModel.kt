@@ -1184,9 +1184,11 @@ class MainViewModel(
         val summary = dashboard.summary
         return HomeStatisticsUiState.Content(
             totalRuns = summary.totalRuns,
-            successRate = summary.successRate,
-            lastSuccessAt = summary.lastSuccessAt,
-            consecutiveFailureCount = summary.consecutiveFailureCount,
+            fullySuccessfulRate = summary.successRate,
+            partialFailureRuns = summary.partialFailureRuns,
+            failureRuns = summary.failureRuns,
+            lastRunAt = summary.lastRunAt,
+            consecutiveFullFailureCount = summary.consecutiveFailureCount,
             isStale = dashboard.isStale,
         )
     }

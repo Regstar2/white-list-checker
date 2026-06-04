@@ -62,7 +62,8 @@ class CheckStatisticsCalculatorTest {
             ),
         )
         assertEquals(1, snapshot.summary.partialFailureRuns)
-        assertEquals(1, snapshot.summary.consecutiveFailureCount)
+        assertEquals(0, snapshot.summary.consecutiveFailureCount)
+        assertNull(snapshot.summary.lastFailureAt)
     }
 
     @Test
