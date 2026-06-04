@@ -1,5 +1,12 @@
 # Reliability checklist
 
+## v0.8.6 — Whitelist-First Statistics UI
+
+- Главный экран: карточка статистики показывает whitelist summary.
+- Экран «Статистика»: без полной technical check statistics в основном потоке.
+- Диагностика: rebuild и агрегаты проверок доступны.
+- Перезапуск и обновление с v0.8.5: данные whitelist availability сохранены.
+
 # v0.8.3 — Statistics Reliability & Diagnostics
 
 ## Проверка после перезапуска

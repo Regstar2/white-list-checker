@@ -97,6 +97,10 @@ class RoomWhitelistAvailabilityRepository(
             .take(limit)
     }
 
+    override suspend fun getRecentEvents(limit: Int): List<WhitelistAvailabilityEvent> {
+        return dao.getRecentEvents(limit).map(WhitelistAvailabilityEntityMapper::toDomain)
+    }
+
     override suspend fun replaceAll(
         snapshot: WhitelistAvailabilitySnapshot,
         events: List<WhitelistAvailabilityEvent>,

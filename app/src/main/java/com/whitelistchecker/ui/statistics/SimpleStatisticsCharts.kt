@@ -53,12 +53,13 @@ fun CountBarChart(
     maxCount: Float,
     barColor: Color,
     modifier: Modifier = Modifier,
+    valueLabel: String? = null,
 ) {
     val safeMax = maxCount.coerceAtLeast(1f)
     val fraction = (count.toFloat() / safeMax).coerceIn(0f, 1f)
     val trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f)
     Column(modifier = modifier.fillMaxWidth()) {
-        BarHeader(label = label, valueLabel = count.toString())
+        BarHeader(label = label, valueLabel = valueLabel ?: count.toString())
         BarCanvas(fraction = fraction, barColor = barColor, trackColor = trackColor)
     }
 }

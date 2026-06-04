@@ -48,6 +48,7 @@ fun MainScreen(viewModel: MainViewModel) {
             uiState = uiState.statisticsUiState,
             onBack = viewModel::goHome,
             onRetry = viewModel::retryStatisticsLoad,
+            onOpenDiagnostics = { viewModel.openScreen(AppScreen.DIAGNOSTICS) },
         )
         AppScreen.NOTIFICATIONS -> NotificationsScreen(
             uiState = uiState,

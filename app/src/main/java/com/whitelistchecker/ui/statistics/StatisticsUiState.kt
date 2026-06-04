@@ -12,6 +12,15 @@ sealed class StatisticsUiState {
         val dashboard: StatisticsDashboard,
         val whitelistAvailability: WhitelistAvailabilityDashboard? = null,
         val whitelistAvailabilityEmpty: Boolean = false,
+        val freshness: StatisticsFreshnessUi = StatisticsFreshnessUi(
+            dataUpdatedAt = null,
+            isStale = false,
+            isLowSample = true,
+            lastCheckAt = null,
+            lastCheckStatus = LastCheckTechnicalStatus.NONE,
+            targetsCheckedAvailable = 0,
+            targetsCheckedTotal = 0,
+        ),
     ) : StatisticsUiState()
 
     data class Error(
@@ -25,12 +34,10 @@ sealed class HomeStatisticsUiState {
     data object Loading : HomeStatisticsUiState()
 
     data class Content(
-        val totalRuns: Int,
-        val fullySuccessfulRate: Double?,
-        val partialFailureRuns: Int,
-        val failureRuns: Int,
-        val lastRunAt: Long?,
-        val consecutiveFullFailureCount: Int,
+        val availableTargets: Int,
+        val availabilityPercent: Double?,
+        val periodChanges: Int,
+        val lastUpdatedAt: Long?,
         val isStale: Boolean,
     ) : HomeStatisticsUiState()
 

@@ -69,6 +69,15 @@ interface WhitelistAvailabilityDao {
     @Query("SELECT COUNT(*) FROM whitelist_availability_events")
     suspend fun countEvents(): Int
 
+    @Query(
+        """
+        SELECT * FROM whitelist_availability_events
+        ORDER BY detectedAt DESC
+        LIMIT :limit
+        """,
+    )
+    suspend fun getRecentEvents(limit: Int): List<WhitelistAvailabilityEventEntity>
+
     @Transaction
     suspend fun replaceAll(
         summary: WhitelistAvailabilitySummaryEntity,

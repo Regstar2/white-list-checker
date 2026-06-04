@@ -74,6 +74,25 @@ internal object WhitelistAvailabilityEntityMapper {
         )
     }
 
+    fun toDomain(entity: WhitelistAvailabilityEventEntity): WhitelistAvailabilityEvent {
+        return WhitelistAvailabilityEvent(
+            id = entity.id,
+            targetId = entity.targetId,
+            targetLabel = entity.targetLabel,
+            previousState = WhitelistAvailabilityState.valueOf(entity.previousState),
+            newState = WhitelistAvailabilityState.valueOf(entity.newState),
+            transitionType = WhitelistAvailabilityTransitionType.valueOf(entity.transitionType),
+            detectedAt = entity.detectedAt,
+            checkRunId = entity.checkRunId,
+            routeKind = entity.routeKind,
+            networkType = entity.networkType,
+            operatorName = entity.operatorName,
+            latencyMs = entity.latencyMs,
+            errorCode = entity.errorCode,
+            createdAt = entity.createdAt,
+        )
+    }
+
     fun toEntity(target: WhitelistTargetAvailabilityStats): WhitelistTargetAvailabilityEntity {
         return WhitelistTargetAvailabilityEntity(
             targetId = target.targetId,

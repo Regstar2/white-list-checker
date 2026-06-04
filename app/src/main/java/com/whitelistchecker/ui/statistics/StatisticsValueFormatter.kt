@@ -2,6 +2,9 @@ package com.whitelistchecker.ui.statistics
 
 import android.content.res.Resources
 import com.whitelistchecker.R
+import com.whitelistchecker.domain.model.availability.WhitelistAvailabilityEvent
+import com.whitelistchecker.domain.model.availability.WhitelistAvailabilityState
+import com.whitelistchecker.domain.model.availability.WhitelistAvailabilityTransitionType
 import com.whitelistchecker.domain.statistics.StatisticsNumericSanitizer
 import com.whitelistchecker.ui.home.LastCheckAgeFormatter
 import java.net.URI
@@ -74,6 +77,89 @@ object StatisticsValueFormatter {
         } else {
             resources.getString(pluralRes, count)
         }
+    }
+
+    fun formatChangeCount(resources: Resources, count: Int): String {
+        return formatCount(
+            resources,
+            count,
+            R.string.statistics_change_count_one,
+            R.string.statistics_change_count_many,
+        )
+    }
+
+    fun formatUnstableScore(resources: Resources, score: Int): String {
+        return formatCount(
+            resources,
+            score,
+            R.string.statistics_unstable_score_one,
+            R.string.statistics_unstable_score_many,
+        )
+    }
+
+    fun formatBecameAvailableCount(resources: Resources, count: Int): String {
+        return formatCount(
+            resources,
+            count,
+            R.string.statistics_became_available_one,
+            R.string.statistics_became_available_many,
+        )
+    }
+
+    fun formatBecameUnavailableCount(resources: Resources, count: Int): String {
+        return formatCount(
+            resources,
+            count,
+            R.string.statistics_became_unavailable_one,
+            R.string.statistics_became_unavailable_many,
+        )
+    }
+
+    fun formatWhitelistState(resources: Resources, state: WhitelistAvailabilityState): String {
+        return when (state) {
+            WhitelistAvailabilityState.AVAILABLE ->
+                resources.getString(R.string.whitelist_target_state_available)
+            WhitelistAvailabilityState.UNAVAILABLE ->
+                resources.getString(R.string.whitelist_target_state_unavailable)
+            WhitelistAvailabilityState.UNKNOWN ->
+                resources.getString(R.string.whitelist_target_state_unknown)
+            WhitelistAvailabilityState.ERROR ->
+                resources.getString(R.string.whitelist_target_state_error)
+        }
+    }
+
+    fun formatTechnicalCheckStatus(resources: Resources, status: LastCheckTechnicalStatus): String {
+        return when (status) {
+            LastCheckTechnicalStatus.NONE ->
+                resources.getString(R.string.statistics_value_not_available)
+            LastCheckTechnicalStatus.COMPLETED ->
+                resources.getString(R.string.statistics_last_check_completed)
+            LastCheckTechnicalStatus.PARTIAL ->
+                resources.getString(R.string.statistics_last_check_partial)
+            LastCheckTechnicalStatus.FAILED ->
+                resources.getString(R.string.statistics_last_check_failed)
+        }
+    }
+
+    fun formatRecentEventLine(
+        resources: Resources,
+        event: WhitelistAvailabilityEvent,
+        nowMillis: Long,
+    ): String {
+        val label = formatEndpointLabel(resources, event.targetLabel, event.targetId)
+        val time = formatRelativeTime(resources, event.detectedAt, nowMillis)
+        val action = when (event.transitionType) {
+            WhitelistAvailabilityTransitionType.BECAME_AVAILABLE,
+            WhitelistAvailabilityTransitionType.UNKNOWN_TO_AVAILABLE,
+            -> resources.getString(R.string.whitelist_event_became_available)
+            WhitelistAvailabilityTransitionType.BECAME_UNAVAILABLE,
+            WhitelistAvailabilityTransitionType.UNKNOWN_TO_UNAVAILABLE,
+            -> resources.getString(R.string.whitelist_event_became_unavailable)
+            WhitelistAvailabilityTransitionType.ERROR_STATE ->
+                resources.getString(R.string.whitelist_event_result_unknown)
+            else -> resources.getString(R.string.whitelist_event_result_unknown)
+        }
+        return resources.getString(R.string.whitelist_recent_event_line, label, action, time)
     }
 
     fun sanitizeHost(value: String?): String {

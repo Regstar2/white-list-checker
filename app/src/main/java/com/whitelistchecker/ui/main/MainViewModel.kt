@@ -44,7 +44,9 @@ import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.diagnostics.RebuildStatisticsUiState
 import com.whitelistchecker.ui.diagnostics.StatisticsDiagnosticsUiState
+import com.whitelistchecker.ui.statistics.HomeStatisticsMapper
 import com.whitelistchecker.ui.statistics.HomeStatisticsUiState
+import com.whitelistchecker.ui.statistics.StatisticsFreshnessMapper
 import com.whitelistchecker.ui.statistics.StatisticsUiState
 import com.whitelistchecker.ui.userMessage
 import com.whitelistchecker.worker.BackgroundCheckScheduler
@@ -1130,42 +1132,58 @@ class MainViewModel(
         }
         val whitelistEmpty = whitelistResult is WhitelistAvailabilityLoadResult.Empty
 
-        when (checkResult) {
-            StatisticsLoadResult.Empty -> {
-                if (whitelistDashboard != null) {
-                    _uiState.update {
-                        it.copy(
-                            statisticsUiState = StatisticsUiState.Content(
-                                dashboard = emptyCheckStatisticsDashboard(),
-                                whitelistAvailability = whitelistDashboard,
-                                whitelistAvailabilityEmpty = false,
-                            ),
-                            homeStatisticsUiState = HomeStatisticsUiState.Hidden,
-                        )
-                    }
-                } else {
-                    _uiState.update {
-                        it.copy(
-                            statisticsUiState = StatisticsUiState.Empty,
-                            homeStatisticsUiState = HomeStatisticsUiState.Hidden,
-                        )
-                    }
-                }
-            }
-            is StatisticsLoadResult.Success -> {
+        val checkDashboard = when (checkResult) {
+            is StatisticsLoadResult.Success -> checkResult.dashboard
+            else -> emptyCheckStatisticsDashboard()
+        }
+        val hasWhitelistContent = whitelistDashboard != null && !whitelistEmpty
+
+        when {
+            !hasWhitelistContent && checkResult is StatisticsLoadResult.Empty -> {
                 _uiState.update {
                     it.copy(
-                        statisticsUiState = StatisticsUiState.Content(
-                            dashboard = checkResult.dashboard,
-                            whitelistAvailability = whitelistDashboard,
-                            whitelistAvailabilityEmpty = whitelistEmpty,
-                        ),
-                        homeStatisticsUiState = toHomeStatisticsUiState(checkResult.dashboard),
+                        statisticsUiState = StatisticsUiState.Empty,
+                        homeStatisticsUiState = HomeStatisticsUiState.Hidden,
                     )
                 }
             }
-            is StatisticsLoadResult.Failure -> Unit
+            else -> {
+                _uiState.update { state ->
+                    state.copy(
+                        statisticsUiState = buildStatisticsContent(
+                            state = state,
+                            checkDashboard = checkDashboard,
+                            whitelistDashboard = whitelistDashboard,
+                            whitelistEmpty = whitelistEmpty,
+                        ),
+                        homeStatisticsUiState = HomeStatisticsMapper.map(whitelistDashboard),
+                    )
+                }
+            }
         }
+    }
+
+    private fun buildStatisticsContent(
+        state: MainUiState,
+        checkDashboard: StatisticsDashboard,
+        whitelistDashboard: com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard?,
+        whitelistEmpty: Boolean,
+    ): StatisticsUiState.Content {
+        val summary = whitelistDashboard?.summary
+        val freshness = StatisticsFreshnessMapper.map(
+            checkDashboard = checkDashboard,
+            lastCheck = state.result,
+            lastCheckDisplay = state.lastCheckDisplayState,
+            whitelistAvailableTargets = summary?.currentlyAvailableTargets ?: 0,
+            whitelistTotalTargets = summary?.totalTargets ?: 0,
+            whitelistLowSample = (summary?.totalTargets ?: 0) < 3,
+        )
+        return StatisticsUiState.Content(
+            dashboard = checkDashboard,
+            whitelistAvailability = whitelistDashboard,
+            whitelistAvailabilityEmpty = whitelistEmpty,
+            freshness = freshness,
+        )
     }
 
     private fun emptyCheckStatisticsDashboard(): StatisticsDashboard {
@@ -1177,19 +1195,6 @@ class MainViewModel(
             daily = emptyList(),
             isStale = false,
             lastUpdatedAt = null,
-        )
-    }
-
-    private fun toHomeStatisticsUiState(dashboard: StatisticsDashboard): HomeStatisticsUiState.Content {
-        val summary = dashboard.summary
-        return HomeStatisticsUiState.Content(
-            totalRuns = summary.totalRuns,
-            fullySuccessfulRate = summary.successRate,
-            partialFailureRuns = summary.partialFailureRuns,
-            failureRuns = summary.failureRuns,
-            lastRunAt = summary.lastRunAt,
-            consecutiveFullFailureCount = summary.consecutiveFailureCount,
-            isStale = dashboard.isStale,
         )
     }
 

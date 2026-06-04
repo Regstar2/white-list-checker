@@ -42,12 +42,12 @@ fun HomeStatisticsSummaryCard(
         }
         is HomeStatisticsUiState.Content -> {
             val resources = LocalContext.current.resources
-            val nowMillis = remember(uiState.lastRunAt) { System.currentTimeMillis() }
-            val fullySuccessfulLabel = StatisticsValueFormatter.formatSuccessRate(uiState.fullySuccessfulRate)
+            val nowMillis = remember(uiState.lastUpdatedAt) { System.currentTimeMillis() }
+            val availabilityLabel = StatisticsValueFormatter.formatPercentFraction(uiState.availabilityPercent)
                 .ifBlank { stringResource(R.string.statistics_value_not_available) }
-            val lastRunLabel = StatisticsValueFormatter.formatRelativeTime(
+            val lastUpdatedLabel = StatisticsValueFormatter.formatRelativeTime(
                 resources,
-                uiState.lastRunAt,
+                uiState.lastUpdatedAt,
                 nowMillis,
             )
             AppCard(title = stringResource(R.string.statistics_title)) {
@@ -59,28 +59,22 @@ fun HomeStatisticsSummaryCard(
                         )
                     }
                     CompactDetailRow(
-                        stringResource(R.string.statistics_total_runs),
-                        uiState.totalRuns.toString(),
+                        stringResource(R.string.statistics_home_available_targets),
+                        uiState.availableTargets.toString(),
                     )
                     CompactDetailRow(
-                        stringResource(R.string.statistics_fully_successful_rate),
-                        fullySuccessfulLabel,
+                        stringResource(R.string.whitelist_availability_percent),
+                        availabilityLabel,
                     )
-                    if (uiState.partialFailureRuns > 0) {
+                    if (uiState.periodChanges > 0) {
                         CompactDetailRow(
-                            stringResource(R.string.statistics_partial_failure_runs),
-                            uiState.partialFailureRuns.toString(),
-                        )
-                    }
-                    if (uiState.consecutiveFullFailureCount > 0) {
-                        CompactDetailRow(
-                            stringResource(R.string.statistics_consecutive_full_failures),
-                            uiState.consecutiveFullFailureCount.toString(),
+                            stringResource(R.string.whitelist_availability_period_changes),
+                            uiState.periodChanges.toString(),
                         )
                     }
                     CompactDetailRow(
-                        stringResource(R.string.statistics_last_run),
-                        lastRunLabel,
+                        stringResource(R.string.statistics_last_check),
+                        lastUpdatedLabel,
                     )
                     Button(
                         onClick = onOpenStatistics,

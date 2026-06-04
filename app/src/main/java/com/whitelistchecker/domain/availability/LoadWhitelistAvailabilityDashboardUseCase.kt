@@ -16,17 +16,20 @@ class LoadWhitelistAvailabilityDashboardUseCase(
             val summary = repository.getSummary()
             val daily = repository.getDailyStatistics(WhitelistAvailabilityConfig.CHART_DAYS_LIMIT)
                 .sortedBy { it.date }
-            val targets = repository.getTargetStatistics(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT * 2)
-            val topAvailable = targets
-                .filter { (it.availabilityPercent ?: 0.0) > 0.0 }
-                .sortedByDescending { it.availabilityPercent ?: 0.0 }
-                .take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
+            val targets = repository.getTargetStatistics(WhitelistAvailabilityConfig.TARGET_STATES_LIMIT)
+            val targetStates = targets.sortedBy { it.displayLabel.lowercase() }
+            val recentEvents = repository.getRecentEvents(WhitelistAvailabilityConfig.RECENT_EVENTS_LIMIT)
+            val topAvailable = filterTopAvailableTargets(targets)
+            val topStable = filterTopStableTargets(targets)
             val topUnstable = filterTopUnstableTargets(targets)
 
             val dashboard = WhitelistAvailabilityDashboard(
                 summary = summary,
                 daily = daily,
+                targetStates = targetStates,
+                recentEvents = recentEvents,
                 topAvailableTargets = topAvailable,
+                topStableTargets = topStable,
                 topUnstableTargets = topUnstable,
                 lastUpdatedAt = summary.lastUpdatedAt.takeIf { it > 0L },
                 isStale = staleResolver.isStale(summary.lastUpdatedAt, nowMillis),
@@ -35,6 +38,39 @@ class LoadWhitelistAvailabilityDashboardUseCase(
         } catch (exception: Exception) {
             WhitelistAvailabilityLoadResult.Failure(exception)
         }
+    }
+
+    private fun filterTopAvailableTargets(
+        targets: List<WhitelistTargetAvailabilityStats>,
+    ): List<WhitelistTargetAvailabilityStats> {
+        val filtered = targets
+            .filter { (it.availabilityPercent ?: 0.0) > 0.0 }
+            .sortedByDescending { it.availabilityPercent ?: 0.0 }
+        if (filtered.isEmpty()) return emptyList()
+        val percents = filtered.map { it.availabilityPercent ?: 0.0 }
+        if (percents.distinct().size <= 1 && percents.all { it >= 0.999 }) {
+            return emptyList()
+        }
+        return filtered.take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
+    }
+
+    private fun filterTopStableTargets(
+        targets: List<WhitelistTargetAvailabilityStats>,
+    ): List<WhitelistTargetAvailabilityStats> {
+        if (targets.isEmpty()) return emptyList()
+        val sorted = targets
+            .filter { (it.availabilityPercent ?: 0.0) > 0.0 }
+            .sortedWith(
+                compareByDescending<WhitelistTargetAvailabilityStats> { it.availabilityPercent ?: 0.0 }
+                    .thenBy { it.unstableScore },
+            )
+        if (sorted.isEmpty()) return emptyList()
+        val distinctAvailability = sorted.map { it.availabilityPercent ?: 0.0 }.distinct()
+        val distinctUnstable = sorted.map { it.unstableScore }.distinct()
+        if (distinctAvailability.size <= 1 && distinctUnstable.size <= 1) {
+            return emptyList()
+        }
+        return sorted.take(WhitelistAvailabilityConfig.TOP_TARGETS_LIMIT)
     }
 
     private fun filterTopUnstableTargets(

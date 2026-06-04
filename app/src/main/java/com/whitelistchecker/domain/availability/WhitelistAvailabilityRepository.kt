@@ -23,6 +23,8 @@ interface WhitelistAvailabilityRepository {
 
     suspend fun getTargetStatistics(limit: Int): List<WhitelistTargetAvailabilityStats>
 
+    suspend fun getRecentEvents(limit: Int): List<WhitelistAvailabilityEvent>
+
     suspend fun replaceAll(snapshot: WhitelistAvailabilitySnapshot, events: List<WhitelistAvailabilityEvent>)
 
     suspend fun clearAll()
