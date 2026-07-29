@@ -1,5 +1,63 @@
 # Changelog
 
+## 0.8.15 — Fixed public service URL and area/operator selection
+
+### Added
+
+- Добавлен единый фиксированный `BuildConfig.PUBLIC_SERVICE_BASE_URL` для центрального общего сервиса.
+- Добавлено автоопределение региона и города через платформенный `LocationManager` + `Geocoder` после явного действия пользователя.
+- Добавлен ручной searchable fallback выбора региона и города; город остаётся необязательным.
+- Добавлено автоопределение оператора по active/default data subscription через `TelephonyManager`.
+- Добавлен ручной searchable fallback выбора оператора и режим ручного override.
+- Public report DTO расширен полями `cityCode`, `customCityName`, `areaSource`, `operatorSource`.
+- Worker получил catalog endpoints и отдельный privacy threshold для city-level aggregation.
+
+### Changed
+
+- С экрана «Общий сервис и Telegram-бот» удалено редактируемое поле URL общего сервиса.
+- Большие наборы chips региона и оператора заменены компактными строками настройки и searchable dialogs.
+- Старые `regionCode` и `operatorCode` мигрируются как ручной подтверждённый выбор.
+- Старое поле `public_service_base_url` больше не используется и очищается при сохранении настроек центрального сервиса.
+- Версия приложения поднята до `0.8.15` / `versionCode 23`.
+
+### Security
+
+- Координаты, точный адрес, номер телефона, IMSI, IMEI и SIM serial не сохраняются и не отправляются.
+- `READ_PHONE_STATE` не добавлялся; номер телефона и идентификаторы SIM не читаются.
+- Личный Telegram relay и его пользовательский Worker URL сохранены отдельно от центрального сервиса.
+
+## 0.8.14 — Central public Telegram service MVP
+
+### Added
+
+- Добавлен отдельный Cloudflare Worker `cloudflare/public-service/` для центрального публичного Telegram-сервиса.
+- Добавлены D1-миграции для installations, reports, link codes, Telegram users, linked devices, remote commands и command results.
+- Добавлен public aggregate flow: бот показывает «Статус по данным пользователей» без требования установить Android-приложение.
+- Добавлен `PublicStatusAggregator`: primary/fallback window, minimum sample, consensus threshold и правило «один последний report на installation».
+- Добавлен Android `PublicServiceClient`, lazy registration, защищённое хранение device token через Android Keystore и отдельная очередь `pending_public_reports`.
+- Добавлен экран «Общий сервис» с независимыми согласиями `shareReports` и `allowRemoteChecks`.
+- Добавлена привязка Telegram-чата к устройству через одноразовый `/link` code.
+- Добавлен polling central Worker из `ActiveMonitoringService` и remote command `CHECK_NOW`.
+- Добавлен trigger истории `REMOTE_TELEGRAM`.
+
+### Changed
+
+- Быстрые действия на главном экране получили пункт «Общий сервис».
+- Версия приложения поднята до `0.8.14` / `versionCode 22`.
+
+### Security
+
+- Личный Telegram relay сохранён отдельно и не смешивается с центральным сервисом.
+- `BOT_TOKEN` пользовательского relay по-прежнему не хранится в Android.
+- Device token центрального сервиса не хранится в D1 в сыром виде.
+- Public sharing и remote checks выключены по умолчанию и включаются разными согласиями.
+
+### Notes
+
+- Production deploy Worker и настройка реального Telegram webhook не выполнялись автоматически.
+- Remote checks работают только пока Android foreground service реально активен.
+- Public aggregate зависит от числа пользователей и не является официальным статусом оператора.
+
 ## 0.8.13 — Active monitoring and notification policies
 
 ### Added

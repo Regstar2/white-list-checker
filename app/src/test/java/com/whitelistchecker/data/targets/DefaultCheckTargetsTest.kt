@@ -52,6 +52,17 @@ class DefaultCheckTargetsTest {
         assertFalse(merged.any { it.url == "https://dzen.ru" })
     }
 
+    @Test
+    fun mergeNewBuiltIns_doesNotRestoreDeletedExpandedBuiltInTargets() {
+        val customized = DefaultCheckTargets.defaults()
+            .filterNot { it.url == "https://www.mozilla.org" }
+
+        val merged = DefaultCheckTargets.mergeNewBuiltIns(customized)
+
+        assertEquals(customized, merged)
+        assertFalse(merged.any { it.url == "https://www.mozilla.org" })
+    }
+
     private fun target(
         id: String,
         name: String,

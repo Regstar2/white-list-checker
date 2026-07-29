@@ -12,7 +12,11 @@ object DefaultCheckTargets {
 
         val storedUrls = storedTargets.map { it.url.normalizedUrl() }.toSet()
         val legacyUrls = legacyDefaultUrls()
-        if (!legacyUrls.all { it in storedUrls }) {
+        val newBuiltInUrls = defaults()
+            .map { it.url.normalizedUrl() }
+            .filterNot { it in legacyUrls }
+            .toSet()
+        if (!legacyUrls.all { it in storedUrls } || newBuiltInUrls.any { it in storedUrls }) {
             return storedTargets
         }
 

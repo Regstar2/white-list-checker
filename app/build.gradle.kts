@@ -13,11 +13,25 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 21
-        versionName = "0.8.13"
+        versionCode = 23
+        versionName = "0.8.15"
+
+        buildConfigField(
+            "String",
+            "PUBLIC_SERVICE_BASE_URL",
+            "\"https://whitelistchecker-public-service.regstar2.workers.dev\"",
+        )
     }
 
     buildTypes {
+        debug {
+            buildConfigField(
+                "String",
+                "PUBLIC_SERVICE_BASE_URL",
+                "\"https://whitelistchecker-public-service-dev.regstar2.workers.dev\"",
+            )
+        }
+
         release {
             isMinifyEnabled = false
             proguardFiles(
@@ -38,6 +52,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

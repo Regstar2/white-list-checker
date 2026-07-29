@@ -19,6 +19,7 @@ import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.history.CheckTriggerType
 import com.whitelistchecker.domain.notifications.CheckAndLocalNotifyUseCase
+import com.whitelistchecker.domain.publicservice.PublicReportUploadUseCase
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
 import com.whitelistchecker.domain.statistics.WhitelistTimelineWriter
 
@@ -34,6 +35,7 @@ class CheckAndNotifyUseCase(
     private val saveCheckHistoryUseCase: SaveCheckHistoryUseCase,
     private val localStatisticsWriter: LocalStatisticsWriter,
     private val whitelistTimelineWriter: WhitelistTimelineWriter,
+    private val publicReportUploadUseCase: PublicReportUploadUseCase? = null,
 ) {
 
     suspend fun execute(
@@ -121,6 +123,14 @@ class CheckAndNotifyUseCase(
             decision = decision,
             checkResult = checkResult,
         )
+        runCatching {
+            publicReportUploadUseCase?.onCheckCompleted(
+                result = checkResult,
+                triggerType = triggerType,
+            )
+        }.onFailure { exception ->
+            Log.w(TAG, "Failed to enqueue or upload public report", exception)
+        }
         val telegramSendResult = telegramEventNotifierUseCase.notifyDecisionIfNeeded(
             decision = decision,
             checkResult = checkResult,

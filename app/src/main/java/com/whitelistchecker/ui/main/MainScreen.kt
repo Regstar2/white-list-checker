@@ -19,6 +19,7 @@ import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
 import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.notifications.NotificationsScreen
+import com.whitelistchecker.ui.publicservice.PublicServiceScreen
 import com.whitelistchecker.ui.statistics.StatisticsScreen
 
 @Composable
@@ -30,6 +31,15 @@ fun MainScreen(viewModel: MainViewModel) {
         contract = ActivityResultContracts.RequestPermission(),
     ) { granted ->
         viewModel.onNotificationPermissionResult(granted)
+    }
+    val locationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        if (granted) {
+            viewModel.detectPublicServiceArea()
+        } else {
+            viewModel.markPublicServiceLocationPermissionDenied()
+        }
     }
 
     LaunchedEffect(lifecycleOwner) {
@@ -111,6 +121,31 @@ fun MainScreen(viewModel: MainViewModel) {
             onStartActiveMonitoring = viewModel::startActiveMonitoring,
             onStopActiveMonitoring = viewModel::stopActiveMonitoring,
             onRunActiveCheckNow = viewModel::runActiveMonitoringCheckNow,
+        )
+        AppScreen.PUBLIC_SERVICE -> PublicServiceScreen(
+            uiState = uiState,
+            onBack = viewModel::goHome,
+            onShareReportsChange = viewModel::updatePublicServiceShareReports,
+            onRemoteChecksChange = viewModel::updatePublicServiceRemoteChecks,
+            onRequestLocationPermission = {
+                locationPermissionLauncher.launch(Manifest.permission.ACCESS_COARSE_LOCATION)
+            },
+            onDetectArea = viewModel::detectPublicServiceArea,
+            onConfirmDetectedArea = viewModel::confirmDetectedPublicServiceArea,
+            onDismissDetectedArea = viewModel::dismissDetectedPublicServiceArea,
+            onRegionChange = viewModel::selectPublicServiceRegion,
+            onCityChange = viewModel::selectPublicServiceCity,
+            onClearCity = viewModel::clearPublicServiceCity,
+            onDetectOperator = viewModel::detectPublicServiceOperator,
+            onUseAutoOperator = viewModel::useAutoPublicServiceOperator,
+            onOperatorChange = viewModel::selectPublicServiceOperator,
+            onDeviceAliasChange = viewModel::updatePublicServiceDeviceAlias,
+            onSaveSettings = viewModel::savePublicServiceSettings,
+            onCreateLinkCode = viewModel::createPublicServiceLinkCode,
+            onRefreshLinks = viewModel::refreshPublicServiceLinks,
+            onRevokeLink = viewModel::revokePublicServiceLink,
+            onRetryReports = viewModel::retryPublicReportUpload,
+            onDeleteServerData = viewModel::deletePublicServiceServerData,
         )
         AppScreen.DIAGNOSTICS -> DiagnosticsScreen(
             uiState = uiState,

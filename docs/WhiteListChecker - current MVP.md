@@ -111,6 +111,7 @@ v0.4.2 — Telegram через Cloudflare Worker relay
 v0.5   — очередь Telegram
 v0.6   — WorkManager
 v0.7   — split UI, multi-recipient, editable sites, diagnostics, UI polish
+v0.8   — история, статистика, активный мониторинг, центральный public service MVP
 ```
 
 ## v0.8.13 update — активный мониторинг и команды Telegram
@@ -141,3 +142,34 @@ Telegram-команды:
 - команды работают только пока активный мониторинг запущен и включён соответствующий переключатель;
 - авторизация выполняется точным сравнением `chatId` с включёнными получателями;
 - polling идёт через пользовательский Cloudflare Worker relay, Android не хранит `BOT_TOKEN` и не вызывает `api.telegram.org` напрямую.
+
+## v0.8.14–v0.8.15 update — центральный public service
+
+Центральный сервис отделён от личного Telegram relay:
+
+```text
+Android-приложения пользователей → central Cloudflare Worker → D1 → public Telegram bot
+```
+
+Личный relay остаётся прежним:
+
+```text
+Android → user-owned Cloudflare Worker → личный Telegram bot
+```
+
+Общий сервис:
+
+- принимает добровольные обезличенные reports;
+- показывает публичный агрегированный статус без требования установить приложение;
+- позволяет связать Telegram-чат с устройством для приватной remote check;
+- remote check работает только пока активный foreground service реально запущен.
+
+В Android:
+
+- `shareReports=false` и `allowRemoteChecks=false` по умолчанию;
+- URL центрального сервиса встроен в `BuildConfig.PUBLIC_SERVICE_BASE_URL` и не редактируется пользователем;
+- личный `Worker URL` Telegram relay остаётся отдельной пользовательской настройкой;
+- регион обязателен для отправки public reports, город необязателен;
+- автоопределение региона/города запускается только по кнопке, использует approximate location и требует подтверждения;
+- координаты и raw address не сохраняются и не отправляются;
+- оператор определяется по active/default data subscription или выбирается вручную.

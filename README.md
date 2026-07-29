@@ -9,7 +9,7 @@ Android-приложение для проверки мобильной сети
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
-Текущая dev-версия: **0.8.13**
+Текущая dev-версия: **0.8.15**
 
 Последний релиз: [v0.7.1-hotfix](docs/releases/v0.7.1-hotfix.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
 
@@ -32,6 +32,11 @@ WhiteListChecker определяет **признаки сетевого реж
 - политики уведомлений для автопроверки;
 - активный мониторинг через foreground service с постоянным уведомлением;
 - команды Telegram-бота `/status`, `/check`, `/help` во время активного мониторинга;
+- центральный Cloudflare-сервис с публичным Telegram-ботом для агрегированных данных;
+- добровольная отправка обезличенных результатов в общий сервис;
+- фиксированный URL центрального сервиса из `BuildConfig`, без пользовательского поля URL;
+- автоматическое и ручное определение региона, города и мобильного оператора для public reports;
+- привязка Telegram-чата к устройству для удалённой проверки во время активного мониторинга;
 - диагностика;
 - редактируемые сайты.
 
@@ -42,6 +47,7 @@ WhiteListChecker определяет **признаки сетевого реж
 - `INTERNET` — сетевые проверки;
 - `ACCESS_NETWORK_STATE` — чтение активной сети и состояния подключений;
 - `CHANGE_NETWORK_STATE` — требуется для `ConnectivityManager.requestNetwork()`, чтобы явно запросить мобильную сеть при активном Wi-Fi;
+- `ACCESS_COARSE_LOCATION` — разовое приблизительное местоположение по явному нажатию пользователя для определения региона и города;
 - `FOREGROUND_SERVICE` — запуск активного мониторинга с постоянным уведомлением;
 - `FOREGROUND_SERVICE_DATA_SYNC` — тип foreground service для сетевой синхронизации на Android 14+;
 - `POST_NOTIFICATIONS` — локальные уведомления на Android 13+;
@@ -77,6 +83,10 @@ WhiteListChecker определяет **признаки сетевого реж
 - Telegram-уведомления через **пользовательский Cloudflare Worker relay**;
 - несколько Telegram-получателей;
 - очередь неотправленных Telegram-сообщений (Room);
+- публичный Telegram-бот центрального сервиса без требования установить приложение;
+- отдельные согласия на отправку обезличенных reports и удалённые проверки;
+- автоопределение региона/города через платформенный `LocationManager` + `Geocoder` с ручным fallback;
+- автоопределение оператора по active/default data subscription с ручным override;
 - автопроверка через **WorkManager**;
 - редактируемый список сайтов;
 - диагностика и подробный отчёт.
@@ -101,6 +111,11 @@ WhiteListChecker определяет **признаки сетевого реж
 - [Текущий MVP](docs/WhiteListChecker%20-%20current%20MVP.md)
 - [Стек технологий](docs/stack.md)
 - [Cloudflare Worker relay](docs/cloudflare-worker/README.md)
+- [Центральный публичный сервис](docs/architecture/central-public-service.md)
+- [Cloudflare Public Service](docs/cloudflare-public-service/README.md)
+- [Public report contract](docs/architecture/public-report-contract.md)
+- [Remote command flow](docs/architecture/remote-command-flow.md)
+- [Public data sharing privacy](docs/privacy/public-data-sharing.md)
 - [Mobile routing, VPN и Private DNS](docs/network-routing-notes.md)
 - [Telegram bot buttons and distributed reports](docs/telegram-bot-controls-design.md)
 - [Changelog](CHANGELOG.md)
@@ -161,6 +176,42 @@ WhiteListChecker **не хранит BOT_TOKEN** в Android.
 Android → user's Cloudflare Worker → Telegram Bot API
 ```
 
+## Центральный публичный сервис
+
+Начиная с dev-версии 0.8.14 проект содержит отдельный Cloudflare Worker MVP для центрального публичного сервиса:
+
+```text
+Android-приложения пользователей → центральный Cloudflare Worker → D1 → публичный Telegram-бот
+```
+
+Это не замена личного Telegram relay.
+
+Начиная с dev-версии 0.8.15 URL центрального сервиса встроен в сборку через `BuildConfig.PUBLIC_SERVICE_BASE_URL`:
+
+- пользователь не вводит и не редактирует URL общего сервиса;
+- debug/release URL задаются в Gradle и не являются секретом;
+- пользовательский Worker URL личного Telegram relay остаётся отдельной настройкой.
+
+Сценарии разделены:
+
+- **Статус по данным пользователей** — доступен любому пользователю публичного бота, приложение не требуется; бот показывает сохранённые агрегированные данные.
+- **Проверить на моём устройстве** — доступно только связанному Telegram-чату и только пока в Android работает активный мониторинг.
+
+В Android согласия независимы и выключены по умолчанию:
+
+- отправлять обезличенные результаты в общий сервис;
+- разрешить удалённые проверки из Telegram.
+
+Для public reports пользователь выбирает или подтверждает:
+
+- регион;
+- необязательный город;
+- мобильного оператора.
+
+Автоопределение местоположения запускается только по нажатию, использует приблизительное location permission, не сохраняет и не отправляет координаты. Оператор определяется по текущей/default SIM мобильных данных; ручной выбор не перезаписывается автоматикой.
+
+Подробно: [docs/architecture/central-public-service.md](docs/architecture/central-public-service.md)
+
 ## Дорожная карта
 
 | Версия | Содержание |
@@ -173,6 +224,8 @@ Android → user's Cloudflare Worker → Telegram Bot API
 | v0.5 | Очередь Telegram |
 | v0.6 | WorkManager автопроверка |
 | v0.7 | UI cleanup, редактируемые сайты, диагностика |
+| v0.8.14 | Центральный public service MVP |
+| v0.8.15 | Fixed public service URL, auto/manual area and operator selection |
 
 ## Лицензия
 

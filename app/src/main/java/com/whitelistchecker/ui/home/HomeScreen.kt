@@ -19,13 +19,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.R
-import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.ui.components.ActionGrid
 import com.whitelistchecker.ui.components.ActionGridItem
-import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.ErrorCard
-import com.whitelistchecker.ui.components.StatusChip
-import com.whitelistchecker.ui.components.StatusTone
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.navigation.AppScreen
 
@@ -47,38 +43,20 @@ fun HomeScreen(
         ) {
             HomeHeader()
 
-            Button(
-                onClick = onCheckMobileNetwork,
-                enabled = !uiState.isChecking,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .heightIn(min = 56.dp),
-            ) {
-                if (uiState.isChecking) {
-                    CircularProgressIndicator(
-                        modifier = Modifier
-                            .padding(end = 10.dp)
-                            .size(18.dp),
-                        strokeWidth = 2.dp,
-                        color = MaterialTheme.colorScheme.onPrimary,
-                    )
-                    Text(stringResource(R.string.home_check_button_running))
-                } else {
-                    Text(stringResource(R.string.home_check_button))
-                }
-            }
-
             LastCheckResultCard(
                 displayState = uiState.lastCheckDisplayState,
                 onRefreshPresentation = onRefreshLastCheckPresentation,
                 onOpenDetails = { onOpenScreen(AppScreen.DIAGNOSTICS) },
             )
 
-            PersistenceStatusCard(status = uiState.lastPersistenceStatus)
-
             QuickActionsSection(onOpenScreen = onOpenScreen)
 
             uiState.errorMessage?.let { ErrorCard(it) }
+
+            CheckMobileNetworkButton(
+                isChecking = uiState.isChecking,
+                onClick = onCheckMobileNetwork,
+            )
         }
     }
 }
@@ -128,10 +106,14 @@ private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
                     iconRes = R.drawable.ic_home_action_schedule,
                 ) { onOpenScreen(AppScreen.AUTO_CHECK) },
                 ActionGridItem(
+                    titleRes = R.string.home_action_public_service_title,
+                    subtitleRes = R.string.home_action_public_service_subtitle,
+                    iconRes = R.drawable.ic_home_info,
+                ) { onOpenScreen(AppScreen.PUBLIC_SERVICE) },
+                ActionGridItem(
                     titleRes = R.string.home_action_diagnostics_title,
                     subtitleRes = R.string.home_action_diagnostics_subtitle,
                     iconRes = R.drawable.ic_home_action_diagnostics,
-                    fullWidth = true,
                 ) { onOpenScreen(AppScreen.DIAGNOSTICS) },
             ),
         )
@@ -139,27 +121,28 @@ private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
 }
 
 @Composable
-private fun PersistenceStatusCard(status: CheckPersistenceStatus?) {
-    if (status == null) return
-    AppCard(title = null) {
-        StatusChip(
-            text = stringResource(persistenceStatusLabelRes(status)),
-            tone = if (status.isComplete) StatusTone.SUCCESS else StatusTone.WARNING,
-        )
-        status.errorMessage?.let { message ->
-            Text(
-                text = message,
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.error,
+private fun CheckMobileNetworkButton(
+    isChecking: Boolean,
+    onClick: () -> Unit,
+) {
+    Button(
+        onClick = onClick,
+        enabled = !isChecking,
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+    ) {
+        if (isChecking) {
+            CircularProgressIndicator(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .size(18.dp),
+                strokeWidth = 2.dp,
+                color = MaterialTheme.colorScheme.onPrimary,
             )
+            Text(stringResource(R.string.home_check_button_running))
+        } else {
+            Text(stringResource(R.string.home_check_button))
         }
-    }
-}
-
-private fun persistenceStatusLabelRes(status: CheckPersistenceStatus): Int {
-    return if (status.isComplete) {
-        R.string.home_persistence_complete
-    } else {
-        R.string.home_persistence_error
     }
 }

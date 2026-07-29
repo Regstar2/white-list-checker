@@ -14,6 +14,7 @@ bin/
 gen/
 out/
 build/
+dist/
 .cxx/
 
 # Gradle
@@ -40,6 +41,12 @@ captures/
 
 # Kotlin
 .kotlin/
+
+# Node / Cloudflare local artifacts
+node_modules/
+.wrangler/
+.env
+.dev.vars
 
 # Secrets
 *.keystore
