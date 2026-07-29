@@ -18,6 +18,8 @@ class HomeStatisticsMapperTest {
             whitelistOnSamples = 3,
             whitelistOffSamples = 4,
             whitelistOnPercent = 3.0 / 7.0,
+            generatedAtMillis = 1_000L,
+            samples = emptyList(),
             dayHourly = emptyList(),
             weekDaily = emptyList(),
             monthDaily = emptyList(),

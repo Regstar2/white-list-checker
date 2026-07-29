@@ -33,6 +33,13 @@ data class WhitelistTimelineBucket(
     val whitelistOffCount: Int,
 )
 
+data class WhitelistTimelinePeriod(
+    val title: String,
+    val startMillis: Long,
+    val endMillis: Long,
+    val buckets: List<WhitelistTimelineBucket>,
+)
+
 data class WhitelistTimelineDashboard(
     val currentState: WhitelistBinaryState,
     val currentStateAtMillis: Long?,
@@ -41,6 +48,8 @@ data class WhitelistTimelineDashboard(
     val whitelistOnSamples: Int,
     val whitelistOffSamples: Int,
     val whitelistOnPercent: Double?,
+    val generatedAtMillis: Long,
+    val samples: List<WhitelistTimelineSample>,
     val dayHourly: List<WhitelistTimelineBucket>,
     val weekDaily: List<WhitelistTimelineBucket>,
     val monthDaily: List<WhitelistTimelineBucket>,

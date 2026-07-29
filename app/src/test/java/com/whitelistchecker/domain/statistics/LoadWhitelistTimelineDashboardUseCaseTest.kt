@@ -48,7 +48,7 @@ class LoadWhitelistTimelineDashboardUseCaseTest {
         assertEquals(1, tenHour.whitelistOnCount)
         assertEquals(1, tenHour.whitelistOffCount)
         assertEquals(7, dashboard.weekDaily.size)
-        assertEquals(30, dashboard.monthDaily.size)
+        assertEquals(31, dashboard.monthDaily.size)
         assertEquals(12, dashboard.yearMonthly.size)
     }
 

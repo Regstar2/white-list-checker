@@ -19,5 +19,6 @@
 | v0.8.8 | [v0.8.8.md](v0.8.8.md) | актуально (binary whitelist timeline) |
 | v0.8.9 | [v0.8.9.md](v0.8.9.md) | актуально (statistics navigation polish) |
 | v0.8.10 | [v0.8.10.md](v0.8.10.md) | актуально (natural statistics periods) |
+| v0.8.11 | [v0.8.11.md](v0.8.11.md) | актуально (selectable statistics periods) |
 
 Текущее описание продукта: [WhiteListChecker - current MVP.md](../WhiteListChecker%20-%20current%20MVP.md)
