@@ -26,7 +26,7 @@ class CheckTargetsRepository(
     fun observeTargets(): Flow<List<EditableCheckTarget>> {
         return dataStore.data.map { preferences ->
             val stored = CheckTargetsJsonCodec.decode(preferences[Keys.TARGETS_JSON])
-            stored.ifEmpty { DefaultCheckTargets.defaults() }
+            DefaultCheckTargets.mergeNewBuiltIns(stored)
         }
     }
 

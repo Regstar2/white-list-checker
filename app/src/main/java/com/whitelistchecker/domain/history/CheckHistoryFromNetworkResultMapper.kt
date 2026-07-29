@@ -29,7 +29,7 @@ class CheckHistoryFromNetworkResultMapper {
             finishedAtMillis = finishedAtMillis,
             durationMs = (finishedAtMillis - startedAtMillis).coerceAtLeast(0L),
             triggerType = triggerType,
-            networkType = result.activeNetworkLabel,
+            networkType = result.checkedNetworkLabel,
             operatorName = null,
             routeMode = CheckHistoryConfig.ROUTE_MODE_CELLULAR,
             overallStatus = resolveOverallStatus(result, successCount, failureCount),

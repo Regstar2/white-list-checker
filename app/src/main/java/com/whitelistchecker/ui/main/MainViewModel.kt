@@ -30,16 +30,17 @@ import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
-import com.whitelistchecker.domain.availability.LoadWhitelistAvailabilityDashboardUseCase
-import com.whitelistchecker.domain.availability.RebuildWhitelistAvailabilityUseCase
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityLoadResult
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
 import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
+import com.whitelistchecker.domain.statistics.LoadWhitelistTimelineDashboardUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
+import com.whitelistchecker.domain.statistics.RebuildWhitelistTimelineUseCase
 import com.whitelistchecker.domain.statistics.RebuildStatisticsResult
 import com.whitelistchecker.domain.statistics.StatisticsDashboard
 import com.whitelistchecker.domain.statistics.StatisticsDiagnosticsMetaRepository
 import com.whitelistchecker.domain.statistics.StatisticsLoadResult
+import com.whitelistchecker.domain.statistics.WhitelistTimelineDashboard
+import com.whitelistchecker.domain.statistics.WhitelistTimelineLoadResult
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.navigation.AppScreen
 import com.whitelistchecker.ui.diagnostics.RebuildStatisticsUiState
@@ -76,8 +77,8 @@ class MainViewModel(
     private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
     private val loadStatisticsDiagnosticsUseCase: LoadStatisticsDiagnosticsUseCase,
     private val rebuildCheckStatisticsUseCase: RebuildCheckStatisticsUseCase,
-    private val rebuildWhitelistAvailabilityUseCase: RebuildWhitelistAvailabilityUseCase,
-    private val loadWhitelistAvailabilityDashboardUseCase: LoadWhitelistAvailabilityDashboardUseCase,
+    private val rebuildWhitelistTimelineUseCase: RebuildWhitelistTimelineUseCase,
+    private val loadWhitelistTimelineDashboardUseCase: LoadWhitelistTimelineDashboardUseCase,
     private val statisticsDiagnosticsMetaRepository: StatisticsDiagnosticsMetaRepository,
 ) : ViewModel() {
 
@@ -141,7 +142,7 @@ class MainViewModel(
             }
             when (val checkRebuild = rebuildCheckStatisticsUseCase.rebuildFromHistory()) {
                 RebuildStatisticsResult.Success -> {
-                    rebuildWhitelistAvailabilityUseCase.rebuildFromHistory()
+                    rebuildWhitelistTimelineUseCase.rebuildFromHistory()
                     val rebuiltAt = System.currentTimeMillis()
                     statisticsDiagnosticsMetaRepository.recordRebuildCompleted(rebuiltAt)
                     refreshStatistics()
@@ -204,8 +205,8 @@ class MainViewModel(
                 }
             }
             val checkResult = loadStatisticsDashboardUseCase.load()
-            val whitelistResult = loadWhitelistAvailabilityDashboardUseCase.load()
-            applyStatisticsLoadResult(checkResult, whitelistResult)
+            val timelineResult = loadWhitelistTimelineDashboardUseCase.load()
+            applyStatisticsLoadResult(checkResult, timelineResult)
         }
     }
 
@@ -482,6 +483,7 @@ class MainViewModel(
                 it.copy(
                     isChecking = true,
                     errorMessage = null,
+                    lastPersistenceStatus = null,
                     lastCheckDisplayState = resolveLastCheckDisplayState(
                         isChecking = true,
                         lastCheck = it.result,
@@ -502,6 +504,7 @@ class MainViewModel(
                         lastTelegramSendResult = result.telegramSendResult,
                         lastQueueFlushResult = result.queueFlushResult,
                         pendingReportsCount = result.pendingReportsCount,
+                        lastPersistenceStatus = result.persistenceStatus,
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
                         errorMessage = if (checkResult.error == WhitelistCheckUseCase.CHANGE_NETWORK_STATE_DENIED_MESSAGE) {
                             checkResult.error
@@ -1108,7 +1111,7 @@ class MainViewModel(
 
     private fun applyStatisticsLoadResult(
         checkResult: StatisticsLoadResult,
-        whitelistResult: WhitelistAvailabilityLoadResult,
+        timelineResult: WhitelistTimelineLoadResult,
     ) {
         if (checkResult is StatisticsLoadResult.Failure) {
             Log.w(TAG, "Statistics load failed", checkResult.cause)
@@ -1126,20 +1129,20 @@ class MainViewModel(
             return
         }
 
-        val whitelistDashboard = when (whitelistResult) {
-            is WhitelistAvailabilityLoadResult.Success -> whitelistResult.dashboard
+        val timelineDashboard = when (timelineResult) {
+            is WhitelistTimelineLoadResult.Success -> timelineResult.dashboard
             else -> null
         }
-        val whitelistEmpty = whitelistResult is WhitelistAvailabilityLoadResult.Empty
+        val timelineEmpty = timelineResult is WhitelistTimelineLoadResult.Empty
 
         val checkDashboard = when (checkResult) {
             is StatisticsLoadResult.Success -> checkResult.dashboard
             else -> emptyCheckStatisticsDashboard()
         }
-        val hasWhitelistContent = whitelistDashboard != null && !whitelistEmpty
+        val hasTimelineContent = timelineDashboard != null && !timelineEmpty
 
         when {
-            !hasWhitelistContent && checkResult is StatisticsLoadResult.Empty -> {
+            !hasTimelineContent && checkResult is StatisticsLoadResult.Empty -> {
                 _uiState.update {
                     it.copy(
                         statisticsUiState = StatisticsUiState.Empty,
@@ -1153,10 +1156,10 @@ class MainViewModel(
                         statisticsUiState = buildStatisticsContent(
                             state = state,
                             checkDashboard = checkDashboard,
-                            whitelistDashboard = whitelistDashboard,
-                            whitelistEmpty = whitelistEmpty,
+                            timelineDashboard = timelineDashboard,
+                            timelineEmpty = timelineEmpty,
                         ),
-                        homeStatisticsUiState = HomeStatisticsMapper.map(whitelistDashboard),
+                        homeStatisticsUiState = HomeStatisticsMapper.map(timelineDashboard),
                     )
                 }
             }
@@ -1166,22 +1169,21 @@ class MainViewModel(
     private fun buildStatisticsContent(
         state: MainUiState,
         checkDashboard: StatisticsDashboard,
-        whitelistDashboard: com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard?,
-        whitelistEmpty: Boolean,
+        timelineDashboard: WhitelistTimelineDashboard?,
+        timelineEmpty: Boolean,
     ): StatisticsUiState.Content {
-        val summary = whitelistDashboard?.summary
         val freshness = StatisticsFreshnessMapper.map(
             checkDashboard = checkDashboard,
             lastCheck = state.result,
             lastCheckDisplay = state.lastCheckDisplayState,
-            whitelistAvailableTargets = summary?.currentlyAvailableTargets ?: 0,
-            whitelistTotalTargets = summary?.totalTargets ?: 0,
-            whitelistLowSample = (summary?.totalTargets ?: 0) < 3,
+            whitelistAvailableTargets = 0,
+            whitelistTotalTargets = 0,
+            whitelistLowSample = (timelineDashboard?.binarySamples ?: 0) < 3,
         )
         return StatisticsUiState.Content(
             dashboard = checkDashboard,
-            whitelistAvailability = whitelistDashboard,
-            whitelistAvailabilityEmpty = whitelistEmpty,
+            whitelistTimeline = timelineDashboard,
+            whitelistTimelineEmpty = timelineEmpty,
             freshness = freshness,
         )
     }

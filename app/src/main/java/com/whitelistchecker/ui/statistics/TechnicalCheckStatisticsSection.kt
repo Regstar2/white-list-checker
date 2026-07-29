@@ -97,6 +97,25 @@ fun TechnicalCheckStatisticsSection(
                             summary.consecutiveFailureCount.toString(),
                         )
                     }
+                    val dailySuccessPercents = dashboard.daily.map { day ->
+                        if (day.totalTargetChecks > 0) {
+                            day.successTargetChecks.toFloat() * 100f / day.totalTargetChecks.toFloat()
+                        } else {
+                            0f
+                        }
+                    }
+                    if (hasMeaningfulPercentChart(dailySuccessPercents)) {
+                        Text(
+                            text = "Успешность целей по дням",
+                            style = MaterialTheme.typography.titleSmall,
+                            modifier = Modifier.padding(top = 8.dp),
+                        )
+                        DailyTrendChart(
+                            labels = dashboard.daily.map { it.date },
+                            percents = dailySuccessPercents,
+                            lineColor = MaterialTheme.colorScheme.secondary,
+                        )
+                    }
                 }
             }
         }

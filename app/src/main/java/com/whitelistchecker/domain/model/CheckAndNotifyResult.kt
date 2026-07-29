@@ -6,4 +6,5 @@ data class CheckAndNotifyResult(
     val telegramSendResult: TelegramSendResult?,
     val queueFlushResult: TelegramQueueFlushResult?,
     val pendingReportsCount: Int,
+    val persistenceStatus: CheckPersistenceStatus,
 )

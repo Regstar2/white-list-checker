@@ -22,6 +22,8 @@ import com.whitelistchecker.data.statistics.RouteKindStatisticsEntity
 import com.whitelistchecker.data.statistics.TargetStatisticsEntity
 import com.whitelistchecker.data.telegram.PendingTelegramReportDao
 import com.whitelistchecker.data.telegram.PendingTelegramReportEntity
+import com.whitelistchecker.data.timeline.WhitelistTimelineDao
+import com.whitelistchecker.data.timeline.WhitelistTimelineSampleEntity
 
 @Database(
     entities = [
@@ -37,8 +39,9 @@ import com.whitelistchecker.data.telegram.PendingTelegramReportEntity
         WhitelistAvailabilitySummaryEntity::class,
         WhitelistDailyAvailabilityEntity::class,
         WhitelistTargetAvailabilityEntity::class,
+        WhitelistTimelineSampleEntity::class,
     ],
-    version = 5,
+    version = 6,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -50,6 +53,8 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun checkStatisticsDao(): CheckStatisticsDao
 
     abstract fun whitelistAvailabilityDao(): WhitelistAvailabilityDao
+
+    abstract fun whitelistTimelineDao(): WhitelistTimelineDao
 
     companion object {
         @Volatile
@@ -308,6 +313,50 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_5_6 = object : Migration(5, 6) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL(
+                    """
+                    CREATE TABLE IF NOT EXISTS whitelist_timeline_samples (
+                        checkRunId TEXT NOT NULL PRIMARY KEY,
+                        checkedAtMillis INTEGER NOT NULL,
+                        whitelistState TEXT NOT NULL,
+                        binaryState TEXT NOT NULL,
+                        createdAtMillis INTEGER NOT NULL
+                    )
+                    """.trimIndent(),
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_whitelist_timeline_samples_checkedAtMillis ON whitelist_timeline_samples(checkedAtMillis)",
+                )
+                db.execSQL(
+                    "CREATE INDEX IF NOT EXISTS index_whitelist_timeline_samples_binaryState ON whitelist_timeline_samples(binaryState)",
+                )
+                db.execSQL(
+                    """
+                    INSERT OR IGNORE INTO whitelist_timeline_samples (
+                        checkRunId,
+                        checkedAtMillis,
+                        whitelistState,
+                        binaryState,
+                        createdAtMillis
+                    )
+                    SELECT
+                        id,
+                        finishedAtMillis,
+                        whitelistState,
+                        CASE
+                            WHEN whitelistState = 'WHITELIST_ON' THEN 'ON'
+                            WHEN whitelistState = 'WHITELIST_OFF' THEN 'OFF'
+                            ELSE 'UNKNOWN'
+                        END,
+                        createdAtMillis
+                    FROM check_runs
+                    """.trimIndent(),
+                )
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -315,7 +364,13 @@ abstract class AppDatabase : RoomDatabase() {
                     AppDatabase::class.java,
                     "whitelist_checker.db",
                 )
-                    .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4, MIGRATION_4_5)
+                    .addMigrations(
+                        MIGRATION_1_2,
+                        MIGRATION_2_3,
+                        MIGRATION_3_4,
+                        MIGRATION_4_5,
+                        MIGRATION_5_6,
+                    )
                     .build()
                     .also { instance = it }
             }

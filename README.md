@@ -9,7 +9,7 @@ Android-приложение для проверки мобильной сети
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
-Текущая версия: **0.7.1**
+Текущая dev-версия: **0.8.9**
 
 Последний релиз: [v0.7.1-hotfix](docs/releases/v0.7.1-hotfix.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
 
@@ -96,6 +96,8 @@ WhiteListChecker определяет **признаки сетевого реж
 - [Текущий MVP](docs/WhiteListChecker%20-%20current%20MVP.md)
 - [Стек технологий](docs/stack.md)
 - [Cloudflare Worker relay](docs/cloudflare-worker/README.md)
+- [Mobile routing, VPN и Private DNS](docs/network-routing-notes.md)
+- [Telegram bot buttons and distributed reports](docs/telegram-bot-controls-design.md)
 - [Changelog](CHANGELOG.md)
 - [Release v0.7.1 Hotfix](docs/releases/v0.7.1-hotfix.md)
 - [Contributing](CONTRIBUTING.md)

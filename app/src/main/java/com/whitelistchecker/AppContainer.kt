@@ -11,8 +11,8 @@ import com.whitelistchecker.data.notifications.LocalNotificationSettingsReposito
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
+import com.whitelistchecker.data.timeline.RoomWhitelistTimelineRepository
 import com.whitelistchecker.data.history.RoomCheckHistoryRepository
-import com.whitelistchecker.data.availability.RoomWhitelistAvailabilityRepository
 import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
@@ -21,13 +21,12 @@ import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
 import com.whitelistchecker.domain.statistics.CheckStatisticsCalculator
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
-import com.whitelistchecker.domain.availability.LoadWhitelistAvailabilityDashboardUseCase
-import com.whitelistchecker.domain.availability.RebuildWhitelistAvailabilityUseCase
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityCalculator
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityWriter
 import com.whitelistchecker.domain.statistics.LoadStatisticsDashboardUseCase
 import com.whitelistchecker.domain.statistics.LoadStatisticsDiagnosticsUseCase
+import com.whitelistchecker.domain.statistics.LoadWhitelistTimelineDashboardUseCase
 import com.whitelistchecker.domain.statistics.RebuildCheckStatisticsUseCase
+import com.whitelistchecker.domain.statistics.RebuildWhitelistTimelineUseCase
+import com.whitelistchecker.domain.statistics.WhitelistTimelineWriter
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
@@ -94,21 +93,19 @@ class AppContainer(context: Context) {
         checkStatisticsRepository = checkStatisticsRepository,
         diagnosticsMetaRepository = statisticsDiagnosticsMetaRepository,
     )
-    private val whitelistAvailabilityRepository = RoomWhitelistAvailabilityRepository(
+    private val whitelistTimelineRepository = RoomWhitelistTimelineRepository(
         database = database,
-        dao = database.whitelistAvailabilityDao(),
-        calculator = WhitelistAvailabilityCalculator(),
+        dao = database.whitelistTimelineDao(),
     )
-    val whitelistAvailabilityWriter = WhitelistAvailabilityWriter(
-        repository = whitelistAvailabilityRepository,
+    val whitelistTimelineWriter = WhitelistTimelineWriter(
+        repository = whitelistTimelineRepository,
     )
-    val rebuildWhitelistAvailabilityUseCase = RebuildWhitelistAvailabilityUseCase(
+    val loadWhitelistTimelineDashboardUseCase = LoadWhitelistTimelineDashboardUseCase(
+        repository = whitelistTimelineRepository,
+    )
+    val rebuildWhitelistTimelineUseCase = RebuildWhitelistTimelineUseCase(
         checkHistoryRepository = checkHistoryRepository,
-        whitelistAvailabilityRepository = whitelistAvailabilityRepository,
-        calculator = WhitelistAvailabilityCalculator(),
-    )
-    val loadWhitelistAvailabilityDashboardUseCase = LoadWhitelistAvailabilityDashboardUseCase(
-        repository = whitelistAvailabilityRepository,
+        whitelistTimelineRepository = whitelistTimelineRepository,
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
@@ -194,7 +191,7 @@ class AppContainer(context: Context) {
         lastCheckRepository = lastCheckRepository,
         saveCheckHistoryUseCase = saveCheckHistoryUseCase,
         localStatisticsWriter = localStatisticsWriter,
-        whitelistAvailabilityWriter = whitelistAvailabilityWriter,
+        whitelistTimelineWriter = whitelistTimelineWriter,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

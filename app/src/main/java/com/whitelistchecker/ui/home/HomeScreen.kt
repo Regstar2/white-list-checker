@@ -2,8 +2,6 @@ package com.whitelistchecker.ui.home
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -17,18 +15,16 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.ui.components.ActionGrid
 import com.whitelistchecker.ui.components.ActionGridItem
 import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.ErrorCard
 import com.whitelistchecker.ui.components.StatusChip
 import com.whitelistchecker.ui.components.StatusTone
-import com.whitelistchecker.ui.configurationStatusLabel
 import com.whitelistchecker.ui.main.MainUiState
 import com.whitelistchecker.ui.navigation.AppScreen
-import com.whitelistchecker.ui.statistics.HomeStatisticsSummaryCard
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun HomeScreen(
     uiState: MainUiState,
@@ -68,43 +64,12 @@ fun HomeScreen(
                 onRefreshPresentation = onRefreshLastCheckPresentation,
             )
 
-            HomeStatisticsSummaryCard(
-                uiState = uiState.homeStatisticsUiState,
-                onOpenStatistics = { onOpenScreen(AppScreen.STATISTICS) },
-            )
-
-            AppCard(title = "Краткий статус") {
-                FlowRow(
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    verticalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    StatusChip(
-                        text = if (uiState.localNotificationSettings.enabled) "Локальные: вкл" else "Локальные: выкл",
-                        tone = if (uiState.localNotificationSettings.enabled) StatusTone.SUCCESS else StatusTone.NEUTRAL,
-                    )
-                    val telegramTone = when {
-                        uiState.telegramSettings.isConfigured -> StatusTone.SUCCESS
-                        uiState.telegramSettings.canTestWorker -> StatusTone.WARNING
-                        else -> StatusTone.NEUTRAL
-                    }
-                    StatusChip(
-                        text = "Telegram: ${uiState.telegramSettings.configurationStatusLabel()}",
-                        tone = telegramTone,
-                    )
-                    StatusChip(
-                        text = if (uiState.backgroundCheckSettings.enabled) "Авто: вкл" else "Авто: выкл",
-                        tone = if (uiState.backgroundCheckSettings.enabled) StatusTone.SUCCESS else StatusTone.NEUTRAL,
-                    )
-                    StatusChip(
-                        text = "Очередь: ${uiState.pendingReportsCount}",
-                        tone = if (uiState.pendingReportsCount > 0) StatusTone.WARNING else StatusTone.NEUTRAL,
-                    )
-                }
-            }
+            PersistenceStatusCard(status = uiState.lastPersistenceStatus)
 
             Text("Быстрые действия", style = MaterialTheme.typography.titleSmall)
             ActionGrid(
                 items = listOf(
+                    ActionGridItem("Статистика", subtitle = "График БС") { onOpenScreen(AppScreen.STATISTICS) },
                     ActionGridItem("Уведомления", subtitle = "Telegram") { onOpenScreen(AppScreen.NOTIFICATIONS) },
                     ActionGridItem("Проверки", subtitle = "Сайты") { onOpenScreen(AppScreen.CHECK_SETTINGS) },
                     ActionGridItem("Автопроверка", subtitle = "WorkManager") { onOpenScreen(AppScreen.AUTO_CHECK) },
@@ -114,5 +79,31 @@ fun HomeScreen(
 
             uiState.errorMessage?.let { ErrorCard(it) }
         }
+    }
+}
+
+@Composable
+private fun PersistenceStatusCard(status: CheckPersistenceStatus?) {
+    if (status == null) return
+    AppCard(title = null) {
+        StatusChip(
+            text = persistenceStatusLabel(status),
+            tone = if (status.isComplete) StatusTone.SUCCESS else StatusTone.WARNING,
+        )
+        status.errorMessage?.let { message ->
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error,
+            )
+        }
+    }
+}
+
+private fun persistenceStatusLabel(status: CheckPersistenceStatus): String {
+    return if (status.isComplete) {
+        "Статистика: записана"
+    } else {
+        "Статистика: ошибка"
     }
 }

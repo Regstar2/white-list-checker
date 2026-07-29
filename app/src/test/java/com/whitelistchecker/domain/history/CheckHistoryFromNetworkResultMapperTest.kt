@@ -38,6 +38,7 @@ class CheckHistoryFromNetworkResultMapperTest {
         assertEquals(2, run.successCount)
         assertEquals(0, run.failureCount)
         assertEquals(1_500L, run.durationMs)
+        assertEquals("Mobile", run.networkType)
         assertEquals(2, targets.size)
         assertEquals(CheckTargetResultStatus.SUCCESS, targets.first().status)
         assertNull(run.checkError)

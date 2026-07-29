@@ -1,7 +1,8 @@
 package com.whitelistchecker.ui.statistics
 
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard
 import com.whitelistchecker.domain.statistics.StatisticsDashboard
+import com.whitelistchecker.domain.statistics.WhitelistBinaryState
+import com.whitelistchecker.domain.statistics.WhitelistTimelineDashboard
 
 sealed class StatisticsUiState {
     data object Loading : StatisticsUiState()
@@ -10,8 +11,8 @@ sealed class StatisticsUiState {
 
     data class Content(
         val dashboard: StatisticsDashboard,
-        val whitelistAvailability: WhitelistAvailabilityDashboard? = null,
-        val whitelistAvailabilityEmpty: Boolean = false,
+        val whitelistTimeline: WhitelistTimelineDashboard? = null,
+        val whitelistTimelineEmpty: Boolean = false,
         val freshness: StatisticsFreshnessUi = StatisticsFreshnessUi(
             dataUpdatedAt = null,
             isStale = false,
@@ -34,9 +35,10 @@ sealed class HomeStatisticsUiState {
     data object Loading : HomeStatisticsUiState()
 
     data class Content(
-        val availableTargets: Int,
-        val availabilityPercent: Double?,
-        val periodChanges: Int,
+        val currentState: WhitelistBinaryState,
+        val currentStateAtMillis: Long?,
+        val whitelistOnPercent: Double?,
+        val binarySamples: Int,
         val lastUpdatedAt: Long?,
         val isStale: Boolean,
     ) : HomeStatisticsUiState()

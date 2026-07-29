@@ -21,9 +21,10 @@ data class EditableCheckTarget(
             url: String,
             group: TargetGroup,
             builtIn: Boolean = false,
+            id: String = UUID.randomUUID().toString(),
         ): EditableCheckTarget {
             return EditableCheckTarget(
-                id = UUID.randomUUID().toString(),
+                id = id,
                 name = name,
                 url = url,
                 group = group,

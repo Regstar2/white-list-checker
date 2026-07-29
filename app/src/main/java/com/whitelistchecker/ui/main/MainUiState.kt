@@ -2,6 +2,7 @@ package com.whitelistchecker.ui.main
 
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.BackgroundCheckStatus
+import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
@@ -41,6 +42,7 @@ data class MainUiState(
     val lastTelegramSendMessage: String? = null,
     val lastQueueFlushResult: TelegramQueueFlushResult? = null,
     val pendingReportsCount: Int = 0,
+    val lastPersistenceStatus: CheckPersistenceStatus? = null,
     val backgroundCheckSettings: BackgroundCheckSettings = BackgroundCheckSettings(),
     val backgroundCheckStatus: BackgroundCheckStatus = BackgroundCheckStatus(),
     val isSavingBackgroundSettings: Boolean = false,

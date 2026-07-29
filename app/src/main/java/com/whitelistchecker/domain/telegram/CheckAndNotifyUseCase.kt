@@ -4,9 +4,10 @@ import android.util.Log
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityWriter
 import com.whitelistchecker.domain.statistics.LocalStatisticsWriter
+import com.whitelistchecker.domain.statistics.WhitelistTimelineWriter
 import com.whitelistchecker.domain.model.CheckAndNotifyResult
+import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.history.CheckTriggerType
@@ -20,7 +21,7 @@ class CheckAndNotifyUseCase(
     private val lastCheckRepository: LastCheckRepository,
     private val saveCheckHistoryUseCase: SaveCheckHistoryUseCase,
     private val localStatisticsWriter: LocalStatisticsWriter,
-    private val whitelistAvailabilityWriter: WhitelistAvailabilityWriter,
+    private val whitelistTimelineWriter: WhitelistTimelineWriter,
 ) {
 
     suspend fun execute(
@@ -43,7 +44,7 @@ class CheckAndNotifyUseCase(
         val finishedAtMillis = System.currentTimeMillis()
         val checkResult = localResult.monitorResult.checkResult
         lastCheckRepository.save(checkResult)
-        val savedHistory = runCatching {
+        val savedHistoryResult = runCatching {
             saveCheckHistoryUseCase.saveCompletedCheck(
                 result = checkResult,
                 triggerType = triggerType,
@@ -52,10 +53,17 @@ class CheckAndNotifyUseCase(
             )
         }.onFailure { exception ->
             Log.w(TAG, "Failed to save check history", exception)
-        }.getOrNull()
+        }
+        val savedHistory = savedHistoryResult.getOrNull()
+
+        var technicalStatisticsUpdated = false
+        var whitelistTimelineUpdated = false
+        var persistenceError = savedHistoryResult.exceptionOrNull()?.let { exception ->
+            "История проверки не сохранена: ${exception.message ?: exception.javaClass.simpleName}"
+        }
 
         if (savedHistory != null) {
-            runCatching {
+            val technicalStatisticsResult = runCatching {
                 localStatisticsWriter.onCheckRunSaved(
                     checkRun = savedHistory.checkRun,
                     targetResults = savedHistory.targetResults,
@@ -63,13 +71,19 @@ class CheckAndNotifyUseCase(
             }.onFailure { exception ->
                 Log.w(TAG, "Failed to update check statistics", exception)
             }
-            runCatching {
-                whitelistAvailabilityWriter.onCheckRunSaved(
-                    checkRun = savedHistory.checkRun,
-                    targetResults = savedHistory.targetResults,
-                )
+            technicalStatisticsUpdated = technicalStatisticsResult.getOrDefault(false)
+            if (!technicalStatisticsUpdated && persistenceError == null) {
+                persistenceError = "История сохранена, но техническая статистика не обновилась"
+            }
+
+            val whitelistTimelineResult = runCatching {
+                whitelistTimelineWriter.onCheckRunSaved(checkRun = savedHistory.checkRun)
             }.onFailure { exception ->
-                Log.w(TAG, "Failed to update whitelist availability statistics", exception)
+                Log.w(TAG, "Failed to update whitelist timeline statistics", exception)
+            }
+            whitelistTimelineUpdated = whitelistTimelineResult.getOrDefault(false)
+            if (!whitelistTimelineUpdated && persistenceError == null) {
+                persistenceError = "История сохранена, но график состояния белых списков не обновился"
             }
         }
         val eventResult = telegramEventNotifierUseCase.notifyIfNeeded(
@@ -83,6 +97,12 @@ class CheckAndNotifyUseCase(
             telegramSendResult = eventResult,
             queueFlushResult = queueFlushResult,
             pendingReportsCount = pendingTelegramReportRepository.count(),
+            persistenceStatus = CheckPersistenceStatus(
+                historySaved = savedHistory != null,
+                technicalStatisticsUpdated = technicalStatisticsUpdated,
+                whitelistTimelineUpdated = whitelistTimelineUpdated,
+                errorMessage = persistenceError,
+            ),
         )
     }
 

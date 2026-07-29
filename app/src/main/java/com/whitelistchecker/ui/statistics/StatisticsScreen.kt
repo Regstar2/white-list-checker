@@ -79,21 +79,11 @@ private fun StatisticsContent(
     ) {
         StatisticsFreshnessHeader(freshness = uiState.freshness)
 
-        val whitelist = uiState.whitelistAvailability
-        if (uiState.whitelistAvailabilityEmpty || whitelist == null) {
-            AppCard(title = stringResource(R.string.whitelist_availability_title)) {
-                Text(
-                    text = stringResource(R.string.whitelist_availability_empty_message),
-                    style = MaterialTheme.typography.bodyMedium,
-                )
-                Text(
-                    text = stringResource(R.string.whitelist_availability_empty_hint),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-            }
+        val timeline = uiState.whitelistTimeline
+        if (uiState.whitelistTimelineEmpty || timeline == null) {
+            WhitelistTimelineEmptyContent()
         } else {
-            WhitelistStatisticsContent(dashboard = whitelist)
+            WhitelistTimelineContent(dashboard = timeline)
         }
 
         TechnicalCheckStatisticsSection(

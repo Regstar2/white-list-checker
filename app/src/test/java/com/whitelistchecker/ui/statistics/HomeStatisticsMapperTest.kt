@@ -1,7 +1,7 @@
 package com.whitelistchecker.ui.statistics
 
-import com.whitelistchecker.domain.availability.WhitelistAvailabilityDashboard
-import com.whitelistchecker.domain.model.availability.WhitelistAvailabilitySummary
+import com.whitelistchecker.domain.statistics.WhitelistBinaryState
+import com.whitelistchecker.domain.statistics.WhitelistTimelineDashboard
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -9,30 +9,28 @@ import org.junit.Test
 class HomeStatisticsMapperTest {
 
     @Test
-    fun `maps whitelist summary without check metrics`() {
-        val dashboard = WhitelistAvailabilityDashboard(
-            summary = WhitelistAvailabilitySummary(
-                currentlyAvailableTargets = 6,
-                availabilityPercent = 0.857,
-                totalBecameAvailableEvents = 6,
-                totalBecameUnavailableEvents = 1,
-                totalTargets = 8,
-            ),
-            daily = emptyList(),
-            targetStates = emptyList(),
-            recentEvents = emptyList(),
-            topAvailableTargets = emptyList(),
-            topStableTargets = emptyList(),
-            topUnstableTargets = emptyList(),
+    fun `maps whitelist timeline summary`() {
+        val dashboard = WhitelistTimelineDashboard(
+            currentState = WhitelistBinaryState.ON,
+            currentStateAtMillis = 900L,
+            totalSamples = 10,
+            binarySamples = 7,
+            whitelistOnSamples = 3,
+            whitelistOffSamples = 4,
+            whitelistOnPercent = 3.0 / 7.0,
+            todayHourly = emptyList(),
+            last14Days = emptyList(),
+            last12Weeks = emptyList(),
+            last12Months = emptyList(),
             lastUpdatedAt = 1_000L,
             isStale = false,
         )
         val state = HomeStatisticsMapper.map(dashboard)
         assertTrue(state is HomeStatisticsUiState.Content)
         val content = state as HomeStatisticsUiState.Content
-        assertEquals(6, content.availableTargets)
-        assertEquals(7, content.periodChanges)
-        assertEquals(0.857, content.availabilityPercent!!, 0.001)
+        assertEquals(WhitelistBinaryState.ON, content.currentState)
+        assertEquals(7, content.binarySamples)
+        assertEquals(3.0 / 7.0, content.whitelistOnPercent!!, 0.001)
     }
 
     @Test

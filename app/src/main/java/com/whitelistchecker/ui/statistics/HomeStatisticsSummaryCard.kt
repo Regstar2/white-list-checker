@@ -14,6 +14,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.R
+import com.whitelistchecker.domain.statistics.WhitelistBinaryState
 import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.CompactDetailRow
 import com.whitelistchecker.ui.components.StatusChip
@@ -43,14 +44,14 @@ fun HomeStatisticsSummaryCard(
         is HomeStatisticsUiState.Content -> {
             val resources = LocalContext.current.resources
             val nowMillis = remember(uiState.lastUpdatedAt) { System.currentTimeMillis() }
-            val availabilityLabel = StatisticsValueFormatter.formatPercentFraction(uiState.availabilityPercent)
+            val onPercentLabel = StatisticsValueFormatter.formatPercentFraction(uiState.whitelistOnPercent)
                 .ifBlank { stringResource(R.string.statistics_value_not_available) }
             val lastUpdatedLabel = StatisticsValueFormatter.formatRelativeTime(
                 resources,
                 uiState.lastUpdatedAt,
                 nowMillis,
             )
-            AppCard(title = stringResource(R.string.statistics_title)) {
+            AppCard(title = "Статистика БС") {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (uiState.isStale) {
                         StatusChip(
@@ -59,23 +60,15 @@ fun HomeStatisticsSummaryCard(
                         )
                     }
                     CompactDetailRow(
-                        stringResource(R.string.statistics_home_available_targets),
-                        uiState.availableTargets.toString(),
+                        "Сейчас",
+                        uiState.currentState.toShortLabel(),
                     )
                     CompactDetailRow(
-                        stringResource(R.string.whitelist_availability_percent),
-                        availabilityLabel,
-                    )
-                    if (uiState.periodChanges > 0) {
-                        CompactDetailRow(
-                            stringResource(R.string.whitelist_availability_period_changes),
-                            uiState.periodChanges.toString(),
-                        )
-                    }
-                    CompactDetailRow(
-                        stringResource(R.string.statistics_last_check),
+                        "Последний сэмпл",
                         lastUpdatedLabel,
                     )
+                    CompactDetailRow("БС были за период", onPercentLabel)
+                    CompactDetailRow("Бинарных сэмплов", uiState.binarySamples.toString())
                     Button(
                         onClick = onOpenStatistics,
                         modifier = Modifier.fillMaxWidth(),
@@ -85,5 +78,13 @@ fun HomeStatisticsSummaryCard(
                 }
             }
         }
+    }
+}
+
+private fun WhitelistBinaryState.toShortLabel(): String {
+    return when (this) {
+        WhitelistBinaryState.ON -> "Похоже на БС"
+        WhitelistBinaryState.OFF -> "БС не обнаружены"
+        WhitelistBinaryState.UNKNOWN -> "Нет бинарного статуса"
     }
 }

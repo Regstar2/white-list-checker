@@ -2,6 +2,7 @@ package com.whitelistchecker.ui.main
 
 import android.Manifest
 import android.os.Build
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
@@ -35,6 +36,10 @@ fun MainScreen(viewModel: MainViewModel) {
         lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
             viewModel.refreshNotificationPermissionState()
         }
+    }
+
+    BackHandler(enabled = uiState.currentScreen != AppScreen.HOME) {
+        viewModel.goHome()
     }
 
     when (uiState.currentScreen) {
