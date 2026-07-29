@@ -1,13 +1,10 @@
 package com.whitelistchecker.domain.statistics
 
-import java.time.DayOfWeek
 import java.time.Instant
-import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.YearMonth
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import java.time.temporal.TemporalAdjusters
 
 class LoadWhitelistTimelineDashboardUseCase(
     private val repository: WhitelistTimelineRepository,
@@ -46,10 +43,10 @@ class LoadWhitelistTimelineDashboardUseCase(
             whitelistOnSamples = onCount,
             whitelistOffSamples = offCount,
             whitelistOnPercent = if (binarySamples.isEmpty()) null else onCount.toDouble() / binarySamples.size.toDouble(),
-            todayHourly = buildTodayHourly(samples, nowMillis),
-            last14Days = buildLastDays(samples, nowMillis, days = 14),
-            last12Weeks = buildLastWeeks(samples, nowMillis, weeks = 12),
-            last12Months = buildLastMonths(samples, nowMillis, months = 12),
+            dayHourly = buildTodayHourly(samples, nowMillis),
+            weekDaily = buildLastDays(samples, nowMillis, days = 7),
+            monthDaily = buildLastDays(samples, nowMillis, days = 30),
+            yearMonthly = buildLastMonths(samples, nowMillis, months = 12),
             lastUpdatedAt = latest?.checkedAtMillis,
             isStale = staleResolver.isStale(latest?.checkedAtMillis, nowMillis),
         )
@@ -88,26 +85,6 @@ class LoadWhitelistTimelineDashboardUseCase(
                 start = date.atStartOfDay(),
                 end = date.plusDays(1).atStartOfDay(),
                 scale = WhitelistTimelineBucketScale.DAY,
-                samples = samples,
-            )
-        }
-    }
-
-    private fun buildLastWeeks(
-        samples: List<WhitelistTimelineSample>,
-        nowMillis: Long,
-        weeks: Long,
-    ): List<WhitelistTimelineBucket> {
-        val today = Instant.ofEpochMilli(nowMillis).atZone(zoneId).toLocalDate()
-        val currentWeekStart = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
-        val startWeek = currentWeekStart.minusWeeks(weeks - 1)
-        return (0 until weeks).map { offset ->
-            val weekStart = startWeek.plusWeeks(offset)
-            buildBucket(
-                label = DAY_FORMATTER.format(weekStart),
-                start = weekStart.atStartOfDay(),
-                end = weekStart.plusWeeks(1).atStartOfDay(),
-                scale = WhitelistTimelineBucketScale.WEEK,
                 samples = samples,
             )
         }

@@ -29,7 +29,7 @@ fun WhitelistTimelineContent(
 ) {
     val resources = LocalContext.current.resources
     val nowMillis = remember(dashboard.lastUpdatedAt) { System.currentTimeMillis() }
-    var selectedPeriod by remember { mutableStateOf(TimelinePeriodOption.TODAY) }
+    var selectedPeriod by remember { mutableStateOf(TimelinePeriodOption.DAY) }
     val onPercent = StatisticsValueFormatter.formatPercentFraction(dashboard.whitelistOnPercent)
         .ifBlank { "Нет данных" }
     val selectedBuckets = selectedPeriod.buckets(dashboard)
@@ -97,17 +97,17 @@ private enum class TimelinePeriodOption(
     val label: String,
     val title: String,
 ) {
-    TODAY("Сегодня", "Сегодня по часам"),
-    DAYS("14 дней", "Последние 14 дней"),
-    WEEKS("12 недель", "Последние 12 недель"),
-    MONTHS("12 месяцев", "Последние 12 месяцев");
+    DAY("День", "День по часам"),
+    WEEK("Неделя", "Неделя по дням"),
+    MONTH("Месяц", "Месяц по дням"),
+    YEAR("Год", "Год по месяцам");
 
     fun buckets(dashboard: WhitelistTimelineDashboard): List<WhitelistTimelineBucket> {
         return when (this) {
-            TODAY -> dashboard.todayHourly
-            DAYS -> dashboard.last14Days
-            WEEKS -> dashboard.last12Weeks
-            MONTHS -> dashboard.last12Months
+            DAY -> dashboard.dayHourly
+            WEEK -> dashboard.weekDaily
+            MONTH -> dashboard.monthDaily
+            YEAR -> dashboard.yearMonthly
         }
     }
 }

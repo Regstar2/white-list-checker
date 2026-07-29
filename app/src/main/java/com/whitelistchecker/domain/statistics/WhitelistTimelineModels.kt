@@ -11,7 +11,6 @@ enum class WhitelistBinaryState {
 enum class WhitelistTimelineBucketScale {
     HOUR,
     DAY,
-    WEEK,
     MONTH,
 }
 
@@ -42,10 +41,10 @@ data class WhitelistTimelineDashboard(
     val whitelistOnSamples: Int,
     val whitelistOffSamples: Int,
     val whitelistOnPercent: Double?,
-    val todayHourly: List<WhitelistTimelineBucket>,
-    val last14Days: List<WhitelistTimelineBucket>,
-    val last12Weeks: List<WhitelistTimelineBucket>,
-    val last12Months: List<WhitelistTimelineBucket>,
+    val dayHourly: List<WhitelistTimelineBucket>,
+    val weekDaily: List<WhitelistTimelineBucket>,
+    val monthDaily: List<WhitelistTimelineBucket>,
+    val yearMonthly: List<WhitelistTimelineBucket>,
     val lastUpdatedAt: Long?,
     val isStale: Boolean,
 )

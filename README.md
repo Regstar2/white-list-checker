@@ -9,7 +9,7 @@ Android-приложение для проверки мобильной сети
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
-Текущая dev-версия: **0.8.9**
+Текущая dev-версия: **0.8.10**
 
 Последний релиз: [v0.7.1-hotfix](docs/releases/v0.7.1-hotfix.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
 

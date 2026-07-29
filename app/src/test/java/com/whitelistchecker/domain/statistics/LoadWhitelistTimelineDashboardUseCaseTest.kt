@@ -42,11 +42,14 @@ class LoadWhitelistTimelineDashboardUseCaseTest {
 
         assertTrue(result is WhitelistTimelineLoadResult.Success)
         val dashboard = (result as WhitelistTimelineLoadResult.Success).dashboard
-        val tenHour = dashboard.todayHourly.single { it.label == "10" }
+        val tenHour = dashboard.dayHourly.single { it.label == "10" }
         assertEquals(WhitelistBinaryState.ON, tenHour.state)
         assertEquals(2, tenHour.sampleCount)
         assertEquals(1, tenHour.whitelistOnCount)
         assertEquals(1, tenHour.whitelistOffCount)
+        assertEquals(7, dashboard.weekDaily.size)
+        assertEquals(30, dashboard.monthDaily.size)
+        assertEquals(12, dashboard.yearMonthly.size)
     }
 
     @Test
@@ -66,7 +69,7 @@ class LoadWhitelistTimelineDashboardUseCaseTest {
 
         assertTrue(result is WhitelistTimelineLoadResult.Success)
         val dashboard = (result as WhitelistTimelineLoadResult.Success).dashboard
-        val nineHour = dashboard.todayHourly.single { it.label == "09" }
+        val nineHour = dashboard.dayHourly.single { it.label == "09" }
         assertEquals(WhitelistBinaryState.UNKNOWN, nineHour.state)
         assertEquals(1, nineHour.sampleCount)
         assertEquals(0, dashboard.binarySamples)
