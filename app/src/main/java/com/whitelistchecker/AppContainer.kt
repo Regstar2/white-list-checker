@@ -2,9 +2,11 @@ package com.whitelistchecker
 
 import android.content.Context
 import android.net.ConnectivityManager
+import com.whitelistchecker.data.active.ActiveMonitoringRepository
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
+import com.whitelistchecker.data.checkrun.CheckStateRepository
 import com.whitelistchecker.data.db.AppDatabase
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
@@ -16,6 +18,7 @@ import com.whitelistchecker.data.history.RoomCheckHistoryRepository
 import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
+import com.whitelistchecker.domain.active.ActiveMonitoringController
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
@@ -31,6 +34,8 @@ import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
+import com.whitelistchecker.domain.checkrun.CheckExecutionCoordinator
+import com.whitelistchecker.domain.checkrun.NotificationDecisionEngine
 import com.whitelistchecker.domain.monitor.StateChangeDetector
 import com.whitelistchecker.domain.monitor.WhitelistMonitorUseCase
 import com.whitelistchecker.domain.notifications.CheckAndLocalNotifyUseCase
@@ -45,6 +50,8 @@ import com.whitelistchecker.domain.telegram.DetailedReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramBroadcastUseCase
 import com.whitelistchecker.domain.telegram.TelegramChatIdResolverUseCase
 import com.whitelistchecker.domain.telegram.TelegramEventNotifierUseCase
+import com.whitelistchecker.domain.telegram.TelegramCommandHandler
+import com.whitelistchecker.domain.telegram.TelegramCommandListener
 import com.whitelistchecker.domain.telegram.TelegramQueueProcessor
 import com.whitelistchecker.domain.telegram.TelegramReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
@@ -115,6 +122,14 @@ class AppContainer(context: Context) {
     val checkTargetsRepository = CheckTargetsRepository(appContext)
     val backgroundCheckSettingsRepository = BackgroundCheckSettingsRepository(appContext)
     val backgroundCheckStatusRepository = BackgroundCheckStatusRepository(appContext)
+    val checkStateRepository = CheckStateRepository(appContext)
+    val checkExecutionCoordinator = CheckExecutionCoordinator()
+    val notificationDecisionEngine = NotificationDecisionEngine()
+    val activeMonitoringRepository = ActiveMonitoringRepository(appContext)
+    val activeMonitoringController = ActiveMonitoringController(
+        context = appContext,
+        repository = activeMonitoringRepository,
+    )
 
     val channelManager = LocalNotificationChannelManager(appContext)
     val permissionChecker = LocalNotificationPermissionChecker(appContext)
@@ -172,9 +187,11 @@ class AppContainer(context: Context) {
         pendingTelegramReportRepository = pendingTelegramReportRepository,
     )
 
+    private val telegramReportFormatter = TelegramReportFormatter()
+
     private val telegramEventNotifierUseCase = TelegramEventNotifierUseCase(
         telegramBroadcastUseCase = telegramBroadcastUseCase,
-        reportFormatter = TelegramReportFormatter(),
+        reportFormatter = telegramReportFormatter,
     )
 
     private val telegramQueueProcessor = TelegramQueueProcessor(
@@ -188,10 +205,30 @@ class AppContainer(context: Context) {
         telegramEventNotifierUseCase = telegramEventNotifierUseCase,
         telegramQueueProcessor = telegramQueueProcessor,
         pendingTelegramReportRepository = pendingTelegramReportRepository,
+        checkExecutionCoordinator = checkExecutionCoordinator,
+        checkStateRepository = checkStateRepository,
+        notificationDecisionEngine = notificationDecisionEngine,
         lastCheckRepository = lastCheckRepository,
         saveCheckHistoryUseCase = saveCheckHistoryUseCase,
         localStatisticsWriter = localStatisticsWriter,
         whitelistTimelineWriter = whitelistTimelineWriter,
+    )
+
+    private val telegramCommandHandler = TelegramCommandHandler(
+        settingsRepository = telegramSettingsRepository,
+        activeMonitoringRepository = activeMonitoringRepository,
+        lastCheckRepository = lastCheckRepository,
+        checkStateRepository = checkStateRepository,
+        telegramWorkerClient = telegramWorkerClient,
+        checkAndNotifyUseCase = checkAndNotifyUseCase,
+        reportFormatter = telegramReportFormatter,
+    )
+
+    val telegramCommandListener = TelegramCommandListener(
+        activeMonitoringRepository = activeMonitoringRepository,
+        settingsRepository = telegramSettingsRepository,
+        telegramWorkerClient = telegramWorkerClient,
+        commandHandler = telegramCommandHandler,
     )
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)

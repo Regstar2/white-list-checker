@@ -20,6 +20,7 @@ class WhitelistCheckWorkerFactory(
                 appContext = appContext,
                 workerParams = workerParameters,
                 checkAndNotifyUseCase = appContainer.checkAndNotifyUseCase,
+                backgroundCheckSettingsRepository = appContainer.backgroundCheckSettingsRepository,
                 backgroundCheckStatusRepository = appContainer.backgroundCheckStatusRepository,
             )
             else -> null

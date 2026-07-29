@@ -20,5 +20,7 @@
 | v0.8.9 | [v0.8.9.md](v0.8.9.md) | актуально (statistics navigation polish) |
 | v0.8.10 | [v0.8.10.md](v0.8.10.md) | актуально (natural statistics periods) |
 | v0.8.11 | [v0.8.11.md](v0.8.11.md) | актуально (selectable statistics periods) |
+| v0.8.12 | [v0.8.12.md](v0.8.12.md) | актуально (home screen UX polish) |
+| v0.8.13 | [v0.8.13.md](v0.8.13.md) | актуально (active monitoring, notification policies, Telegram commands) |
 
 Текущее описание продукта: [WhiteListChecker - current MVP.md](../WhiteListChecker%20-%20current%20MVP.md)

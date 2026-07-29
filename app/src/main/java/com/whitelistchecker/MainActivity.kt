@@ -52,6 +52,8 @@ class MainActivity : ComponentActivity() {
                     backgroundCheckSettingsRepository = appContainer.backgroundCheckSettingsRepository,
                     backgroundCheckStatusRepository = appContainer.backgroundCheckStatusRepository,
                     backgroundCheckScheduler = appContainer.backgroundCheckScheduler,
+                    activeMonitoringRepository = appContainer.activeMonitoringRepository,
+                    activeMonitoringController = appContainer.activeMonitoringController,
                     checkTargetsRepository = appContainer.checkTargetsRepository,
                     detailedReportFormatter = appContainer.detailedReportFormatter,
                     loadStatisticsDashboardUseCase = appContainer.loadStatisticsDashboardUseCase,

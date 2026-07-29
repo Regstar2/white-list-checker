@@ -2,6 +2,8 @@ package com.whitelistchecker.domain.telegram
 
 import com.whitelistchecker.data.telegram.TelegramGetUpdatesParser
 import com.whitelistchecker.domain.model.TelegramChatDiscoveryResult
+import com.whitelistchecker.domain.model.TelegramCommandUpdate
+import com.whitelistchecker.domain.model.TelegramCommandUpdatesResult
 import com.whitelistchecker.domain.model.TelegramSendResult
 import com.whitelistchecker.domain.model.TelegramSettings
 import com.whitelistchecker.domain.model.TelegramTestResult
@@ -54,6 +56,36 @@ class TelegramWorkerClient(
         ) {
             is WorkerHttpResult.Failure -> TelegramChatDiscoveryResult.Failure(response.reason)
             is WorkerHttpResult.Success -> parseGetUpdatesBody(response.body)
+        }
+    }
+
+    suspend fun getCommandUpdates(
+        settings: TelegramSettings,
+        offset: Long?,
+        timeoutSeconds: Long,
+    ): TelegramCommandUpdatesResult = withContext(Dispatchers.IO) {
+        when (val validation = validateCanTest(settings)) {
+            is ValidationResult.Failure -> return@withContext TelegramCommandUpdatesResult.Failure(validation.reason)
+            ValidationResult.Ok -> Unit
+        }
+        val jsonBody = JSONObject()
+        if (offset != null) {
+            jsonBody.put("offset", offset)
+        }
+        jsonBody.put("timeout", timeoutSeconds.coerceIn(0, 50))
+        jsonBody.put("allowed_updates", listOf("message"))
+        when (
+            val response = executeWorkerRequestRaw(
+                settings = settings,
+                method = WorkerUrlBuilder.METHOD_GET_UPDATES,
+                jsonBody = jsonBody,
+            )
+        ) {
+            is WorkerHttpResult.Failure -> TelegramCommandUpdatesResult.Failure(
+                reason = response.reason,
+                retryAfterSeconds = response.retryAfterSeconds,
+            )
+            is WorkerHttpResult.Success -> parseCommandUpdatesBody(response.body)
         }
     }
 
@@ -123,6 +155,29 @@ class TelegramWorkerClient(
         }
     }
 
+    private fun parseCommandUpdatesBody(body: String): TelegramCommandUpdatesResult {
+        return when (val parsed = TelegramGetUpdatesParser.parseResponse(body)) {
+            is TelegramGetUpdatesParser.ParseResult.Failure ->
+                TelegramCommandUpdatesResult.Failure(parsed.reason)
+            is TelegramGetUpdatesParser.ParseResult.Success -> {
+                val updates = parsed.updates.mapNotNull { raw ->
+                    val message = raw.message ?: return@mapNotNull null
+                    val text = message.text?.trim().orEmpty()
+                    if (text.isBlank()) return@mapNotNull null
+                    TelegramCommandUpdate(
+                        updateId = raw.updateId,
+                        chatId = message.chatId,
+                        text = text,
+                    )
+                }
+                TelegramCommandUpdatesResult.Success(
+                    updates = updates,
+                    nextOffset = TelegramGetUpdatesParser.maxUpdateId(parsed.updates)?.plus(1),
+                )
+            }
+        }
+    }
+
     private suspend fun executeWorkerRequest(
         settings: TelegramSettings,
         method: String,
@@ -157,7 +212,10 @@ class TelegramWorkerClient(
                 if (response.code == 200) {
                     WorkerHttpResult.Success(responseBody, response.code)
                 } else {
-                    WorkerHttpResult.Failure(formatWorkerHttpError(response.code, responseBody))
+                    WorkerHttpResult.Failure(
+                        reason = formatWorkerHttpError(response.code, responseBody),
+                        retryAfterSeconds = parseRetryAfter(responseBody),
+                    )
                 }
             }
         } catch (exception: IllegalArgumentException) {
@@ -250,6 +308,17 @@ class TelegramWorkerClient(
 
     private sealed interface WorkerHttpResult {
         data class Success(val body: String, val httpCode: Int) : WorkerHttpResult
-        data class Failure(val reason: String) : WorkerHttpResult
+        data class Failure(
+            val reason: String,
+            val retryAfterSeconds: Long? = null,
+        ) : WorkerHttpResult
+    }
+
+    private fun parseRetryAfter(responseBody: String): Long? {
+        return runCatching {
+            val root = JSONObject(responseBody)
+            val parameters = root.optJSONObject("parameters") ?: return@runCatching null
+            parameters.optLong("retry_after").takeIf { it > 0 }
+        }.getOrNull()
     }
 }

@@ -2,6 +2,8 @@ package com.whitelistchecker.ui.main
 
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.BackgroundCheckStatus
+import com.whitelistchecker.domain.model.ActiveMonitoringSettings
+import com.whitelistchecker.domain.model.ActiveMonitoringStatus
 import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
@@ -45,6 +47,10 @@ data class MainUiState(
     val lastPersistenceStatus: CheckPersistenceStatus? = null,
     val backgroundCheckSettings: BackgroundCheckSettings = BackgroundCheckSettings(),
     val backgroundCheckStatus: BackgroundCheckStatus = BackgroundCheckStatus(),
+    val activeMonitoringSettings: ActiveMonitoringSettings = ActiveMonitoringSettings(),
+    val activeMonitoringStatus: ActiveMonitoringStatus = ActiveMonitoringStatus(),
+    val activeMonitoringIntervalInput: String = ActiveMonitoringSettings.DEFAULT_INTERVAL_MINUTES.toString(),
+    val activeMonitoringIntervalError: String? = null,
     val isSavingBackgroundSettings: Boolean = false,
     val useCustomInterval: Boolean = false,
     val customIntervalInput: String = "15",

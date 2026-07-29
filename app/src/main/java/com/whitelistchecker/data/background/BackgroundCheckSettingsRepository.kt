@@ -6,8 +6,10 @@ import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
+import com.whitelistchecker.domain.model.NotificationPolicy
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -32,6 +34,7 @@ class BackgroundCheckSettingsRepository(
         dataStore.edit { preferences ->
             preferences[Keys.ENABLED] = settings.enabled
             preferences[Keys.INTERVAL_MINUTES] = settings.intervalMinutes
+            preferences[Keys.NOTIFICATION_POLICY] = settings.notificationPolicy.name
         }
     }
 
@@ -45,15 +48,28 @@ class BackgroundCheckSettingsRepository(
         saveSettings(current.copy(intervalMinutes = intervalMinutes))
     }
 
+    suspend fun setNotificationPolicy(policy: NotificationPolicy) {
+        val current = getSettings()
+        saveSettings(current.copy(notificationPolicy = policy))
+    }
+
     private fun Preferences.toSettings(): BackgroundCheckSettings {
         return BackgroundCheckSettings(
             enabled = this[Keys.ENABLED] ?: false,
             intervalMinutes = this[Keys.INTERVAL_MINUTES] ?: 15L,
+            notificationPolicy = parseNotificationPolicy(this[Keys.NOTIFICATION_POLICY]),
         )
+    }
+
+    private fun parseNotificationPolicy(value: String?): NotificationPolicy {
+        if (value.isNullOrBlank()) return NotificationPolicy.STATE_CHANGE_ONLY
+        return runCatching { NotificationPolicy.valueOf(value) }
+            .getOrDefault(NotificationPolicy.STATE_CHANGE_ONLY)
     }
 
     private object Keys {
         val ENABLED = booleanPreferencesKey("background_check_enabled")
         val INTERVAL_MINUTES = longPreferencesKey("background_check_interval_minutes")
+        val NOTIFICATION_POLICY = stringPreferencesKey("background_notification_policy")
     }
 }

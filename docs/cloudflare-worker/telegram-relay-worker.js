@@ -48,8 +48,9 @@ export default {
 				body.set("offset", String(payload.offset));
 			}
 
-			body.set("timeout", "0");
-			body.set("allowed_updates", JSON.stringify(["message"]));
+			const timeout = Number(payload.timeout ?? 0);
+			body.set("timeout", String(Math.max(0, Math.min(50, Number.isFinite(timeout) ? timeout : 0))));
+			body.set("allowed_updates", JSON.stringify(payload.allowed_updates ?? ["message"]));
 		}
 
 		if (method === "sendMessage") {

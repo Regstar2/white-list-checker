@@ -9,7 +9,7 @@ Android-приложение для проверки мобильной сети
 
 Приложение проверяет **именно мобильную сеть** через `ConnectivityManager` + `Network.openConnection()`, даже если активная сеть телефона — Wi-Fi.
 
-Текущая dev-версия: **0.8.11**
+Текущая dev-версия: **0.8.13**
 
 Последний релиз: [v0.7.1-hotfix](docs/releases/v0.7.1-hotfix.md) · [GitHub Releases](https://github.com/Regstar2/WhiteListChecker/releases)
 
@@ -29,6 +29,9 @@ WhiteListChecker определяет **признаки сетевого реж
 - Telegram через пользовательский Cloudflare Worker;
 - очередь Telegram;
 - автопроверка через WorkManager;
+- политики уведомлений для автопроверки;
+- активный мониторинг через foreground service с постоянным уведомлением;
+- команды Telegram-бота `/status`, `/check`, `/help` во время активного мониторинга;
 - диагностика;
 - редактируемые сайты.
 
@@ -39,6 +42,8 @@ WhiteListChecker определяет **признаки сетевого реж
 - `INTERNET` — сетевые проверки;
 - `ACCESS_NETWORK_STATE` — чтение активной сети и состояния подключений;
 - `CHANGE_NETWORK_STATE` — требуется для `ConnectivityManager.requestNetwork()`, чтобы явно запросить мобильную сеть при активном Wi-Fi;
+- `FOREGROUND_SERVICE` — запуск активного мониторинга с постоянным уведомлением;
+- `FOREGROUND_SERVICE_DATA_SYNC` — тип foreground service для сетевой синхронизации на Android 14+;
 - `POST_NOTIFICATIONS` — локальные уведомления на Android 13+;
 - `REQUEST_IGNORE_BATTERY_OPTIMIZATIONS` — переход в настройки энергосбережения для автопроверки.
 

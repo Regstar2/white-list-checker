@@ -3,13 +3,17 @@ package com.whitelistchecker.ui.main
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.whitelistchecker.data.active.ActiveMonitoringRepository
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
+import com.whitelistchecker.domain.active.ActiveMonitoringController
 import com.whitelistchecker.domain.check.LastCheckStateResolver
+import com.whitelistchecker.domain.model.ActiveMonitoringSettings
+import com.whitelistchecker.domain.model.ActiveMonitoringState
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.LastCheckDisplayState
 import com.whitelistchecker.domain.model.LastCheckLoadResult
@@ -17,6 +21,7 @@ import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
+import com.whitelistchecker.domain.model.NotificationPolicy
 import com.whitelistchecker.domain.model.TelegramChatCandidate
 import com.whitelistchecker.domain.model.TelegramChatDiscoveryResult
 import com.whitelistchecker.domain.model.TelegramSendResult
@@ -72,6 +77,8 @@ class MainViewModel(
     private val backgroundCheckSettingsRepository: BackgroundCheckSettingsRepository,
     private val backgroundCheckStatusRepository: BackgroundCheckStatusRepository,
     private val backgroundCheckScheduler: BackgroundCheckScheduler,
+    private val activeMonitoringRepository: ActiveMonitoringRepository,
+    private val activeMonitoringController: ActiveMonitoringController,
     private val checkTargetsRepository: CheckTargetsRepository,
     private val detailedReportFormatter: DetailedReportFormatter,
     private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
@@ -92,6 +99,7 @@ class MainViewModel(
         loadInitialState()
         refreshStatistics()
         observeBackgroundCheck()
+        observeActiveMonitoring()
         observeCheckTargets()
     }
 
@@ -367,6 +375,18 @@ class MainViewModel(
         }
     }
 
+    fun updateBackgroundNotificationPolicy(policy: NotificationPolicy) {
+        viewModelScope.launch {
+            try {
+                backgroundCheckSettingsRepository.setNotificationPolicy(policy)
+                val settings = backgroundCheckSettingsRepository.getSettings()
+                _uiState.update { it.copy(backgroundCheckSettings = settings) }
+            } catch (exception: Exception) {
+                _uiState.update { it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName) }
+            }
+        }
+    }
+
     fun saveBackgroundCheckSettings() {
         viewModelScope.launch {
             _uiState.update { it.copy(isSavingBackgroundSettings = true) }
@@ -463,6 +483,120 @@ class MainViewModel(
                 _uiState.update { it.copy(backgroundCheckStatus = status) }
             }
         }
+    }
+
+    private fun observeActiveMonitoring() {
+        viewModelScope.launch {
+            activeMonitoringController.reconcileStateWithProcess()
+            activeMonitoringRepository.observeSettings().collect { settings ->
+                _uiState.update {
+                    it.copy(
+                        activeMonitoringSettings = settings,
+                        activeMonitoringIntervalInput = settings.intervalMinutes.toString(),
+                    )
+                }
+            }
+        }
+        viewModelScope.launch {
+            activeMonitoringRepository.observeStatus().collect { status ->
+                _uiState.update { it.copy(activeMonitoringStatus = status) }
+            }
+        }
+    }
+
+    fun updateActiveMonitoringIntervalInput(value: String) {
+        _uiState.update {
+            it.copy(
+                activeMonitoringIntervalInput = value.filter { ch -> ch.isDigit() },
+                activeMonitoringIntervalError = null,
+            )
+        }
+    }
+
+    fun saveActiveMonitoringInterval() {
+        viewModelScope.launch {
+            val interval = resolveActiveMonitoringInterval() ?: return@launch
+            val settings = _uiState.value.activeMonitoringSettings.copy(intervalMinutes = interval)
+            activeMonitoringRepository.saveSettings(settings)
+            _uiState.update {
+                it.copy(
+                    activeMonitoringSettings = settings,
+                    activeMonitoringIntervalError = null,
+                )
+            }
+        }
+    }
+
+    fun updateActiveMonitoringNotificationPolicy(policy: NotificationPolicy) {
+        viewModelScope.launch {
+            val settings = _uiState.value.activeMonitoringSettings.copy(notificationPolicy = policy)
+            activeMonitoringRepository.saveSettings(settings)
+            _uiState.update { it.copy(activeMonitoringSettings = settings) }
+        }
+    }
+
+    fun updateNotifyOnAccessRestored(enabled: Boolean) {
+        viewModelScope.launch {
+            val settings = _uiState.value.activeMonitoringSettings.copy(notifyOnAccessRestored = enabled)
+            activeMonitoringRepository.saveSettings(settings)
+            _uiState.update { it.copy(activeMonitoringSettings = settings) }
+        }
+    }
+
+    fun updateTelegramCommandsEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            val settings = _uiState.value.activeMonitoringSettings.copy(telegramCommandsEnabled = enabled)
+            activeMonitoringRepository.saveSettings(settings)
+            _uiState.update { it.copy(activeMonitoringSettings = settings) }
+        }
+    }
+
+    fun startActiveMonitoring() {
+        viewModelScope.launch {
+            val interval = resolveActiveMonitoringInterval() ?: return@launch
+            if (permissionChecker.requiresRuntimePermission() && !permissionChecker.areNotificationsAllowed()) {
+                _uiState.update {
+                    it.copy(
+                        errorMessage = "Разрешите уведомления перед запуском активного мониторинга.",
+                    )
+                }
+                return@launch
+            }
+            val settings = _uiState.value.activeMonitoringSettings.copy(intervalMinutes = interval)
+            activeMonitoringRepository.saveSettings(settings)
+            activeMonitoringController.start()
+            _uiState.update {
+                it.copy(
+                    activeMonitoringSettings = settings,
+                    activeMonitoringIntervalError = null,
+                    errorMessage = null,
+                )
+            }
+        }
+    }
+
+    fun stopActiveMonitoring() {
+        activeMonitoringController.stop()
+    }
+
+    fun runActiveMonitoringCheckNow() {
+        activeMonitoringController.checkNow()
+    }
+
+    private fun resolveActiveMonitoringInterval(): Long? {
+        val parsed = _uiState.value.activeMonitoringIntervalInput.toLongOrNull()
+        if (parsed == null ||
+            parsed !in ActiveMonitoringSettings.MIN_INTERVAL_MINUTES..ActiveMonitoringSettings.MAX_INTERVAL_MINUTES
+        ) {
+            _uiState.update {
+                it.copy(
+                    activeMonitoringIntervalError =
+                    "Интервал активного мониторинга должен быть от 1 до 60 минут.",
+                )
+            }
+            return null
+        }
+        return parsed
     }
 
     fun refreshLastCheckPresentation() {
@@ -979,6 +1113,9 @@ class MainViewModel(
                 val pendingReportsCount = checkAndNotifyUseCase.getPendingReportsCount()
                 val backgroundSettings = backgroundCheckSettingsRepository.getSettings()
                 val backgroundStatus = backgroundCheckStatusRepository.getStatus()
+                activeMonitoringController.reconcileStateWithProcess()
+                val activeSettings = activeMonitoringRepository.getSettings()
+                val activeStatus = activeMonitoringRepository.getStatus()
                 val checkTargets = checkTargetsRepository.getTargets()
                 backgroundCheckScheduler.reschedule(backgroundSettings)
                 val useCustom = !backgroundSettings.isPresetInterval
@@ -995,6 +1132,9 @@ class MainViewModel(
                         pendingReportsCount = pendingReportsCount,
                         backgroundCheckSettings = backgroundSettings,
                         backgroundCheckStatus = backgroundStatus,
+                        activeMonitoringSettings = activeSettings,
+                        activeMonitoringStatus = activeStatus,
+                        activeMonitoringIntervalInput = activeSettings.intervalMinutes.toString(),
                         checkTargets = checkTargets,
                         useCustomInterval = useCustom,
                         customIntervalInput = backgroundSettings.intervalMinutes.toString(),

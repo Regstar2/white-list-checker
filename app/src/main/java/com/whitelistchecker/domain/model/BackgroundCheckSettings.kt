@@ -3,6 +3,7 @@ package com.whitelistchecker.domain.model
 data class BackgroundCheckSettings(
     val enabled: Boolean = false,
     val intervalMinutes: Long = 15,
+    val notificationPolicy: NotificationPolicy = NotificationPolicy.STATE_CHANGE_ONLY,
 ) {
     val normalizedIntervalMinutes: Long
         get() = intervalMinutes.coerceAtLeast(MIN_INTERVAL_MINUTES)

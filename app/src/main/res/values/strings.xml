@@ -2,6 +2,80 @@
 <resources>
     <string name="app_name">Whitelist Checker</string>
 
+    <string name="common_error_title">Ошибка</string>
+
+    <string name="home_subtitle">Проверка мобильного интернета\nпри включённом Wi-Fi</string>
+    <string name="home_check_button">Проверить мобильную сеть</string>
+    <string name="home_check_button_running">Проверка выполняется</string>
+    <string name="home_quick_actions_title">Быстрые действия</string>
+    <string name="home_persistence_complete">Статистика: записана</string>
+    <string name="home_persistence_error">Статистика: ошибка</string>
+
+    <string name="home_result_no_check_title">Проверки ещё не выполнялись</string>
+    <string name="home_result_no_check_body">Запустите проверку мобильной сети, чтобы увидеть результат.</string>
+    <string name="home_result_running_title">Проверка выполняется</string>
+    <string name="home_result_running_body">Запрашиваем мобильную сеть и проверяем локальные и внешние сайты.</string>
+    <string name="home_result_load_error_title">Последний результат недоступен</string>
+    <string name="home_result_load_error_body">Не удалось загрузить сохранённое состояние последней проверки.</string>
+    <string name="home_result_state_unknown">Состояние сети неизвестно</string>
+    <string name="home_result_state_whitelist_off">Белые списки не обнаружены</string>
+    <string name="home_result_state_whitelist_on">Похоже на включённые белые списки</string>
+    <string name="home_result_state_no_mobile_internet">Мобильного интернета нет</string>
+    <string name="home_result_state_mobile_dns_failure">Проблема DNS в мобильной сети</string>
+    <string name="home_result_state_partial_problem">Частичная проблема сети</string>
+    <string name="home_result_state_cellular_unavailable">Мобильная сеть недоступна</string>
+    <string name="home_result_local_checks">Локальные проверки</string>
+    <string name="home_result_foreign_checks">Внешние проверки</string>
+    <string name="home_result_group_count">%1$d из %2$d доступно</string>
+    <string name="home_result_checked_ago">Проверено %1$s</string>
+    <string name="home_result_route_mobile_wifi">Через мобильную сеть при включённом Wi-Fi</string>
+    <string name="home_result_route_mobile">Через мобильную сеть</string>
+    <string name="home_result_route_generic">Проверка через %1$s, активная сеть: %2$s</string>
+    <string name="home_result_stale">Данные устарели</string>
+    <string name="home_result_error_detail">Ошибка: %1$s</string>
+    <string name="home_result_details">Подробнее</string>
+
+    <string name="home_network_mobile">Мобильная сеть</string>
+    <string name="home_network_wifi">Wi-Fi</string>
+    <string name="home_network_ethernet">Ethernet</string>
+    <string name="home_network_unknown">Неизвестно</string>
+
+    <string name="home_action_statistics_title">Статистика</string>
+    <string name="home_action_statistics_subtitle">История результатов</string>
+    <string name="home_action_checks_title">Проверки</string>
+    <string name="home_action_checks_subtitle">Список сайтов</string>
+    <string name="home_action_notifications_title">Уведомления</string>
+    <string name="home_action_notifications_subtitle">Настройка Telegram</string>
+    <string name="home_action_auto_check_title">Автопроверка</string>
+    <string name="home_action_auto_check_subtitle">Расписание проверок</string>
+    <string name="home_action_diagnostics_title">Диагностика</string>
+    <string name="home_action_diagnostics_subtitle">Технические сведения</string>
+
+    <string name="notification_check_result_title">Результат автопроверки</string>
+    <string name="notification_state_changed_title">Состояние белых списков изменилось</string>
+    <string name="notification_access_restored_title">Проверка снова доступна</string>
+    <string name="notification_attempt_unavailable_title">Проверка недоступна</string>
+    <string name="notification_attempt_failed_title">Ошибка проверки</string>
+    <string name="notification_check_result_unknown">Результат проверки неизвестен</string>
+    <string name="notification_access_restored_text">Проверка снова доступна. %1$s</string>
+    <string name="notification_access_restored_state_changed_text">Проверка снова доступна. %1$s. %2$s</string>
+    <string name="notification_attempt_unavailable_text">%1$s. Последний валидный статус белых списков не изменён.</string>
+    <string name="notification_attempt_failed_text">Техническая ошибка: %1$s</string>
+
+    <string name="active_monitoring_notification_title">Активный мониторинг</string>
+    <string name="active_monitoring_action_check_now">Проверить сейчас</string>
+    <string name="active_monitoring_action_stop">Остановить</string>
+    <string name="active_monitoring_state_starting">Запуск активного мониторинга</string>
+    <string name="active_monitoring_state_running">Мониторинг активен</string>
+    <string name="active_monitoring_state_checking">Выполняется проверка</string>
+    <string name="active_monitoring_state_stopping">Остановка мониторинга</string>
+    <string name="active_monitoring_state_stopped">Мониторинг остановлен</string>
+    <string name="active_monitoring_state_stopped_by_system">Мониторинг остановлен Android</string>
+    <string name="active_monitoring_state_error">Временная ошибка мониторинга</string>
+    <string name="active_monitoring_notification_interval">Интервал: %1$d мин.</string>
+    <string name="active_monitoring_notification_last_check">Последняя проверка: %1$s</string>
+    <string name="active_monitoring_notification_result">Белые списки: %1$s</string>
+
     <string name="last_check_never_run">Проверка ещё не выполнялась.</string>
     <string name="last_check_running">Проверка выполняется…</string>
     <string name="last_check_load_error">Не удалось загрузить состояние последней проверки</string>

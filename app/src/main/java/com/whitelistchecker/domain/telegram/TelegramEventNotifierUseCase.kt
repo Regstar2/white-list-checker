@@ -1,5 +1,6 @@
 package com.whitelistchecker.domain.telegram
 
+import com.whitelistchecker.domain.checkrun.NotificationDecision
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.TelegramBroadcastResult
 import com.whitelistchecker.domain.model.TelegramSendResult
@@ -47,6 +48,32 @@ class TelegramEventNotifierUseCase(
             eventType = event.type.name,
             oldState = event.oldState.name,
             newState = event.newState.name,
+        )
+    }
+
+    suspend fun notifyDecisionIfNeeded(
+        decision: NotificationDecision,
+        checkResult: NetworkCheckResult?,
+    ): TelegramSendResult? {
+        if (decision == NotificationDecision.None) return null
+        val text = reportFormatter.formatDecision(decision, checkResult)
+        return sendWithBroadcast(
+            text = text,
+            baseReportId = "CHECK_NOTIFICATION_${System.currentTimeMillis()}",
+            eventType = decision.javaClass.simpleName,
+            oldState = when (decision) {
+                is NotificationDecision.StateChanged -> decision.oldState.name
+                is NotificationDecision.AccessRestoredAndStateChanged -> decision.oldState.name
+                else -> WhitelistState.UNKNOWN.name
+            },
+            newState = when (decision) {
+                is NotificationDecision.StateChanged -> decision.newState.name
+                is NotificationDecision.AccessRestoredAndStateChanged -> decision.newState.name
+                is NotificationDecision.AttemptResult -> decision.currentState?.name ?: WhitelistState.UNKNOWN.name
+                is NotificationDecision.AccessRestored -> decision.currentState?.name ?: WhitelistState.UNKNOWN.name
+                is NotificationDecision.AttemptUnavailable -> decision.state.name
+                else -> WhitelistState.UNKNOWN.name
+            },
         )
     }
 

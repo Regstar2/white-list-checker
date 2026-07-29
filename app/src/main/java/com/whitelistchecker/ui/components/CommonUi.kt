@@ -12,7 +12,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.whitelistchecker.R
 
 @Composable
 fun InfoCard(
@@ -51,7 +53,7 @@ fun DetailLine(label: String, value: String) {
 @Composable
 fun ErrorCard(message: String) {
     InfoCard(
-        title = "Ошибка",
+        title = stringResource(R.string.common_error_title),
         containerColor = MaterialTheme.colorScheme.errorContainer,
         contentColor = MaterialTheme.colorScheme.onErrorContainer,
     ) {

@@ -3,6 +3,7 @@ package com.whitelistchecker.worker
 import android.content.Context
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.history.CheckTriggerType
@@ -12,6 +13,7 @@ class WhitelistCheckWorker(
     appContext: Context,
     workerParams: WorkerParameters,
     private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
+    private val backgroundCheckSettingsRepository: BackgroundCheckSettingsRepository,
     private val backgroundCheckStatusRepository: BackgroundCheckStatusRepository,
 ) : CoroutineWorker(appContext, workerParams) {
 
@@ -20,7 +22,12 @@ class WhitelistCheckWorker(
         backgroundCheckStatusRepository.saveRunStarted(startedAt)
 
         return try {
-            val result = checkAndNotifyUseCase.execute(CheckTriggerType.BACKGROUND)
+            val settings = backgroundCheckSettingsRepository.getSettings()
+            val result = checkAndNotifyUseCase.execute(
+                triggerType = CheckTriggerType.WORK_MANAGER,
+                notificationPolicy = settings.notificationPolicy,
+                notifyOnAccessRestored = false,
+            )
             backgroundCheckStatusRepository.saveRunFinished(
                 finishedAtMillis = System.currentTimeMillis(),
                 state = result.monitorResult.checkResult.state,

@@ -13,8 +13,8 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 19
-        versionName = "0.8.11"
+        versionCode = 21
+        versionName = "0.8.13"
     }
 
     buildTypes {

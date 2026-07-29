@@ -4,7 +4,9 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
@@ -14,7 +16,9 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import com.whitelistchecker.R
 import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.ui.components.ActionGrid
 import com.whitelistchecker.ui.components.ActionGridItem
@@ -39,46 +43,98 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
-            Text(text = "Whitelist Checker", style = MaterialTheme.typography.headlineSmall)
-            Text(
-                text = "Проверка через мобильную сеть, даже при активном Wi-Fi.",
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-            )
+            HomeHeader()
 
             Button(
                 onClick = onCheckMobileNetwork,
                 enabled = !uiState.isChecking,
-                modifier = Modifier.fillMaxWidth(),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 56.dp),
             ) {
-                Text("Проверить мобильную сеть")
-            }
-            if (uiState.isChecking) {
-                CircularProgressIndicator(modifier = Modifier.padding(4.dp))
+                if (uiState.isChecking) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(end = 10.dp)
+                            .size(18.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary,
+                    )
+                    Text(stringResource(R.string.home_check_button_running))
+                } else {
+                    Text(stringResource(R.string.home_check_button))
+                }
             }
 
             LastCheckResultCard(
                 displayState = uiState.lastCheckDisplayState,
                 onRefreshPresentation = onRefreshLastCheckPresentation,
+                onOpenDetails = { onOpenScreen(AppScreen.DIAGNOSTICS) },
             )
 
             PersistenceStatusCard(status = uiState.lastPersistenceStatus)
 
-            Text("Быстрые действия", style = MaterialTheme.typography.titleSmall)
-            ActionGrid(
-                items = listOf(
-                    ActionGridItem("Статистика", subtitle = "График БС") { onOpenScreen(AppScreen.STATISTICS) },
-                    ActionGridItem("Уведомления", subtitle = "Telegram") { onOpenScreen(AppScreen.NOTIFICATIONS) },
-                    ActionGridItem("Проверки", subtitle = "Сайты") { onOpenScreen(AppScreen.CHECK_SETTINGS) },
-                    ActionGridItem("Автопроверка", subtitle = "WorkManager") { onOpenScreen(AppScreen.AUTO_CHECK) },
-                    ActionGridItem("Диагностика", subtitle = "Подробно") { onOpenScreen(AppScreen.DIAGNOSTICS) },
-                ),
-            )
+            QuickActionsSection(onOpenScreen = onOpenScreen)
 
             uiState.errorMessage?.let { ErrorCard(it) }
         }
+    }
+}
+
+@Composable
+private fun HomeHeader() {
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+            text = stringResource(R.string.app_name),
+            style = MaterialTheme.typography.headlineSmall,
+        )
+        Text(
+            text = stringResource(R.string.home_subtitle),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+}
+
+@Composable
+private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Text(
+            text = stringResource(R.string.home_quick_actions_title),
+            style = MaterialTheme.typography.titleSmall,
+        )
+        ActionGrid(
+            items = listOf(
+                ActionGridItem(
+                    titleRes = R.string.home_action_statistics_title,
+                    subtitleRes = R.string.home_action_statistics_subtitle,
+                    iconRes = R.drawable.ic_home_action_statistics,
+                ) { onOpenScreen(AppScreen.STATISTICS) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_checks_title,
+                    subtitleRes = R.string.home_action_checks_subtitle,
+                    iconRes = R.drawable.ic_home_action_checks,
+                ) { onOpenScreen(AppScreen.CHECK_SETTINGS) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_notifications_title,
+                    subtitleRes = R.string.home_action_notifications_subtitle,
+                    iconRes = R.drawable.ic_home_action_notifications,
+                ) { onOpenScreen(AppScreen.NOTIFICATIONS) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_auto_check_title,
+                    subtitleRes = R.string.home_action_auto_check_subtitle,
+                    iconRes = R.drawable.ic_home_action_schedule,
+                ) { onOpenScreen(AppScreen.AUTO_CHECK) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_diagnostics_title,
+                    subtitleRes = R.string.home_action_diagnostics_subtitle,
+                    iconRes = R.drawable.ic_home_action_diagnostics,
+                    fullWidth = true,
+                ) { onOpenScreen(AppScreen.DIAGNOSTICS) },
+            ),
+        )
     }
 }
 
@@ -87,7 +143,7 @@ private fun PersistenceStatusCard(status: CheckPersistenceStatus?) {
     if (status == null) return
     AppCard(title = null) {
         StatusChip(
-            text = persistenceStatusLabel(status),
+            text = stringResource(persistenceStatusLabelRes(status)),
             tone = if (status.isComplete) StatusTone.SUCCESS else StatusTone.WARNING,
         )
         status.errorMessage?.let { message ->
@@ -100,10 +156,10 @@ private fun PersistenceStatusCard(status: CheckPersistenceStatus?) {
     }
 }
 
-private fun persistenceStatusLabel(status: CheckPersistenceStatus): String {
+private fun persistenceStatusLabelRes(status: CheckPersistenceStatus): Int {
     return if (status.isComplete) {
-        "Статистика: записана"
+        R.string.home_persistence_complete
     } else {
-        "Статистика: ошибка"
+        R.string.home_persistence_error
     }
 }

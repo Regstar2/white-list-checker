@@ -99,9 +99,18 @@ fun MainScreen(viewModel: MainViewModel) {
             onPresetIntervalChange = viewModel::selectPresetInterval,
             onUseCustomIntervalChange = viewModel::setUseCustomInterval,
             onCustomIntervalInputChange = viewModel::updateCustomIntervalInput,
+            onBackgroundNotificationPolicyChange = viewModel::updateBackgroundNotificationPolicy,
             onSaveAndReschedule = viewModel::saveBackgroundCheckSettings,
             onRunNow = viewModel::runBackgroundCheckNow,
             onStop = viewModel::stopBackgroundCheck,
+            onActiveIntervalInputChange = viewModel::updateActiveMonitoringIntervalInput,
+            onSaveActiveInterval = viewModel::saveActiveMonitoringInterval,
+            onActiveNotificationPolicyChange = viewModel::updateActiveMonitoringNotificationPolicy,
+            onNotifyOnAccessRestoredChange = viewModel::updateNotifyOnAccessRestored,
+            onTelegramCommandsEnabledChange = viewModel::updateTelegramCommandsEnabled,
+            onStartActiveMonitoring = viewModel::startActiveMonitoring,
+            onStopActiveMonitoring = viewModel::stopActiveMonitoring,
+            onRunActiveCheckNow = viewModel::runActiveMonitoringCheckNow,
         )
         AppScreen.DIAGNOSTICS -> DiagnosticsScreen(
             uiState = uiState,

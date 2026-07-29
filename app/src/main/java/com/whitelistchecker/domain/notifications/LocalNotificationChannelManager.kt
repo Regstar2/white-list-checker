@@ -12,21 +12,39 @@ class LocalNotificationChannelManager(
     fun ensureChannelsCreated() {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val notificationManager = context.getSystemService(NotificationManager::class.java) ?: return
-        val existing = notificationManager.getNotificationChannel(WHITELIST_EVENTS_CHANNEL_ID)
-        if (existing != null) return
-        val channel = NotificationChannel(
-            WHITELIST_EVENTS_CHANNEL_ID,
-            CHANNEL_NAME,
-            NotificationManager.IMPORTANCE_DEFAULT,
-        ).apply {
-            description = CHANNEL_DESCRIPTION
+
+        if (notificationManager.getNotificationChannel(WHITELIST_EVENTS_CHANNEL_ID) == null) {
+            val channel = NotificationChannel(
+                WHITELIST_EVENTS_CHANNEL_ID,
+                EVENTS_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_DEFAULT,
+            ).apply {
+                description = EVENTS_CHANNEL_DESCRIPTION
+            }
+            notificationManager.createNotificationChannel(channel)
         }
-        notificationManager.createNotificationChannel(channel)
+
+        if (notificationManager.getNotificationChannel(ACTIVE_MONITORING_CHANNEL_ID) == null) {
+            val channel = NotificationChannel(
+                ACTIVE_MONITORING_CHANNEL_ID,
+                ACTIVE_MONITORING_CHANNEL_NAME,
+                NotificationManager.IMPORTANCE_LOW,
+            ).apply {
+                description = ACTIVE_MONITORING_CHANNEL_DESCRIPTION
+                setSound(null, null)
+            }
+            notificationManager.createNotificationChannel(channel)
+        }
     }
 
     companion object {
         const val WHITELIST_EVENTS_CHANNEL_ID = "whitelist_events"
-        private const val CHANNEL_NAME = "События белых списков"
-        private const val CHANNEL_DESCRIPTION = "Уведомления о включении и выключении белых списков"
+        const val ACTIVE_MONITORING_CHANNEL_ID = "active_monitoring"
+        private const val EVENTS_CHANNEL_NAME = "События белых списков"
+        private const val EVENTS_CHANNEL_DESCRIPTION =
+            "Уведомления о включении и выключении белых списков"
+        private const val ACTIVE_MONITORING_CHANNEL_NAME = "Активный мониторинг"
+        private const val ACTIVE_MONITORING_CHANNEL_DESCRIPTION =
+            "Постоянное уведомление активного мониторинга"
     }
 }

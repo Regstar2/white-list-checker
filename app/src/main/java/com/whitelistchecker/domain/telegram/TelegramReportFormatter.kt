@@ -1,5 +1,6 @@
 package com.whitelistchecker.domain.telegram
 
+import com.whitelistchecker.domain.checkrun.NotificationDecision
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
@@ -49,6 +50,61 @@ class TelegramReportFormatter {
             appendLine("<b>Проверка:</b> ${checkResult.checkedNetworkLabel}")
             appendLine("<b>Время:</b> ${event.changedAtMillis.toDisplayDateTime()}")
         }.trim()
+    }
+
+    fun formatDecision(
+        decision: NotificationDecision,
+        checkResult: NetworkCheckResult?,
+    ): String {
+        return when (decision) {
+            is NotificationDecision.AttemptResult -> checkResult?.let(::formatManualCheck)
+                ?: "<b>Результат проверки</b>\n\n${decision.currentState?.let(::plainLabel) ?: "Неизвестно"}"
+            is NotificationDecision.StateChanged -> formatStateChanged(decision.newState, checkResult)
+            is NotificationDecision.AccessRestored -> buildString {
+                appendLine("<b>Проверка снова доступна</b>")
+                appendLine()
+                if (checkResult != null) {
+                    append(formatManualCheck(checkResult))
+                } else {
+                    append(decision.currentState?.let(::plainLabel) ?: "Результат неизвестен")
+                }
+            }.trim()
+            is NotificationDecision.AccessRestoredAndStateChanged -> buildString {
+                appendLine("<b>Проверка снова доступна</b>")
+                appendLine()
+                appendLine("Состояние изменилось: ${plainLabel(decision.newState)}")
+                if (checkResult != null) {
+                    appendLine()
+                    append(formatManualCheck(checkResult))
+                }
+            }.trim()
+            is NotificationDecision.AttemptUnavailable -> buildString {
+                appendLine("<b>Проверка недоступна</b>")
+                appendLine()
+                appendLine(plainLabel(decision.state))
+                appendLine("Последний валидный статус белых списков не изменён.")
+            }.trim()
+            is NotificationDecision.AttemptFailed -> buildString {
+                appendLine("<b>Ошибка проверки</b>")
+                appendLine()
+                appendLine(decision.error)
+            }.trim()
+            NotificationDecision.None -> ""
+        }
+    }
+
+    private fun formatStateChanged(
+        newState: WhitelistState,
+        checkResult: NetworkCheckResult?,
+    ): String {
+        if (checkResult != null) {
+            return buildString {
+                appendLine("<b>Состояние белых списков изменилось</b>")
+                appendLine()
+                append(formatManualCheck(checkResult))
+            }.trim()
+        }
+        return "<b>Состояние белых списков изменилось</b>\n\n${plainLabel(newState)}"
     }
 
     private fun plainLabel(state: WhitelistState): String = when (state) {

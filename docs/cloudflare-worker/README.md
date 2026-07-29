@@ -66,6 +66,18 @@ https://whitelist-monitor-tg-relay.your-subdomain.workers.dev
 10. Добавь найденный чат в получатели.
 11. Нажми **Отправить тестовое сообщение**.
 
+## Команды бота и long polling
+
+Начиная с v0.8.13 приложение может принимать команды `/status`, `/check`, `/help`, пока активный мониторинг запущен и команды разрешены в настройках.
+
+Android-приложение по-прежнему не хранит `BOT_TOKEN` и не вызывает `api.telegram.org` напрямую. Команды читаются через этот же Worker endpoint:
+
+```text
+<WORKER_URL>/tg/getUpdates
+```
+
+Для нормального long polling обновите Worker кодом из `telegram-relay-worker.js` этой версии. Новый шаблон принимает `timeout` в JSON payload и прокидывает его в Telegram Bot API. Старый Worker с `timeout=0` продолжит работать для ручного получения `chat_id`, но polling команд будет чаще выполнять короткие запросы.
+
 ## Частые ошибки
 
 ### Worker HTTP 401
