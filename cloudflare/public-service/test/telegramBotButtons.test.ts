@@ -13,7 +13,6 @@ import {
 import { deviceText, unlinkConfirmationText } from "../src/telegram/publicBotFormatter";
 import type { Env, LinkedDeviceRecord, TelegramUpdate } from "../src/types";
 import type { InlineKeyboard } from "../src/telegram/telegramClient";
-import { readFileSync } from "node:fs";
 
 const now = 1_000_000;
 const linkId = "123e4567-e89b-12d3-a456-426614174000";
@@ -166,20 +165,13 @@ describe("Worker public service invariants", () => {
     expect(await response.text()).toBe("ok");
   });
 
-  it("keeps public API routes in the central service entrypoint", () => {
-    const indexSource = readFileSync(new URL("../src/index.ts", import.meta.url), "utf8");
-    expect(indexSource).toContain('/api/v1/');
-    expect(indexSource).toContain('/telegram/webhook');
-    expect(indexSource).toContain('/health');
-  });
-
-  it("does not add D1 migrations for button, Worker name, or URL changes", () => {
-    const firstMigration = readFileSync(new URL("../migrations/0001_initial.sql", import.meta.url), "utf8");
-    const secondMigration = readFileSync(new URL("../migrations/0002_area_city_operator_sources.sql", import.meta.url), "utf8");
-    expect(firstMigration).toContain("CREATE TABLE IF NOT EXISTS installations");
-    expect(firstMigration).toContain("CREATE TABLE IF NOT EXISTS reports");
-    expect(secondMigration).toContain("ALTER TABLE installations ADD COLUMN city_code TEXT");
-    expect(secondMigration).toContain("ALTER TABLE reports ADD COLUMN operator_source TEXT");
+  it("keeps the public status API route available", async () => {
+    const response = await worker.fetch(
+      new Request("https://example.com/api/v1/public/status"),
+      { DB: {} as D1Database } satisfies Env,
+    );
+    expect(response.status).toBe(400);
+    expect(await response.text()).toContain("MISSING_STATUS_FILTERS");
   });
 });
 

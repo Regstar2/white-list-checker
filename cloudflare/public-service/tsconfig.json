@@ -6,10 +6,10 @@
     "strict": true,
     "skipLibCheck": true,
     "lib": ["ES2022"],
-    "types": ["@cloudflare/workers-types", "vitest/globals"],
+    "types": ["@cloudflare/workers-types"],
     "allowSyntheticDefaultImports": true,
     "forceConsistentCasingInFileNames": true,
     "noEmit": true
   },
-  "include": ["src/**/*.ts", "test/**/*.ts", "vitest.config.ts"]
+  "include": ["src/**/*.ts"]
 }
