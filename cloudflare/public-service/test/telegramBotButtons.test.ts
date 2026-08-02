@@ -105,7 +105,7 @@ describe("Telegram inline keyboards", () => {
 describe("PublicTelegramBot callback routing", () => {
   it("answers callback queries early and routes status-refresh to an edited status message", async () => {
     const { bot, telegram } = botWithFakes();
-    await bot.handleUpdate(callbackUpdate("v1:status-refresh"));
+    await bot.handleUpdate(callbackUpdate("v1:status-refresh"), now);
     expect(telegram.answerCallbackQuery).toHaveBeenCalledWith("callback-1");
     expect(telegram.editMessageText).toHaveBeenCalledWith(
       "42",
@@ -117,16 +117,16 @@ describe("PublicTelegramBot callback routing", () => {
 
   it("routes devices and device callbacks with the expected linkId", async () => {
     const { bot, telegram } = botWithFakes();
-    await bot.handleUpdate(callbackUpdate("v1:devices"));
+    await bot.handleUpdate(callbackUpdate("v1:devices"), now);
     expect(telegram.editMessageText).toHaveBeenLastCalledWith("42", 7, expect.stringContaining("Pixel"), devicesKeyboard([device]));
 
-    await bot.handleUpdate(callbackUpdate(`v1:device:${linkId}`, 2));
+    await bot.handleUpdate(callbackUpdate(`v1:device:${linkId}`, 2), now);
     expect(telegram.editMessageText).toHaveBeenLastCalledWith("42", 7, expect.stringContaining("Pixel"), deviceKeyboard(linkId));
   });
 
   it("shows unlink confirmation before D1 revoke and revokes only after confirmation", async () => {
     const { bot, repo, telegram } = botWithFakes();
-    await bot.handleUpdate(callbackUpdate(`v1:unlink-request:${linkId}`));
+    await bot.handleUpdate(callbackUpdate(`v1:unlink-request:${linkId}`), now);
     expect(repo.revokeLinkFromTelegram).not.toHaveBeenCalled();
     expect(telegram.editMessageText).toHaveBeenLastCalledWith(
       "42",
@@ -136,24 +136,24 @@ describe("PublicTelegramBot callback routing", () => {
     );
 
     repo.listDevicesForChat.mockResolvedValueOnce([device]).mockResolvedValueOnce([]);
-    await bot.handleUpdate(callbackUpdate(`v1:unlink-confirm:${linkId}`, 2));
+    await bot.handleUpdate(callbackUpdate(`v1:unlink-confirm:${linkId}`, 2), now);
     expect(repo.revokeLinkFromTelegram).toHaveBeenCalledWith("42", linkId, now);
     expect(telegram.editMessageText).toHaveBeenLastCalledWith("42", 7, expect.stringContaining("отвязано"), mainKeyboard(false));
   });
 
   it("handles malformed callbacks without leaking internal errors", async () => {
     const { bot, telegram } = botWithFakes();
-    await expect(bot.handleUpdate(callbackUpdate("broken"))).resolves.toBeUndefined();
+    await expect(bot.handleUpdate(callbackUpdate("broken"), now)).resolves.toBeUndefined();
     expect(telegram.answerCallbackQuery).toHaveBeenCalledWith("callback-1");
     expect(telegram.editMessageText).not.toHaveBeenCalled();
   });
 
   it("keeps slash commands working", async () => {
     const { bot, telegram } = botWithFakes();
-    await bot.handleUpdate(messageUpdate("/start"));
+    await bot.handleUpdate(messageUpdate("/start"), now);
     expect(telegram.sendMessage).toHaveBeenLastCalledWith("42", expect.stringContaining("Whitelist Checker"), mainKeyboard(true));
 
-    await bot.handleUpdate(messageUpdate("/help", 2));
+    await bot.handleUpdate(messageUpdate("/help", 2), now);
     expect(telegram.sendMessage).toHaveBeenLastCalledWith("42", expect.stringContaining("/status"), mainKeyboard(true));
   });
 });
