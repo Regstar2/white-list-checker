@@ -1,38 +1,52 @@
 import { OPERATORS, REGIONS } from "../domain/catalog";
-import type { InlineKeyboard } from "./telegramClient";
 import type { LinkedDeviceRecord } from "../types";
+import type { InlineKeyboard } from "./telegramClient";
 
-export function mainKeyboard(hasDevices: boolean): InlineKeyboard {
-  const rows: InlineKeyboard = [
-    [{ text: "Статус по данным пользователей", callback_data: "v1:status" }],
+export const TELEGRAM_CALLBACK_DATA_LIMIT_BYTES = 64;
+
+export function mainKeyboard(_hasDevices = false): InlineKeyboard {
+  return [
+    [{ text: "Статус сети", callback_data: "v1:status" }],
     [
-      { text: "Выбрать регион", callback_data: "v1:regions" },
-      { text: "Выбрать оператора", callback_data: "v1:operators" },
+      { text: "Регион", callback_data: "v1:regions" },
+      { text: "Оператор", callback_data: "v1:operators" },
     ],
     [{ text: "Мои устройства", callback_data: "v1:devices" }],
     [
+      { text: "Помощь", callback_data: "v1:help" },
       { text: "О проекте", callback_data: "v1:about" },
-      { text: "Обратная связь", callback_data: "v1:feedback" },
     ],
+    [{ text: "Обратная связь", callback_data: "v1:feedback" }],
   ];
-  if (hasDevices) {
-    rows.splice(1, 0, [{ text: "Проверить на моём устройстве", callback_data: "v1:devices" }]);
-  }
-  return rows;
+}
+
+export function statusKeyboard(): InlineKeyboard {
+  return [
+    [{ text: "Обновить", callback_data: "v1:status-refresh" }],
+    [
+      { text: "Изменить регион", callback_data: "v1:regions" },
+      { text: "Изменить оператора", callback_data: "v1:operators" },
+    ],
+    [{ text: "Главное меню", callback_data: "v1:menu" }],
+  ];
 }
 
 export function regionKeyboard(): InlineKeyboard {
-  return chunk(REGIONS.map((region) => ({
+  const rows = chunk(REGIONS.map((region) => ({
     text: region.label,
     callback_data: `v1:region:${region.code}`,
   })), 2);
+  rows.push([{ text: "Главное меню", callback_data: "v1:menu" }]);
+  return rows;
 }
 
 export function operatorKeyboard(): InlineKeyboard {
-  return chunk(OPERATORS.map((operator) => ({
+  const rows = chunk(OPERATORS.map((operator) => ({
     text: operator.label,
     callback_data: `v1:operator:${operator.code}`,
   })), 2);
+  rows.push([{ text: "Главное меню", callback_data: "v1:menu" }]);
+  return rows;
 }
 
 export function devicesKeyboard(devices: LinkedDeviceRecord[]): InlineKeyboard {
@@ -40,16 +54,24 @@ export function devicesKeyboard(devices: LinkedDeviceRecord[]): InlineKeyboard {
   for (const device of devices.slice(0, 8)) {
     rows.push([{ text: device.deviceAlias, callback_data: `v1:device:${device.linkId}` }]);
   }
-  rows.push([{ text: "Назад", callback_data: "v1:menu" }]);
+  rows.push([{ text: "Главное меню", callback_data: "v1:menu" }]);
   return rows;
 }
 
 export function deviceKeyboard(linkId: string): InlineKeyboard {
   return [
-    [{ text: "Последний результат", callback_data: `v1:device:${linkId}` }],
     [{ text: "Проверить сейчас", callback_data: `v1:check:${linkId}` }],
-    [{ text: "Отвязать", callback_data: `v1:unlink:${linkId}` }],
+    [{ text: "Отвязать устройство", callback_data: `v1:unlink-request:${linkId}` }],
     [{ text: "Назад", callback_data: "v1:devices" }],
+  ];
+}
+
+export function unlinkConfirmKeyboard(linkId: string): InlineKeyboard {
+  return [
+    [
+      { text: "Да, отвязать", callback_data: `v1:unlink-confirm:${linkId}` },
+      { text: "Отмена", callback_data: `v1:unlink-cancel:${linkId}` },
+    ],
   ];
 }
 

@@ -1,5 +1,5 @@
 {
-  "name": "whitelistchecker-public-service",
+  "name": "whitelist-monitor-tg-relay",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -8,7 +8,9 @@
     "lint": "tsc --noEmit",
     "test": "vitest run",
     "build": "wrangler deploy src/index.ts --dry-run --outdir dist",
-    "migrations:local": "wrangler d1 migrations apply DB --local"
+    "deploy": "wrangler deploy",
+    "migrations:local": "wrangler d1 migrations apply DB --local",
+    "migrations:remote:list": "wrangler d1 migrations list DB --remote"
   },
   "devDependencies": {
     "@cloudflare/vitest-pool-workers": "^0.19.0",

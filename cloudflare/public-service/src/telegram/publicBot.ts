@@ -1,22 +1,38 @@
 import { loadConfig } from "../config";
-import { OPERATORS, REGIONS } from "../domain/catalog";
 import { PublicStatusAggregator } from "../domain/publicStatusAggregator";
 import { ApiError } from "../http/errors";
-import { D1RateLimiter } from "../security/rateLimit";
-import type { Env, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "../types";
 import { D1PublicServiceRepository } from "../repositories/d1PublicServiceRepository";
-import { deviceKeyboard, devicesKeyboard, mainKeyboard, operatorKeyboard, regionKeyboard } from "./keyboards";
+import { D1RateLimiter } from "../security/rateLimit";
+import type { Env, LinkedDeviceRecord, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "../types";
+import {
+  deviceKeyboard,
+  devicesKeyboard,
+  mainKeyboard,
+  operatorKeyboard,
+  regionKeyboard,
+  statusKeyboard,
+  unlinkConfirmKeyboard,
+} from "./keyboards";
 import {
   aboutText,
   chooseOperatorText,
   chooseRegionText,
+  deviceNotFoundText,
+  deviceText,
   devicesText,
+  feedbackPromptText,
+  feedbackSavedText,
   helpText,
+  linkedDeviceText,
   missingStatusSelectionText,
+  operatorSavedText,
   remoteRequestQueuedText,
+  regionSavedText,
   safeErrorText,
   startText,
   statusText,
+  unlinkConfirmationText,
+  unlinkSuccessText,
 } from "./publicBotFormatter";
 import { TelegramClient } from "./telegramClient";
 
@@ -107,59 +123,66 @@ export class PublicTelegramBot {
     }
     await this.limiter.check(`bot:${chatId}`, { maxRequests: 40, windowSeconds: 60 }, now);
 
-    const data = callback.data ?? "";
-    const parts = data.split(":");
+    const parts = (callback.data ?? "").split(":");
     if (parts[0] !== "v1") return;
-    const action = parts[1];
-    if (action === "menu") {
-      await this.telegram.editMessageText(chatId, message.message_id, startText(), mainKeyboard(await this.hasDevices(chatId)));
-      return;
-    }
-    if (action === "status") {
-      await this.sendStatus(chatId, now, message.message_id);
-      return;
-    }
-    if (action === "regions") {
-      await this.telegram.editMessageText(chatId, message.message_id, chooseRegionText(), regionKeyboard());
-      return;
-    }
-    if (action === "operators") {
-      await this.telegram.editMessageText(chatId, message.message_id, chooseOperatorText(), operatorKeyboard());
-      return;
-    }
-    if (action === "region") {
-      await this.repo.saveTelegramRegion(chatId, parts[2], now);
-      await this.telegram.editMessageText(chatId, message.message_id, "Регион сохранён.", mainKeyboard(await this.hasDevices(chatId)));
-      return;
-    }
-    if (action === "operator") {
-      await this.repo.saveTelegramOperator(chatId, parts[2], now);
-      await this.telegram.editMessageText(chatId, message.message_id, "Оператор сохранён.", mainKeyboard(await this.hasDevices(chatId)));
-      return;
-    }
-    if (action === "devices") {
-      await this.sendDevices(chatId, now, message.message_id);
-      return;
-    }
-    if (action === "device") {
-      await this.sendDevice(chatId, parts[2], message.message_id);
-      return;
-    }
-    if (action === "check") {
-      await this.createRemoteCommand(chatId, parts[2], message.message_id, now);
-      return;
-    }
-    if (action === "unlink") {
-      await this.repo.revokeLinkFromTelegram(chatId, parts[2], now);
-      await this.telegram.editMessageText(chatId, message.message_id, "Устройство отвязано.", mainKeyboard(await this.hasDevices(chatId)));
-      return;
-    }
-    if (action === "about") {
-      await this.telegram.editMessageText(chatId, message.message_id, aboutText(), mainKeyboard(await this.hasDevices(chatId)));
-      return;
-    }
-    if (action === "feedback") {
-      await this.telegram.sendMessage(chatId, "Отправьте сообщение вида:\n/feedback ваш текст");
+    const action = parts[1] ?? "";
+    const id = parts[2];
+
+    switch (action) {
+      case "menu":
+        await this.telegram.editMessageText(chatId, message.message_id, startText(), mainKeyboard(await this.hasDevices(chatId)));
+        return;
+      case "help":
+        await this.telegram.editMessageText(chatId, message.message_id, helpText(), mainKeyboard(await this.hasDevices(chatId)));
+        return;
+      case "status":
+      case "status-refresh":
+        await this.sendStatus(chatId, now, message.message_id);
+        return;
+      case "regions":
+        await this.telegram.editMessageText(chatId, message.message_id, chooseRegionText(), regionKeyboard());
+        return;
+      case "operators":
+        await this.telegram.editMessageText(chatId, message.message_id, chooseOperatorText(), operatorKeyboard());
+        return;
+      case "region":
+        if (id) {
+          await this.repo.saveTelegramRegion(chatId, id, now);
+          await this.telegram.editMessageText(chatId, message.message_id, regionSavedText(), mainKeyboard(await this.hasDevices(chatId)));
+        }
+        return;
+      case "operator":
+        if (id) {
+          await this.repo.saveTelegramOperator(chatId, id, now);
+          await this.telegram.editMessageText(chatId, message.message_id, operatorSavedText(), mainKeyboard(await this.hasDevices(chatId)));
+        }
+        return;
+      case "devices":
+        await this.sendDevices(chatId, now, message.message_id);
+        return;
+      case "device":
+        if (id) await this.sendDevice(chatId, id, message.message_id, now);
+        return;
+      case "check":
+        if (id) await this.createRemoteCommand(chatId, id, message.message_id, now);
+        return;
+      case "unlink-request":
+        if (id) await this.confirmUnlink(chatId, id, message.message_id);
+        return;
+      case "unlink-confirm":
+        if (id) await this.unlinkDevice(chatId, id, message.message_id, now);
+        return;
+      case "unlink-cancel":
+        if (id) await this.sendDevice(chatId, id, message.message_id, now);
+        return;
+      case "about":
+        await this.telegram.editMessageText(chatId, message.message_id, aboutText(), mainKeyboard(await this.hasDevices(chatId)));
+        return;
+      case "feedback":
+        await this.telegram.editMessageText(chatId, message.message_id, feedbackPromptText(), mainKeyboard(await this.hasDevices(chatId)));
+        return;
+      default:
+        return;
     }
   }
 
@@ -196,8 +219,8 @@ export class PublicTelegramBot {
       },
     });
     const text = statusText(result);
-    if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, mainKeyboard(await this.hasDevices(chatId)));
-    else await this.telegram.sendMessage(chatId, text, mainKeyboard(await this.hasDevices(chatId)));
+    if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, statusKeyboard());
+    else await this.telegram.sendMessage(chatId, text, statusKeyboard());
   }
 
   private async sendDevices(chatId: string, now: number, editMessageId?: number): Promise<void> {
@@ -208,14 +231,42 @@ export class PublicTelegramBot {
     else await this.telegram.sendMessage(chatId, text, keyboard);
   }
 
-  private async sendDevice(chatId: string, linkId: string, editMessageId: number): Promise<void> {
+  private async sendDevice(chatId: string, linkId: string, editMessageId: number, now: number): Promise<void> {
     const devices = await this.repo.listDevicesForChat(chatId);
-    const device = devices.find((item) => item.linkId === linkId);
+    const device = findDevice(devices, linkId);
     if (!device) {
-      await this.telegram.editMessageText(chatId, editMessageId, "Устройство не найдено или отвязано.", mainKeyboard(devices.length > 0));
+      await this.telegram.editMessageText(chatId, editMessageId, deviceNotFoundText(), devices.length > 0 ? devicesKeyboard(devices) : mainKeyboard(false));
       return;
     }
-    await this.telegram.editMessageText(chatId, editMessageId, `<b>${device.deviceAlias}</b>`, deviceKeyboard(linkId));
+    await this.telegram.editMessageText(
+      chatId,
+      editMessageId,
+      deviceText(device, now, this.config.deviceOnlineTimeoutSeconds),
+      deviceKeyboard(linkId),
+    );
+  }
+
+  private async confirmUnlink(chatId: string, linkId: string, editMessageId: number): Promise<void> {
+    const devices = await this.repo.listDevicesForChat(chatId);
+    const device = findDevice(devices, linkId);
+    if (!device) {
+      await this.telegram.editMessageText(chatId, editMessageId, deviceNotFoundText(), devices.length > 0 ? devicesKeyboard(devices) : mainKeyboard(false));
+      return;
+    }
+    await this.telegram.editMessageText(chatId, editMessageId, unlinkConfirmationText(device.deviceAlias), unlinkConfirmKeyboard(linkId));
+  }
+
+  private async unlinkDevice(chatId: string, linkId: string, editMessageId: number, now: number): Promise<void> {
+    const devices = await this.repo.listDevicesForChat(chatId);
+    const device = findDevice(devices, linkId);
+    if (!device) {
+      await this.telegram.editMessageText(chatId, editMessageId, deviceNotFoundText(), devices.length > 0 ? devicesKeyboard(devices) : mainKeyboard(false));
+      return;
+    }
+    await this.repo.revokeLinkFromTelegram(chatId, linkId, now);
+    const updatedDevices = await this.repo.listDevicesForChat(chatId);
+    const text = [unlinkSuccessText(device.deviceAlias), "", devicesText(updatedDevices, now, this.config.deviceOnlineTimeoutSeconds)].join("\n");
+    await this.telegram.editMessageText(chatId, editMessageId, text, updatedDevices.length > 0 ? devicesKeyboard(updatedDevices) : mainKeyboard(false));
   }
 
   private async createRemoteCommand(chatId: string, linkId: string, messageId: number, now: number): Promise<void> {
@@ -236,11 +287,7 @@ export class PublicTelegramBot {
   private async linkDevice(chatId: string, code: string, now: number): Promise<void> {
     try {
       const device = await this.repo.linkTelegramChat(code, chatId, now);
-      await this.telegram.sendMessage(
-        chatId,
-        `Устройство привязано: <b>${device.deviceAlias}</b>`,
-        deviceKeyboard(device.linkId),
-      );
+      await this.telegram.sendMessage(chatId, linkedDeviceText(device), deviceKeyboard(device.linkId));
     } catch (error) {
       const text = error instanceof ApiError ? error.message : "Не удалось привязать устройство.";
       await this.telegram.sendMessage(chatId, text);
@@ -256,7 +303,7 @@ export class PublicTelegramBot {
   ): Promise<void> {
     try {
       await this.repo.saveFeedback(chatId, telegramUserId == null ? null : String(telegramUserId), text, context, now);
-      await this.telegram.sendMessage(chatId, "Спасибо. Сообщение сохранено.");
+      await this.telegram.sendMessage(chatId, feedbackSavedText());
     } catch (error) {
       const message = error instanceof ApiError ? error.message : "Не удалось сохранить сообщение.";
       await this.telegram.sendMessage(chatId, message);
@@ -275,6 +322,10 @@ export class PublicTelegramBot {
   ): Promise<void> {
     await this.repo.upsertTelegramUser(chatId, telegramUserId == null ? null : String(telegramUserId), languageCode, now);
   }
+}
+
+function findDevice(devices: LinkedDeviceRecord[], linkId: string): LinkedDeviceRecord | undefined {
+  return devices.find((item) => item.linkId === linkId);
 }
 
 function substringBefore(value: string, separator: string): string {

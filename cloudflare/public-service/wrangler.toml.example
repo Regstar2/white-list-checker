@@ -1,4 +1,4 @@
-name = "whitelistchecker-public-service"
+name = "whitelist-monitor-tg-relay"
 main = "src/index.ts"
 compatibility_date = "2026-07-29"
 

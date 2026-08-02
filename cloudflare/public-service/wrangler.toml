@@ -1,4 +1,4 @@
-name = "whitelistchecker-public-service"
+name = "whitelist-monitor-tg-relay"
 main = "src/index.ts"
 compatibility_date = "2026-07-29"
 
@@ -21,4 +21,4 @@ PUBLIC_MODE_ENABLED = "true"
 [[d1_databases]]
 binding = "DB"
 database_name = "whitelist-public-service"
-database_id = "00000000-0000-0000-0000-000000000000"
+database_id = "37b43d63-d170-448b-9138-cdb27343168e"

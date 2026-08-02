@@ -19,7 +19,7 @@ android {
         buildConfigField(
             "String",
             "PUBLIC_SERVICE_BASE_URL",
-            "\"https://whitelistchecker-public-service.regstar2.workers.dev\"",
+            "\"https://whitelist-monitor-tg-relay.regstar2.workers.dev\"",
         )
     }
 
@@ -28,7 +28,7 @@ android {
             buildConfigField(
                 "String",
                 "PUBLIC_SERVICE_BASE_URL",
-                "\"https://whitelistchecker-public-service-dev.regstar2.workers.dev\"",
+                "\"https://whitelist-monitor-tg-relay.regstar2.workers.dev\"",
             )
         }
 

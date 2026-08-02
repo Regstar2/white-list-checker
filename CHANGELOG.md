@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.8.16 - migrate existing relay Worker to public service
+
+### Added
+
+- Migrated the central public service configuration to the existing historical Worker `whitelist-monitor-tg-relay`.
+- Updated Android `BuildConfig.PUBLIC_SERVICE_BASE_URL` for debug and release to `https://whitelist-monitor-tg-relay.regstar2.workers.dev`.
+- Added the production-ready inline main menu for the central public Telegram bot.
+- Added status-screen buttons for refresh, region/operator selection and return to the main menu.
+- Added device-list and device-detail button flows with explicit `linkId` callbacks.
+- Added two-step unlink confirmation before calling `revokeLinkFromTelegram`.
+- Added Telegram keyboard and callback-routing tests for menu, status, region/operator returns, devices, unlink confirmation, callback length and alias escaping.
+- Added `npm run deploy` and `npm run migrations:remote:list` scripts for manual production operations while keeping `npm run build` as dry-run.
+- Added `docs/versions/v0.8.16.md`.
+
+### Changed
+
+- Removed the duplicate main-menu device-check button; users now go through "Мои устройства".
+- Removed the non-working "Последний результат" device button.
+- Public bot callback routing now handles `v1:menu`, `v1:help`, `v1:status-refresh`, device details, check, unlink request/confirm/cancel, about and feedback.
+- New public bot user-facing texts are kept in `publicBotFormatter.ts`, with escaped external values.
+- Documented that `whitelist-monitor-tg-relay` is now the central service, while user-owned personal Telegram relay Workers remain supported.
+- Documented that new buttons appear only after production deployment and old Telegram messages need `/start` for a fresh keyboard.
+
+### Security
+
+- D1 schema, public API, user-owned Telegram relay support, secrets and webhook secret validation were not changed.
+- The checked-in D1 `database_id` remains a placeholder and must be replaced manually before production deployment.
+- Production secrets remain out of the repository.
+- Production deployment was not performed.
+
 ## 0.8.15 — Fixed public service URL and area/operator selection
 
 ### Added

@@ -1,5 +1,23 @@
 # WhiteListChecker
 
+## v0.8.16 - central Worker migration
+
+Фактический общий Cloudflare Worker:
+
+```text
+whitelist-monitor-tg-relay
+```
+
+Production URL общего сервиса:
+
+```text
+https://whitelist-monitor-tg-relay.regstar2.workers.dev
+```
+
+Имя Worker историческое: раньше этот экземпляр был личным Telegram relay владельца проекта, теперь он используется как центральный сервис WhiteListChecker. Новый Worker `whitelistchecker-public-service` не создаётся.
+
+Встроенный `BuildConfig.PUBLIC_SERVICE_BASE_URL` Android указывает на общий сервис. Пользовательский Worker URL личного Telegram relay по-прежнему вводится отдельно в настройках Telegram-уведомлений; личные relay Worker и шаблон `docs/cloudflare-worker/telegram-relay-worker.js` продолжают поддерживаться.
+
 ![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)
 ![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-blue)
 ![Android](https://img.shields.io/badge/Android-minSdk%2026-green)

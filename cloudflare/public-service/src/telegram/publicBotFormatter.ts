@@ -102,6 +102,58 @@ export function devicesText(devices: LinkedDeviceRecord[], now: number, onlineTi
   return lines.join("\n");
 }
 
+export function deviceText(device: LinkedDeviceRecord, now: number, onlineTimeoutSeconds: number): string {
+  const online = device.lastSeenAt != null && now - device.lastSeenAt <= onlineTimeoutSeconds * 1000;
+  const remoteChecks = device.allowRemoteChecks ? "разрешены" : "выключены в приложении";
+  const serviceConnected = online && device.lastServiceState != null;
+  const lines = [
+    `<b>${escapeHtml(device.deviceAlias)}</b>`,
+    "",
+    `Статус: ${online ? "online" : "offline"}`,
+    `Удалённые проверки: ${remoteChecks}`,
+  ];
+  if (!serviceConnected) {
+    lines.push("", "Foreground service не подключён. Запустите «Активный мониторинг» в Android-приложении, чтобы устройство могло принять команду.");
+  }
+  return lines.join("\n");
+}
+
+export function deviceNotFoundText(): string {
+  return "Устройство не найдено или уже отвязано.";
+}
+
+export function unlinkConfirmationText(deviceAlias: string): string {
+  return `Точно отвязать устройство «${escapeHtml(deviceAlias)}»?`;
+}
+
+export function unlinkCancelledText(device: LinkedDeviceRecord, now: number, onlineTimeoutSeconds: number): string {
+  return deviceText(device, now, onlineTimeoutSeconds);
+}
+
+export function unlinkSuccessText(deviceAlias: string): string {
+  return `Устройство «${escapeHtml(deviceAlias)}» отвязано.`;
+}
+
+export function regionSavedText(): string {
+  return "Регион сохранён.";
+}
+
+export function operatorSavedText(): string {
+  return "Оператор сохранён.";
+}
+
+export function feedbackPromptText(): string {
+  return "Отправьте сообщение вида:\n/feedback ваш текст";
+}
+
+export function feedbackSavedText(): string {
+  return "Спасибо. Сообщение сохранено.";
+}
+
+export function linkedDeviceText(device: LinkedDeviceRecord): string {
+  return `Устройство привязано: <b>${escapeHtml(device.deviceAlias)}</b>`;
+}
+
 export function remoteRequestQueuedText(deviceAlias: string): string {
   return [
     `<b>${escapeHtml(deviceAlias)}</b>`,
