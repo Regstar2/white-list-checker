@@ -19,7 +19,7 @@ android {
         buildConfigField(
             "String",
             "PUBLIC_SERVICE_BASE_URL",
-            "\"https://whitelist-monitor-tg-relay.regstar2.workers.dev\"",
+            "\"https://whitelist-monitor-tg-relay.carkov195.workers.dev\"",
         )
     }
 
@@ -28,7 +28,7 @@ android {
             buildConfigField(
                 "String",
                 "PUBLIC_SERVICE_BASE_URL",
-                "\"https://whitelist-monitor-tg-relay.regstar2.workers.dev\"",
+                "\"https://whitelist-monitor-tg-relay.carkov195.workers.dev\"",
             )
         }
 

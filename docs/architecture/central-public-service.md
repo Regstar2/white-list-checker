@@ -13,7 +13,7 @@ whitelist-monitor-tg-relay
 Production URL:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev
+https://whitelist-monitor-tg-relay.carkov195.workers.dev
 ```
 
 Имя историческое: раньше этот экземпляр был личным Telegram relay владельца проекта, теперь он используется как общий сервис WhiteListChecker. Новый Worker `whitelistchecker-public-service` не создаётся.
@@ -77,7 +77,7 @@ BuildConfig.PUBLIC_SERVICE_BASE_URL
 В v0.8.16 debug и release временно указывают на один production Worker:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev
+https://whitelist-monitor-tg-relay.carkov195.workers.dev
 ```
 
 Этот URL не хранится в DataStore, не вводится пользователем и не смешивается с пользовательским `Worker URL` личного Telegram relay.
@@ -184,7 +184,7 @@ database_id = "..."
 Общий бот использует webhook:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev/telegram/webhook
+https://whitelist-monitor-tg-relay.carkov195.workers.dev/telegram/webhook
 ```
 
 Webhook должен принимать:

@@ -5,7 +5,7 @@
 ### Added
 
 - Migrated the central public service configuration to the existing historical Worker `whitelist-monitor-tg-relay`.
-- Updated Android `BuildConfig.PUBLIC_SERVICE_BASE_URL` for debug and release to `https://whitelist-monitor-tg-relay.regstar2.workers.dev`.
+- Updated Android `BuildConfig.PUBLIC_SERVICE_BASE_URL` for debug and release to `https://whitelist-monitor-tg-relay.carkov195.workers.dev`.
 - Added the production-ready inline main menu for the central public Telegram bot.
 - Added status-screen buttons for refresh, region/operator selection and return to the main menu.
 - Added device-list and device-detail button flows with explicit `linkId` callbacks.

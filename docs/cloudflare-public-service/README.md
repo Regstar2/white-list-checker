@@ -15,7 +15,7 @@ whitelist-monitor-tg-relay
 Production URL:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev
+https://whitelist-monitor-tg-relay.carkov195.workers.dev
 ```
 
 Имя историческое: раньше этот экземпляр был личным Telegram relay владельца проекта, теперь он используется как центральный сервис WhiteListChecker. Новый Worker `whitelistchecker-public-service` не создаётся.
@@ -165,7 +165,7 @@ POST /telegram/webhook
 Полный production URL:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev/telegram/webhook
+https://whitelist-monitor-tg-relay.carkov195.workers.dev/telegram/webhook
 ```
 
 Worker проверяет header:

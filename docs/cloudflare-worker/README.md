@@ -17,7 +17,7 @@ whitelist-monitor-tg-relay
 и URL:
 
 ```text
-https://whitelist-monitor-tg-relay.regstar2.workers.dev
+https://whitelist-monitor-tg-relay.carkov195.workers.dev
 ```
 
 раньше могли использоваться владельцем проекта как личный relay. Теперь этот экземпляр преобразуется в центральный общий сервис:
@@ -63,7 +63,7 @@ Android
 https://my-whitelist-relay.your-subdomain.workers.dev
 ```
 
-Не используйте URL общего сервиса `https://whitelist-monitor-tg-relay.regstar2.workers.dev` как личный relay.
+Не используйте URL общего сервиса `https://whitelist-monitor-tg-relay.carkov195.workers.dev` как личный relay.
 
 ## Создание Worker в Cloudflare Dashboard
 
