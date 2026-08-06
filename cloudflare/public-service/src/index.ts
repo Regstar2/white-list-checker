@@ -24,11 +24,22 @@ export default {
         return await handleTelegramWebhook(request, env);
       }
       if (url.pathname === "/health") {
-        return jsonResponse({
-          status: "ok",
-          service: "whitelist-monitor-tg-relay",
-          revision: SERVICE_REVISION,
-          capabilities: CAPABILITIES,
+        if (request.headers.get("accept")?.includes("application/json")) {
+          return jsonResponse({
+            status: "ok",
+            service: "whitelist-monitor-tg-relay",
+            revision: SERVICE_REVISION,
+            capabilities: CAPABILITIES,
+          });
+        }
+        return new Response("ok", {
+          status: 200,
+          headers: {
+            "cache-control": "no-store",
+            "content-type": "text/plain; charset=utf-8",
+            "x-service-revision": SERVICE_REVISION,
+            "x-service-capabilities": CAPABILITIES.join(","),
+          },
         });
       }
       return notFound();
