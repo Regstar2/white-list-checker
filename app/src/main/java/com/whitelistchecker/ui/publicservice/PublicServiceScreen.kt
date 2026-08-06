@@ -200,6 +200,7 @@ fun PublicServiceScreen(
             }
             status.lastLinkCode?.let { code ->
                 CompactDetailRow(stringResource(R.string.public_service_link_code), code)
+                LinkCodeCopyButton(code)
                 CompactDetailRow(
                     stringResource(R.string.public_service_link_valid_until),
                     status.lastLinkCodeExpiresAtMillis?.toDisplayDateTime() ?: "—",
