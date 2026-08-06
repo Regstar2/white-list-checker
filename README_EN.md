@@ -9,6 +9,7 @@ An Android application for checking mobile-network availability and detecting si
 [![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml)
 [![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-blue)](https://kotlinlang.org/)
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
+[![AI-assisted development](https://img.shields.io/badge/Development-AI--assisted-8A2BE2)](#ai-assisted-development)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
 [Quick start](#quick-start) ·
@@ -72,7 +73,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 5. Open the application and select **Check mobile network**.
 
-Published builds are available under [GitHub Releases](../../releases). They may lag behind the current development branch.
+Published builds are available under [GitHub Releases](../../releases) and may lag behind the current development branch.
 
 ## Requirements
 
@@ -180,7 +181,7 @@ When the command reports a legacy revision or a missing `service-sync` capabilit
 npm run deploy
 ```
 
-After deployment, `/health` must return JSON containing a `revision` field and the `service-sync` capability.
+After deployment, `/health` with `Accept: application/json` must return JSON containing a `revision` field and the `service-sync` capability.
 
 ### ADB is not found
 
@@ -199,6 +200,15 @@ app/                         Android application
 cloudflare/public-service/   central Worker and public bot
 docs/                        architecture, test plans, and version notes
 ```
+
+## AI-assisted development
+
+AI is used as an auxiliary development tool for analysis, implementation alternatives, documentation, and tests.
+
+- every change is reviewed by the project maintainer;
+- the maintainer remains responsible for accepted code, architecture, security, and releases;
+- AI is not a WhiteListChecker product component;
+- AI does not process user traffic, passwords, tokens, or server configuration while the application is running.
 
 ## Build
 
