@@ -9,6 +9,7 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.whitelistchecker.data.system.AndroidDeviceAliasProvider
 import com.whitelistchecker.domain.model.PublicServiceRegistrationState
 import com.whitelistchecker.domain.model.PublicServiceSettings
 import com.whitelistchecker.domain.model.AreaSource
@@ -28,9 +29,13 @@ private val Context.publicServiceDataStore: DataStore<Preferences> by preference
 
 class PublicServiceSettingsRepository(
     private val dataStore: DataStore<Preferences>,
+    private val defaultDeviceAlias: String = PublicServiceSettings.DEFAULT_DEVICE_ALIAS,
 ) {
 
-    constructor(context: Context) : this(context.applicationContext.publicServiceDataStore)
+    constructor(context: Context) : this(
+        dataStore = context.applicationContext.publicServiceDataStore,
+        defaultDeviceAlias = AndroidDeviceAliasProvider(context.applicationContext).getDefaultAlias(),
+    )
 
     fun observeSettings(): Flow<PublicServiceSettings> {
         return dataStore.data.map { preferences -> preferences.toSettings() }
@@ -227,6 +232,11 @@ class PublicServiceSettingsRepository(
         } else {
             OperatorDetectionSource.UNKNOWN
         }
+        val storedDeviceAlias = this[Keys.DEVICE_ALIAS]
+            ?.trim()
+            ?.takeIf { alias ->
+                alias.isNotBlank() && alias != PublicServiceSettings.LEGACY_DEFAULT_DEVICE_ALIAS
+            }
         return PublicServiceSettings(
             installationId = this[Keys.INSTALLATION_ID].orEmpty(),
             shareReports = this[Keys.SHARE_REPORTS] ?: false,
@@ -245,7 +255,7 @@ class PublicServiceSettingsRepository(
             operatorDisplayName = this[Keys.OPERATOR_DISPLAY_NAME],
             operatorMccMnc = this[Keys.OPERATOR_MCC_MNC],
             operatorUpdatedAtMillis = this[Keys.OPERATOR_UPDATED_AT] ?: 0L,
-            deviceAlias = this[Keys.DEVICE_ALIAS] ?: PublicServiceSettings.DEFAULT_DEVICE_ALIAS,
+            deviceAlias = storedDeviceAlias ?: defaultDeviceAlias,
             registrationState = parseRegistrationState(this[Keys.REGISTRATION_STATE]),
         )
     }
