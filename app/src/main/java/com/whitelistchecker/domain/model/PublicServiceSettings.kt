@@ -55,6 +55,7 @@ data class PublicServiceSettings(
     companion object {
         const val DEFAULT_REGION_CODE = "UNKNOWN"
         const val DEFAULT_OPERATOR_CODE = "UNKNOWN"
-        const val DEFAULT_DEVICE_ALIAS = "Мой телефон"
+        const val DEFAULT_DEVICE_ALIAS = "Android-устройство"
+        const val LEGACY_DEFAULT_DEVICE_ALIAS = "Мой телефон"
     }
 }
