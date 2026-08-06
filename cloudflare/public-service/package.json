@@ -9,6 +9,7 @@
     "test": "vitest run",
     "build": "wrangler deploy src/index.ts --dry-run --outdir dist",
     "deploy": "wrangler deploy",
+    "verify:production": "node scripts/verify-production.mjs",
     "migrations:local": "wrangler d1 migrations apply DB --local",
     "migrations:remote:list": "wrangler d1 migrations list DB --remote"
   },
