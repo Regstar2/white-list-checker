@@ -1,9 +1,9 @@
 package com.whitelistchecker.domain.telegram
 
+import com.whitelistchecker.domain.model.DnsCheckErrorType
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.SiteCheckErrorType
 import com.whitelistchecker.domain.model.TargetGroup
-import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
 import com.whitelistchecker.ui.toDisplayDateTime
 
@@ -15,11 +15,24 @@ class DetailedReportFormatter {
         return buildString {
             appendLine("Whitelist Checker — подробный отчёт")
             appendLine()
-            appendLine("Состояние: ${result.state.name}")
+            appendLine("Итоговое состояние: ${result.state.name}")
+            appendLine("Site signal: ${result.siteState.name}")
+            appendLine("DNS signal: ${result.dnsSignal.name}")
             appendLine("Проверяемая сеть: ${result.checkedNetworkLabel}")
             appendLine("Активная сеть: ${result.activeNetworkLabel}")
-            appendLine("Внешние: ${foreign.availableCount}/${foreign.totalCount}")
-            appendLine("Локальные: ${local.availableCount}/${local.totalCount}")
+            appendLine("Private DNS: ${if (result.privateDnsActive) "active" else "inactive"}")
+            result.privateDnsServerName?.let { serverName ->
+                appendLine("Private DNS server: $serverName")
+            }
+            appendLine("Custom DNS: ${if (result.customDnsUsed) "used" else "not used"}")
+            appendLine("Внешние сайты: ${foreign.availableCount}/${foreign.totalCount}")
+            appendLine("Локальные сайты: ${local.availableCount}/${local.totalCount}")
+            result.foreignDnsSummary?.let { summary ->
+                appendLine("Внешние DNS: ${summary.availableCount}/${summary.totalCount}")
+            }
+            result.localDnsSummary?.let { summary ->
+                appendLine("Локальные DNS: ${summary.availableCount}/${summary.totalCount}")
+            }
             appendLine("Время: ${result.checkedAtMillis.toDisplayDateTime()}")
             result.diagnosticsMessage?.let { diagnostics ->
                 appendLine("Диагностика TCP: $diagnostics")
@@ -28,7 +41,9 @@ class DetailedReportFormatter {
                 appendLine("Ошибка: $error")
             }
             appendLine()
-            appendUnavailableSites(result)
+            appendDnsResults(result)
+            appendLine()
+            appendSiteResults(result)
         }.trim()
     }
 
@@ -43,14 +58,36 @@ class DetailedReportFormatter {
         }.trim()
     }
 
-    private fun StringBuilder.appendUnavailableSites(result: NetworkCheckResult) {
+    private fun StringBuilder.appendDnsResults(result: NetworkCheckResult) {
+        if (result.dnsResults.isEmpty()) {
+            appendLine("DNS-проверка не выполнена.")
+            return
+        }
+        appendLine("DNS:")
+        result.dnsResults.groupBy { it.server.group }.forEach { (group, dnsResults) ->
+            appendLine(dnsGroupLabel(group))
+            dnsResults.forEach { dns ->
+                appendLine("- ${dns.server.name} (${dns.server.address}:${dns.server.port})")
+                appendLine("  Протокол: ${dns.server.protocol.name}")
+                appendLine("  Статус: ${if (dns.available) "доступен" else "недоступен"}")
+                appendLine("  Время: ${dns.responseTimeMs} мс")
+                appendLine("  Адресов в ответе: ${dns.resolvedAddressesCount}")
+                if (dns.errorType != DnsCheckErrorType.NONE) {
+                    appendLine("  Тип ошибки: ${dns.errorType.name}")
+                    appendLine("  Ошибка: ${dns.error ?: "—"}")
+                }
+            }
+        }
+    }
+
+    private fun StringBuilder.appendSiteResults(result: NetworkCheckResult) {
         if (result.siteResults.isEmpty()) {
             appendLine("Проверка сайтов не выполнена.")
             return
         }
         appendLine("Сайты:")
         result.siteResults.groupBy { it.target.group }.forEach { (group, sites) ->
-            appendLine(groupLabel(group))
+            appendLine(siteGroupLabel(group))
             sites.forEach { site ->
                 appendLine("- ${site.target.name} (${site.target.url})")
                 appendLine("  Статус: ${if (site.available) "доступен" else "недоступен"}")
@@ -72,8 +109,13 @@ class DetailedReportFormatter {
         }
     }
 
-    private fun groupLabel(group: TargetGroup): String = when (group) {
+    private fun siteGroupLabel(group: TargetGroup): String = when (group) {
         TargetGroup.FOREIGN -> "Внешние сайты"
         TargetGroup.LOCAL -> "Локальные сайты"
+    }
+
+    private fun dnsGroupLabel(group: TargetGroup): String = when (group) {
+        TargetGroup.FOREIGN -> "Внешние DNS"
+        TargetGroup.LOCAL -> "Локальные DNS"
     }
 }
