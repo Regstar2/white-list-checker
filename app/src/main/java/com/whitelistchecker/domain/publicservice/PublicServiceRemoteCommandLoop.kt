@@ -8,6 +8,7 @@ import com.whitelistchecker.domain.model.WhitelistState
 import com.whitelistchecker.domain.model.history.CheckTriggerType
 import com.whitelistchecker.domain.system.AppVersionProvider
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
@@ -79,44 +80,55 @@ class PublicServiceRemoteCommandLoop(
         commandId: String,
     ) {
         val now = System.currentTimeMillis()
-        val payload = when (
-            val result = checkAndNotifyUseCase.tryExecute(
-                triggerType = CheckTriggerType.REMOTE_TELEGRAM,
-            )
-        ) {
-            is CheckExecutionResult.AlreadyRunning -> PublicServiceClient.CommandResultPayload(
-                serviceSessionId = serviceSessionId,
-                outcome = PublicServiceCommandOutcome.BUSY,
-                checkedAtMillis = now,
-                errorCode = "CHECK_ALREADY_RUNNING",
-            )
-            is CheckExecutionResult.Completed -> {
-                val checkResult = result.value.monitorResult.checkResult
-                val mappedState = checkResult.state.toPublicState()
-                if (mappedState == null) {
-                    PublicServiceClient.CommandResultPayload(
-                        serviceSessionId = serviceSessionId,
-                        outcome = PublicServiceCommandOutcome.UNAVAILABLE,
-                        checkedAtMillis = checkResult.checkedAtMillis,
-                        errorCode = checkResult.state.name,
-                    )
-                } else {
-                    PublicServiceClient.CommandResultPayload(
-                        serviceSessionId = serviceSessionId,
-                        outcome = PublicServiceCommandOutcome.SUCCESS,
-                        checkedAtMillis = checkResult.checkedAtMillis,
-                        whitelistState = mappedState,
-                        foreign = PublicServiceClient.CountPayload(
-                            available = checkResult.foreignSummary.availableCount,
-                            total = checkResult.foreignSummary.totalCount,
-                        ),
-                        local = PublicServiceClient.CountPayload(
-                            available = checkResult.localSummary.availableCount,
-                            total = checkResult.localSummary.totalCount,
-                        ),
-                    )
+        val payload = try {
+            when (
+                val result = checkAndNotifyUseCase.tryExecute(
+                    triggerType = CheckTriggerType.REMOTE_TELEGRAM,
+                )
+            ) {
+                is CheckExecutionResult.AlreadyRunning -> PublicServiceClient.CommandResultPayload(
+                    serviceSessionId = serviceSessionId,
+                    outcome = PublicServiceCommandOutcome.BUSY,
+                    checkedAtMillis = now,
+                    errorCode = "CHECK_ALREADY_RUNNING",
+                )
+                is CheckExecutionResult.Completed -> {
+                    val checkResult = result.value.monitorResult.checkResult
+                    val mappedState = checkResult.state.toPublicState()
+                    if (mappedState == null) {
+                        PublicServiceClient.CommandResultPayload(
+                            serviceSessionId = serviceSessionId,
+                            outcome = PublicServiceCommandOutcome.UNAVAILABLE,
+                            checkedAtMillis = checkResult.checkedAtMillis,
+                            errorCode = checkResult.state.name,
+                        )
+                    } else {
+                        PublicServiceClient.CommandResultPayload(
+                            serviceSessionId = serviceSessionId,
+                            outcome = PublicServiceCommandOutcome.SUCCESS,
+                            checkedAtMillis = checkResult.checkedAtMillis,
+                            whitelistState = mappedState,
+                            foreign = PublicServiceClient.CountPayload(
+                                available = checkResult.foreignSummary.availableCount,
+                                total = checkResult.foreignSummary.totalCount,
+                            ),
+                            local = PublicServiceClient.CountPayload(
+                                available = checkResult.localSummary.availableCount,
+                                total = checkResult.localSummary.totalCount,
+                            ),
+                        )
+                    }
                 }
             }
+        } catch (exception: CancellationException) {
+            throw exception
+        } catch (_: Exception) {
+            PublicServiceClient.CommandResultPayload(
+                serviceSessionId = serviceSessionId,
+                outcome = PublicServiceCommandOutcome.UNAVAILABLE,
+                checkedAtMillis = System.currentTimeMillis(),
+                errorCode = "CHECK_FAILED",
+            )
         }
         publicServiceClient.sendCommandResult(settings, token, commandId, payload)
         settingsRepository.recordRemoteCommand(payload.outcome.name, System.currentTimeMillis())
