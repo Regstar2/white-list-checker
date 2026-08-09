@@ -179,7 +179,7 @@ class WhitelistCheckUseCase(
             target = target,
             available = false,
             httpCode = null,
-            error = CUSTOM_DNS_UNAVAILABLE_ERROR,
+            error = null,
             errorType = SiteCheckErrorType.DNS,
             durationMs = 0,
         )
@@ -201,7 +201,6 @@ class WhitelistCheckUseCase(
         private const val LABEL_MOBILE = "Mobile"
         private const val LABEL_ETHERNET = "Ethernet"
         private const val LABEL_UNKNOWN = "Unknown"
-        private const val CUSTOM_DNS_UNAVAILABLE_ERROR = "No configured custom DNS server returned a valid response"
 
         const val CELLULAR_UNAVAILABLE_MESSAGE =
             "Мобильная сеть недоступна. Возможные причины: мобильные данные выключены, " +
