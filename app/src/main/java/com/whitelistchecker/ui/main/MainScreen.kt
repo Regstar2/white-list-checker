@@ -150,7 +150,6 @@ fun MainScreen(
             onBackgroundNotificationPolicyChange = viewModel::updateBackgroundNotificationPolicy,
             onSaveAndReschedule = viewModel::saveBackgroundCheckSettings,
             onRunNow = viewModel::runBackgroundCheckNow,
-            onStop = viewModel::stopBackgroundCheck,
             onActiveIntervalInputChange = viewModel::updateActiveMonitoringIntervalInput,
             onSaveActiveInterval = viewModel::saveActiveMonitoringInterval,
             onActiveNotificationPolicyChange = viewModel::updateActiveMonitoringNotificationPolicy,

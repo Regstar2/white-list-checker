@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autocheck_title">Auto Check</string>
+    <string name="autocheck_tab_background">Background</string>
+    <string name="autocheck_tab_active">Active</string>
+
+    <string name="autocheck_background_title">Background check</string>
+    <string name="autocheck_background_enabled_hint">Android may run background checks with a delay.</string>
+    <string name="autocheck_background_disabled_hint">Periodic checks are disabled.</string>
+
+    <string name="autocheck_interval_title">Interval</string>
+    <string name="autocheck_interval_15">15 minutes</string>
+    <string name="autocheck_interval_30">30 minutes</string>
+    <string name="autocheck_interval_60">60 minutes</string>
+    <string name="autocheck_interval_custom">Custom</string>
+    <string name="autocheck_interval_minutes_label">Interval, minutes</string>
+    <string name="autocheck_background_interval_supporting">Minimum %1$d minutes</string>
+    <string name="autocheck_active_interval_supporting">From %1$d to %2$d minutes</string>
+
+    <string name="autocheck_notifications_title">Notifications</string>
+    <string name="autocheck_policy_none">None</string>
+    <string name="autocheck_policy_every_attempt">Every check</string>
+    <string name="autocheck_policy_state_change_only">On change</string>
+
+    <string name="autocheck_save">Save</string>
+    <string name="autocheck_save_interval">Save interval</string>
+    <string name="autocheck_check_now">Check now</string>
+    <string name="autocheck_start">Start</string>
+    <string name="autocheck_start_again">Start again</string>
+    <string name="autocheck_starting">Starting…</string>
+    <string name="autocheck_checking_now">Checking…</string>
+    <string name="autocheck_stopping">Stopping…</string>
+    <string name="autocheck_stop">Stop</string>
+
+    <string name="autocheck_last_check_title">Last check</string>
+    <string name="autocheck_no_checks_yet">No checks yet</string>
+    <string name="autocheck_show_details">Details</string>
+    <string name="autocheck_hide_details">Hide</string>
+    <string name="autocheck_last_run">Last run</string>
+    <string name="autocheck_finished_at">Finished</string>
+    <string name="autocheck_last_state">Last status</string>
+    <string name="autocheck_telegram_result">Telegram</string>
+    <string name="autocheck_queue_flush">Queue flush</string>
+    <string name="autocheck_queue_size">Queue</string>
+    <string name="autocheck_no_value">—</string>
+
+    <string name="autocheck_active_title">Active monitoring</string>
+    <string name="autocheck_notify_restored">Check recovery</string>
+    <string name="autocheck_telegram_commands">Telegram commands</string>
+    <string name="autocheck_stop_reason">Stop reason</string>
+    <string name="autocheck_background_restore_after_stop">Restore background checks after stop</string>
+    <string name="autocheck_yes">Yes</string>
+    <string name="autocheck_how_monitoring_works_show">How monitoring works</string>
+    <string name="autocheck_how_monitoring_works_hide">Hide monitoring description</string>
+    <string name="autocheck_active_foreground_hint">Active monitoring uses a foreground service and a persistent notification while Android allows this mode.</string>
+    <string name="autocheck_active_android_15_hint">On Android 15+, the system may limit how long a dataSync foreground service can run.</string>
+
+    <string name="autocheck_active_state_stopped">Stopped</string>
+    <string name="autocheck_active_state_starting">Starting</string>
+    <string name="autocheck_active_state_running">Running</string>
+    <string name="autocheck_active_state_checking">Checking</string>
+    <string name="autocheck_active_state_stopping">Stopping</string>
+    <string name="autocheck_active_state_stopped_by_system">Stopped by system</string>
+    <string name="autocheck_active_state_error">Error</string>
+</resources>

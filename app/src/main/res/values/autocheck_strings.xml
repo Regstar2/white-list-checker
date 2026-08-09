@@ -1,0 +1,65 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="autocheck_title">Автопроверка</string>
+    <string name="autocheck_tab_background">Фоновая</string>
+    <string name="autocheck_tab_active">Активная</string>
+
+    <string name="autocheck_background_title">Фоновая проверка</string>
+    <string name="autocheck_background_enabled_hint">Android может запускать фоновые проверки с задержкой.</string>
+    <string name="autocheck_background_disabled_hint">Периодические проверки выключены.</string>
+
+    <string name="autocheck_interval_title">Интервал</string>
+    <string name="autocheck_interval_15">15 минут</string>
+    <string name="autocheck_interval_30">30 минут</string>
+    <string name="autocheck_interval_60">60 минут</string>
+    <string name="autocheck_interval_custom">Другое</string>
+    <string name="autocheck_interval_minutes_label">Интервал, минут</string>
+    <string name="autocheck_background_interval_supporting">Минимум %1$d минут</string>
+    <string name="autocheck_active_interval_supporting">От %1$d до %2$d минут</string>
+
+    <string name="autocheck_notifications_title">Уведомления</string>
+    <string name="autocheck_policy_none">Нет</string>
+    <string name="autocheck_policy_every_attempt">Каждая</string>
+    <string name="autocheck_policy_state_change_only">При изменении</string>
+
+    <string name="autocheck_save">Сохранить</string>
+    <string name="autocheck_save_interval">Сохранить интервал</string>
+    <string name="autocheck_check_now">Проверить сейчас</string>
+    <string name="autocheck_start">Запустить</string>
+    <string name="autocheck_start_again">Запустить снова</string>
+    <string name="autocheck_starting">Запускается…</string>
+    <string name="autocheck_checking_now">Проверка выполняется…</string>
+    <string name="autocheck_stopping">Останавливается…</string>
+    <string name="autocheck_stop">Остановить</string>
+
+    <string name="autocheck_last_check_title">Последняя проверка</string>
+    <string name="autocheck_no_checks_yet">Проверок ещё не было</string>
+    <string name="autocheck_show_details">Подробнее</string>
+    <string name="autocheck_hide_details">Скрыть</string>
+    <string name="autocheck_last_run">Последний запуск</string>
+    <string name="autocheck_finished_at">Завершение</string>
+    <string name="autocheck_last_state">Последний статус</string>
+    <string name="autocheck_telegram_result">Telegram</string>
+    <string name="autocheck_queue_flush">Flush очереди</string>
+    <string name="autocheck_queue_size">Очередь</string>
+    <string name="autocheck_no_value">—</string>
+
+    <string name="autocheck_active_title">Активный мониторинг</string>
+    <string name="autocheck_notify_restored">О восстановлении проверки</string>
+    <string name="autocheck_telegram_commands">Telegram-команды</string>
+    <string name="autocheck_stop_reason">Причина остановки</string>
+    <string name="autocheck_background_restore_after_stop">Восстановить фоновую проверку после остановки</string>
+    <string name="autocheck_yes">Да</string>
+    <string name="autocheck_how_monitoring_works_show">Как работает мониторинг</string>
+    <string name="autocheck_how_monitoring_works_hide">Скрыть описание мониторинга</string>
+    <string name="autocheck_active_foreground_hint">Активный мониторинг работает через foreground service и постоянное уведомление, пока Android разрешает такой режим.</string>
+    <string name="autocheck_active_android_15_hint">На Android 15+ система может ограничивать длительность dataSync foreground service.</string>
+
+    <string name="autocheck_active_state_stopped">Остановлен</string>
+    <string name="autocheck_active_state_starting">Запускается</string>
+    <string name="autocheck_active_state_running">Запущен</string>
+    <string name="autocheck_active_state_checking">Проверяет</string>
+    <string name="autocheck_active_state_stopping">Останавливается</string>
+    <string name="autocheck_active_state_stopped_by_system">Остановлен системой</string>
+    <string name="autocheck_active_state_error">Ошибка</string>
+</resources>
