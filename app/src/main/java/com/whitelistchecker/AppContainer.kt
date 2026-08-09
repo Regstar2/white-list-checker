@@ -14,6 +14,7 @@ import com.whitelistchecker.data.notifications.LocalNotificationSettingsReposito
 import com.whitelistchecker.data.publicservice.PendingPublicReportRepository
 import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
 import com.whitelistchecker.data.publicservice.SecureDeviceTokenStore
+import com.whitelistchecker.data.resources.AndroidDetailedReportTextProvider
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
@@ -306,7 +307,9 @@ class AppContainer(context: Context) {
 
     val backgroundCheckScheduler = BackgroundCheckScheduler(appContext)
 
-    val detailedReportFormatter = DetailedReportFormatter()
+    val detailedReportFormatter = DetailedReportFormatter(
+        textProvider = AndroidDetailedReportTextProvider(appContext),
+    )
     val telegramWorkerClientForUi = telegramWorkerClient
     val telegramEventNotifierUseCaseForUi = telegramEventNotifierUseCase
 }
