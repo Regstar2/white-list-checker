@@ -1,6 +1,7 @@
 package com.whitelistchecker.domain.classifier
 
 import com.whitelistchecker.domain.model.CheckTarget
+import com.whitelistchecker.domain.model.DnsWhitelistSignal
 import com.whitelistchecker.domain.model.SiteCheckErrorType
 import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroup
@@ -52,20 +53,68 @@ class WhitelistStateClassifierTest {
 
     @Test
     fun classify_whitelistOnPattern_stillWorks() {
+        val state = classifyWhitelistSitePattern(DnsWhitelistSignal.UNKNOWN)
+        assertEquals(WhitelistState.WHITELIST_ON, state)
+    }
+
+    @Test
+    fun classify_siteOnAndDnsOn_returnsWhitelistOn() {
+        val state = classifyWhitelistSitePattern(DnsWhitelistSignal.WHITELIST_LIKE)
+        assertEquals(WhitelistState.WHITELIST_ON, state)
+    }
+
+    @Test
+    fun classify_siteOnAndDnsNormal_returnsPartialProblem() {
+        val state = classifyWhitelistSitePattern(DnsWhitelistSignal.NORMAL)
+        assertEquals(WhitelistState.PARTIAL_PROBLEM, state)
+    }
+
+    @Test
+    fun classify_siteOffAndDnsNormal_returnsWhitelistOff() {
+        val state = classifyNormalSitePattern(DnsWhitelistSignal.NORMAL)
+        assertEquals(WhitelistState.WHITELIST_OFF, state)
+    }
+
+    @Test
+    fun classify_siteOffAndDnsWhitelistLike_returnsPartialProblem() {
+        val state = classifyNormalSitePattern(DnsWhitelistSignal.WHITELIST_LIKE)
+        assertEquals(WhitelistState.PARTIAL_PROBLEM, state)
+    }
+
+    @Test
+    fun classify_dnsUnavailableAndClearSiteResult_keepsSiteResult() {
+        val state = classifyNormalSitePattern(DnsWhitelistSignal.NO_DNS_ACCESS)
+        assertEquals(WhitelistState.WHITELIST_OFF, state)
+    }
+
+    private fun classifyWhitelistSitePattern(dnsSignal: DnsWhitelistSignal): WhitelistState {
         val siteResults = listOf(
-            siteResult("foreign-1", TargetGroup.FOREIGN, SiteCheckErrorType.DNS, available = false),
-            siteResult("foreign-2", TargetGroup.FOREIGN, SiteCheckErrorType.NONE, available = false),
+            siteResult("foreign-1", TargetGroup.FOREIGN, SiteCheckErrorType.CONNECTION),
+            siteResult("foreign-2", TargetGroup.FOREIGN, SiteCheckErrorType.TIMEOUT),
             siteResult("local-1", TargetGroup.LOCAL, SiteCheckErrorType.NONE, available = true),
             siteResult("local-2", TargetGroup.LOCAL, SiteCheckErrorType.NONE, available = true),
         )
-
-        val state = classifier.classify(
+        return classifier.classify(
             foreignSummary = summary(TargetGroup.FOREIGN, available = 0, total = 2),
             localSummary = summary(TargetGroup.LOCAL, available = 2, total = 2),
             siteResults = siteResults,
+            dnsSignal = dnsSignal,
         )
+    }
 
-        assertEquals(WhitelistState.WHITELIST_ON, state)
+    private fun classifyNormalSitePattern(dnsSignal: DnsWhitelistSignal): WhitelistState {
+        val siteResults = listOf(
+            siteResult("foreign-1", TargetGroup.FOREIGN, SiteCheckErrorType.NONE, available = true),
+            siteResult("foreign-2", TargetGroup.FOREIGN, SiteCheckErrorType.NONE, available = true),
+            siteResult("local-1", TargetGroup.LOCAL, SiteCheckErrorType.NONE, available = true),
+            siteResult("local-2", TargetGroup.LOCAL, SiteCheckErrorType.NONE, available = true),
+        )
+        return classifier.classify(
+            foreignSummary = summary(TargetGroup.FOREIGN, available = 2, total = 2),
+            localSummary = summary(TargetGroup.LOCAL, available = 2, total = 2),
+            siteResults = siteResults,
+            dnsSignal = dnsSignal,
+        )
     }
 
     private fun summary(group: TargetGroup, available: Int, total: Int): TargetGroupSummary {
@@ -86,7 +135,7 @@ class WhitelistStateClassifierTest {
             target = CheckTarget(name = name, url = "https://$name.example", group = group),
             available = available,
             httpCode = if (available) 200 else null,
-            error = if (available) null else "UnknownHostException: Unable to resolve host",
+            error = if (available) null else "Network check failed",
             errorType = if (available) SiteCheckErrorType.NONE else errorType,
             durationMs = 100,
         )
