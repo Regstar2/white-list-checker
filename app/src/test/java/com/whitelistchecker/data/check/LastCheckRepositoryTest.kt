@@ -97,7 +97,7 @@ class LastCheckRepositoryTest {
               "checkedAtMillis":1234
             }
         """.trimIndent()
-        val key = stringPreferencesKey("network_check_result_json")
+        val key = stringPreferencesKey("last_check_json")
         val dataStore = FakePreferencesDataStore(mutablePreferencesOf(key to legacy))
         val repository = LastCheckRepository(dataStore)
 
