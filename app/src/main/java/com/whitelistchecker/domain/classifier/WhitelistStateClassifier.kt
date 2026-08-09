@@ -1,8 +1,6 @@
 package com.whitelistchecker.domain.classifier
 
 import com.whitelistchecker.domain.model.DnsWhitelistSignal
-import com.whitelistchecker.domain.model.SiteCheckErrorType
-import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroupSummary
 import com.whitelistchecker.domain.model.WhitelistState
 
@@ -11,22 +9,16 @@ class WhitelistStateClassifier {
     fun classify(
         foreignSummary: TargetGroupSummary,
         localSummary: TargetGroupSummary,
-        siteResults: List<SiteCheckResult> = emptyList(),
         dnsSignal: DnsWhitelistSignal = DnsWhitelistSignal.UNKNOWN,
     ): WhitelistState {
-        val siteState = classifySites(foreignSummary, localSummary, siteResults)
+        val siteState = classifySites(foreignSummary, localSummary)
         return combine(siteState, dnsSignal)
     }
 
     fun classifySites(
         foreignSummary: TargetGroupSummary,
         localSummary: TargetGroupSummary,
-        siteResults: List<SiteCheckResult> = emptyList(),
     ): WhitelistState {
-        if (isMobileDnsFailure(siteResults)) {
-            return WhitelistState.MOBILE_DNS_FAILURE
-        }
-
         val foreignRate = foreignSummary.availabilityRate
         val localRate = localSummary.availabilityRate
 
@@ -43,6 +35,9 @@ class WhitelistStateClassifier {
         dnsSignal: DnsWhitelistSignal,
     ): WhitelistState {
         return when {
+            dnsSignal == DnsWhitelistSignal.NO_DNS_ACCESS -> {
+                WhitelistState.MOBILE_DNS_FAILURE
+            }
             siteState == WhitelistState.WHITELIST_ON && dnsSignal == DnsWhitelistSignal.NORMAL -> {
                 WhitelistState.PARTIAL_PROBLEM
             }
@@ -51,13 +46,5 @@ class WhitelistStateClassifier {
             }
             else -> siteState
         }
-    }
-
-    private fun isMobileDnsFailure(siteResults: List<SiteCheckResult>): Boolean {
-        if (siteResults.isEmpty() || siteResults.any { it.available }) {
-            return false
-        }
-        val dnsFailures = siteResults.count { it.errorType == SiteCheckErrorType.DNS }
-        return dnsFailures * 4 >= siteResults.size * 3
     }
 }
