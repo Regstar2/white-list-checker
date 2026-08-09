@@ -8,6 +8,7 @@ import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.checkrun.CheckStateRepository
 import com.whitelistchecker.data.db.AppDatabase
+import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.publicservice.PendingPublicReportRepository
@@ -22,6 +23,8 @@ import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
 import com.whitelistchecker.domain.active.ActiveMonitoringController
+import com.whitelistchecker.domain.checker.CellularDnsProbe
+import com.whitelistchecker.domain.checker.CellularDnsResolverFactory
 import com.whitelistchecker.domain.checker.CellularNetworkProvider
 import com.whitelistchecker.domain.history.CheckHistoryFromNetworkResultMapper
 import com.whitelistchecker.domain.history.SaveCheckHistoryUseCase
@@ -36,6 +39,7 @@ import com.whitelistchecker.domain.statistics.WhitelistTimelineWriter
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
+import com.whitelistchecker.domain.classifier.DnsWhitelistSignalClassifier
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
 import com.whitelistchecker.domain.checkrun.CheckExecutionCoordinator
 import com.whitelistchecker.domain.checkrun.NotificationDecisionEngine
@@ -141,6 +145,7 @@ class AppContainer(context: Context) {
         dao = database.pendingPublicReportDao(),
     )
     val checkTargetsRepository = CheckTargetsRepository(appContext)
+    val dnsServersRepository = DnsServersRepository(appContext)
     val backgroundCheckSettingsRepository = BackgroundCheckSettingsRepository(appContext)
     val backgroundCheckStatusRepository = BackgroundCheckStatusRepository(appContext)
     val checkStateRepository = CheckStateRepository(appContext)
@@ -207,8 +212,12 @@ class AppContainer(context: Context) {
     private val whitelistCheckUseCase = WhitelistCheckUseCase(
         connectivityManager = connectivityManager,
         targetsRepository = checkTargetsRepository,
+        dnsServersRepository = dnsServersRepository,
         cellularNetworkProvider = CellularNetworkProvider(connectivityManager),
+        dnsProbe = CellularDnsProbe(),
+        dnsResolverFactory = CellularDnsResolverFactory(),
         mobileSiteChecker = MobileSiteChecker(),
+        dnsSignalClassifier = DnsWhitelistSignalClassifier(),
         classifier = WhitelistStateClassifier(),
         networkDiagnosticsUseCase = NetworkDiagnosticsUseCase(),
     )
