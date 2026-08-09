@@ -96,14 +96,13 @@ class WhitelistCheckUseCase(
 
             val foreignSummary = buildSiteSummary(TargetGroup.FOREIGN, siteResults)
             val localSummary = buildSiteSummary(TargetGroup.LOCAL, siteResults)
-            val siteState = classifier.classifySites(foreignSummary, localSummary, siteResults)
+            val siteState = classifier.classifySites(foreignSummary, localSummary)
             val state = classifier.classify(
                 foreignSummary = foreignSummary,
                 localSummary = localSummary,
-                siteResults = siteResults,
                 dnsSignal = dnsSignal,
             )
-            val diagnosticsMessage = if (siteState == WhitelistState.MOBILE_DNS_FAILURE) {
+            val diagnosticsMessage = if (state == WhitelistState.MOBILE_DNS_FAILURE) {
                 networkDiagnosticsUseCase.diagnoseDnsConnectivity(cellularNetwork)
             } else {
                 null
