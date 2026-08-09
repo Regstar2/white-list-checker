@@ -2,6 +2,8 @@ import { operatorLabel, regionLabel } from "../domain/catalog";
 import type { PublicStatusResult } from "../domain/publicStatusAggregator";
 import type { CommandResultRequest, LinkedDeviceRecord } from "../types";
 
+const PROJECT_REPOSITORY_URL = "https://github.com/Regstar2/white-list-checker";
+
 export function startText(): string {
   return [
     "<b>Whitelist Checker</b>",
@@ -35,6 +37,8 @@ export function aboutText(): string {
     "WhiteListChecker ищет признаки режима белых списков в мобильной сети: когда внешние сайты недоступны, а локальные доступны.",
     "",
     "Публичный статус строится только по добровольно отправленным обезличенным отчётам и не раскрывает отдельные устройства.",
+    "",
+    `<a href="${PROJECT_REPOSITORY_URL}">Репозиторий проекта на GitHub</a>`,
   ].join("\n");
 }
 
@@ -73,11 +77,25 @@ export function statusText(result: PublicStatusResult): string {
 }
 
 export function chooseRegionText(): string {
-  return "Выберите регион. В MVP геолокация не запрашивается и регион задаётся вручную.";
+  return "Выберите регион. Показаны только регионы со свежими данными пользователей.";
 }
 
-export function chooseOperatorText(): string {
-  return "Выберите оператора. Если нужного варианта нет, используйте «Другой оператор».";
+export function chooseOperatorText(regionCode?: string | null): string {
+  if (regionCode) {
+    return `Выберите оператора для региона «${escapeHtml(regionLabel(regionCode))}». Показаны только операторы со свежими данными.`;
+  }
+  return "Выберите оператора. Показаны только операторы со свежими данными пользователей.";
+}
+
+export function noAvailableRegionsText(): string {
+  return "Сейчас нет свежих данных ни по одному региону. Попробуйте позже.";
+}
+
+export function noAvailableOperatorsText(regionCode?: string | null): string {
+  if (regionCode) {
+    return `Сейчас нет свежих данных по операторам для региона «${escapeHtml(regionLabel(regionCode))}». Выберите другой регион или попробуйте позже.`;
+  }
+  return "Сейчас нет свежих данных ни по одному оператору. Попробуйте позже.";
 }
 
 export function missingStatusSelectionText(): string {
