@@ -1,16 +1,13 @@
 package com.whitelistchecker.domain.checker
 
 import android.net.ConnectivityManager
-import android.net.Network
 import android.net.NetworkCapabilities
-import android.os.Build
 import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.domain.classifier.DnsWhitelistSignalClassifier
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
 import com.whitelistchecker.domain.model.CheckTarget
 import com.whitelistchecker.domain.model.DnsCheckResult
-import com.whitelistchecker.domain.model.DnsWhitelistSignal
 import com.whitelistchecker.domain.model.EditableDnsServer
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.SiteCheckErrorType
@@ -33,6 +30,7 @@ class WhitelistCheckUseCase(
     private val dnsSignalClassifier: DnsWhitelistSignalClassifier,
     private val classifier: WhitelistStateClassifier,
     private val networkDiagnosticsUseCase: NetworkDiagnosticsUseCase,
+    private val privateDnsDiagnosticsProvider: PrivateDnsDiagnosticsProvider,
 ) {
 
     suspend fun execute(): NetworkCheckResult {
@@ -71,7 +69,7 @@ class WhitelistCheckUseCase(
         }
 
         return try {
-            val privateDns = resolvePrivateDns(cellularNetwork)
+            val privateDns = privateDnsDiagnosticsProvider.read(cellularNetwork)
             val dnsResults = dnsProbe.probe(cellularNetwork, dnsServers)
             val foreignDnsSummary = buildDnsSummary(TargetGroup.FOREIGN, dnsResults)
             val localDnsSummary = buildDnsSummary(TargetGroup.LOCAL, dnsResults)
@@ -187,18 +185,6 @@ class WhitelistCheckUseCase(
         )
     }
 
-    private fun resolvePrivateDns(network: Network): PrivateDnsDiagnostics {
-        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
-            return PrivateDnsDiagnostics(active = false, serverName = null)
-        }
-        val linkProperties = connectivityManager.getLinkProperties(network)
-            ?: return PrivateDnsDiagnostics(active = false, serverName = null)
-        return PrivateDnsDiagnostics(
-            active = linkProperties.isPrivateDnsActive,
-            serverName = linkProperties.privateDnsServerName,
-        )
-    }
-
     private fun resolveActiveNetworkLabel(): String {
         val network = connectivityManager.activeNetwork ?: return LABEL_UNKNOWN
         val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return LABEL_UNKNOWN
@@ -209,11 +195,6 @@ class WhitelistCheckUseCase(
             else -> LABEL_UNKNOWN
         }
     }
-
-    private data class PrivateDnsDiagnostics(
-        val active: Boolean,
-        val serverName: String?,
-    )
 
     companion object {
         private const val LABEL_WIFI = "Wi-Fi"
