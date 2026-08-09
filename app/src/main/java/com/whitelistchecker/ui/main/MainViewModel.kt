@@ -62,6 +62,7 @@ import com.whitelistchecker.domain.statistics.WhitelistTimelineDashboard
 import com.whitelistchecker.domain.statistics.WhitelistTimelineLoadResult
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.navigation.parentScreen
 import com.whitelistchecker.ui.diagnostics.RebuildStatisticsUiState
 import com.whitelistchecker.ui.diagnostics.StatisticsDiagnosticsUiState
 import com.whitelistchecker.ui.statistics.HomeStatisticsMapper
@@ -244,6 +245,10 @@ class MainViewModel(
 
     fun goHome() {
         openScreen(AppScreen.HOME)
+    }
+
+    fun navigateBack() {
+        openScreen(_uiState.value.currentScreen.parentScreen() ?: AppScreen.HOME)
     }
 
     fun buildDetailedReport(): String {

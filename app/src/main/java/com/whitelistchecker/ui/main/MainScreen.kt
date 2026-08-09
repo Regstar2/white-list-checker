@@ -17,7 +17,12 @@ import com.whitelistchecker.ui.checksettings.CheckSettingsScreen
 import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
 import com.whitelistchecker.ui.navigation.AppScreen
+import com.whitelistchecker.ui.notifications.LocalNotificationsScreen
 import com.whitelistchecker.ui.notifications.NotificationsScreen
+import com.whitelistchecker.ui.notifications.TelegramNotificationsScreen
+import com.whitelistchecker.ui.notifications.TelegramQueueScreen
+import com.whitelistchecker.ui.notifications.TelegramRecipientDiscoveryScreen
+import com.whitelistchecker.ui.notifications.TelegramWorkerSetupScreen
 import com.whitelistchecker.ui.publicservice.PublicServiceScreen
 import com.whitelistchecker.ui.statistics.StatisticsScreen
 
@@ -50,7 +55,7 @@ fun MainScreen(
     }
 
     BackHandler(enabled = uiState.currentScreen != AppScreen.HOME) {
-        viewModel.goHome()
+        viewModel.navigateBack()
     }
 
     when (uiState.currentScreen) {
@@ -68,7 +73,15 @@ fun MainScreen(
         )
         AppScreen.NOTIFICATIONS -> NotificationsScreen(
             uiState = uiState,
-            onBack = viewModel::goHome,
+            onBack = viewModel::navigateBack,
+            onLocalEnabledChange = viewModel::updateLocalNotificationsEnabled,
+            onTelegramEnabledChange = viewModel::updateTelegramEnabled,
+            onOpenLocalNotifications = { viewModel.openScreen(AppScreen.LOCAL_NOTIFICATIONS) },
+            onOpenTelegramNotifications = { viewModel.openScreen(AppScreen.TELEGRAM_NOTIFICATIONS) },
+        )
+        AppScreen.LOCAL_NOTIFICATIONS -> LocalNotificationsScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
             onLocalEnabledChange = viewModel::updateLocalNotificationsEnabled,
             onSendLocalTest = viewModel::sendLocalTestNotification,
             onRequestPermission = {
@@ -78,20 +91,40 @@ fun MainScreen(
             },
             onOpenBatterySettings = viewModel::openBatteryOptimizationSettings,
             onOpenAppSettings = viewModel::openAppDetailsSettings,
+        )
+        AppScreen.TELEGRAM_NOTIFICATIONS -> TelegramNotificationsScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
             onTelegramEnabledChange = viewModel::updateTelegramEnabled,
+            onOpenWorkerSetup = { viewModel.openScreen(AppScreen.TELEGRAM_WORKER_SETUP) },
+            onOpenRecipientDiscovery = { viewModel.openScreen(AppScreen.TELEGRAM_RECIPIENT_DISCOVERY) },
+            onOpenQueue = { viewModel.openScreen(AppScreen.TELEGRAM_QUEUE) },
+            onTestWorker = viewModel::testTelegramWorker,
+            onSendTestMessage = viewModel::sendTelegramTestMessage,
+            onSendCheckReport = viewModel::sendTelegramCheckReport,
+            onRemoveRecipient = viewModel::removeTelegramRecipient,
+            onToggleRecipient = viewModel::setTelegramRecipientEnabled,
+        )
+        AppScreen.TELEGRAM_WORKER_SETUP -> TelegramWorkerSetupScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
             onWorkerUrlChange = viewModel::updateTelegramWorkerUrl,
             onRelaySecretChange = viewModel::updateTelegramRelaySecret,
             onSaveTelegramSettings = viewModel::saveTelegramSettings,
             onTestWorker = viewModel::testTelegramWorker,
-            onSendTestMessage = viewModel::sendTelegramTestMessage,
-            onSendCheckReport = viewModel::sendTelegramCheckReport,
+        )
+        AppScreen.TELEGRAM_RECIPIENT_DISCOVERY -> TelegramRecipientDiscoveryScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
             onPrepareChatDiscovery = viewModel::prepareTelegramChatDiscovery,
             onFindChatId = viewModel::findTelegramChatId,
             onFindRecentChats = viewModel::findRecentTelegramChats,
             onResetChatDiscovery = viewModel::resetTelegramChatDiscovery,
             onAddRecipient = viewModel::addTelegramRecipient,
-            onRemoveRecipient = viewModel::removeTelegramRecipient,
-            onToggleRecipient = viewModel::setTelegramRecipientEnabled,
+        )
+        AppScreen.TELEGRAM_QUEUE -> TelegramQueueScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
             onRetryQueue = viewModel::retryPendingTelegramReports,
             onClearQueue = viewModel::clearPendingTelegramReports,
         )
