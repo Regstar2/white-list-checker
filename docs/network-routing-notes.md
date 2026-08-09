@@ -1,39 +1,109 @@
 # Mobile routing, VPN и Private DNS
 
-## Что приложение уже делает
+## Основной маршрут проверки с v0.9.0
 
-WhiteListChecker не проверяет сайты через обычный `URL.openConnection()` и не берёт `activeNetwork` как маршрут проверки.
+WhiteListChecker не использует `activeNetwork` как маршрут проверки и не использует системный Android DNS для разрешения контрольных доменов.
 
-Фактический путь:
+Фактический путь одного check run:
 
 ```text
 ConnectivityManager.requestNetwork(TRANSPORT_CELLULAR + NET_CAPABILITY_INTERNET)
-    -> Network
-    -> network.openConnection(URL(...))
-    -> FOREIGN/LOCAL targets
+    -> cellular Network
+    -> DNS probes через сокеты, привязанные к этому Network
+    -> CellularDnsResolver
+    -> доступные пользовательские DNS независимо от группы FOREIGN/LOCAL
+    -> OkHttpClient(socketFactory = cellular Network.socketFactory, dns = CellularDnsResolver)
+    -> HTTPS FOREIGN/LOCAL targets
+    -> Site signal + DNS signal
+    -> WhitelistStateClassifier
 ```
 
-По документации Android, `Network.openConnection(URL)` открывает URL на конкретном `Network`, и весь трафик такого соединения идёт через этот `Network`. `Network.getAllByName(...)` также резолвит имя именно на этом `Network`.
+Один и тот же `Network` удерживается на DNS- и HTTPS-стадиях и освобождается после завершения check run.
 
-Источники:
+Источники Android:
 
-- Android `Network`: https://developer.android.com/reference/android/net/Network
-- Android `ConnectivityManager.requestNetwork`: https://developer.android.com/reference/android/net/ConnectivityManager#requestNetwork(android.net.NetworkRequest,%20android.net.ConnectivityManager.NetworkCallback,%20int)
+- `Network`: https://developer.android.com/reference/android/net/Network
+- `ConnectivityManager.requestNetwork`: https://developer.android.com/reference/android/net/ConnectivityManager#requestNetwork(android.net.NetworkRequest,%20android.net.ConnectivityManager.NetworkCallback,%20int)
+- `LinkProperties`: https://developer.android.com/reference/android/net/LinkProperties
 
 ## Что это означает для Wi-Fi
 
-Если активная сеть телефона — Wi-Fi, приложение всё равно запрашивает отдельную cellular-сеть и выполняет проверки через полученный `Network`.
+Если активная сеть телефона — Wi-Fi, приложение всё равно запрашивает отдельную cellular-сеть.
 
-В UI:
+Через неё идут:
+
+- DNS probes;
+- DNS resolution контрольных сайтов;
+- HTTPS-проверки сайтов.
+
+В UI и диагностике:
 
 - активная сеть может быть `Wi-Fi`;
 - проверяемая сеть должна быть `Mobile`.
 
-## VPN: честное ограничение Android
+## Custom DNS
+
+Настроенные DNS выполняют две независимые роли.
+
+### Resolver
+
+`CellularDnsResolver` отправляет обычные DNS-запросы непосредственно на literal IP настроенного сервера.
+
+Текущая реализация v0.9.0:
+
+- UDP/53;
+- TCP/53 fallback для truncated UDP response;
+- A и AAAA для разрешения сайтов;
+- transaction ID validation;
+- typed errors для timeout, connection, malformed response, SERVFAIL, NXDOMAIN и network failure;
+- небольшой in-memory cache только на время одного check run.
+
+Системные `InetAddress.getByName(...)`, `Network.getAllByName(...)` и Android Private DNS в основном resolver path не используются.
+
+### Диагностический сигнал
+
+Каждый enabled DNS отдельно проверяется через cellular `Network`.
+
+DNS делятся на:
+
+- `FOREIGN` — внешние DNS;
+- `LOCAL` — локальные DNS.
+
+Группа DNS используется только для классификации доступности инфраструктуры. Она не ограничивает домены, которые этот DNS может разрешать.
+
+Все доступные enabled DNS могут использоваться для разрешения любого контрольного сайта.
+
+DNS-сигнал является вторичным. Недоступность внешних публичных DNS сама по себе не означает `WHITELIST_ON`.
+
+## Private DNS
+
+WhiteListChecker выполняет собственное разрешение доменов через настроенные DNS-серверы, привязанные к cellular `Network`, поэтому системный Android Private DNS не используется для основной проверки.
+
+Диагностика сохраняет:
+
+- активен ли Private DNS;
+- hostname Private DNS, если Android его предоставляет;
+- использовался ли custom DNS.
+
+Эти признаки не меняют маршрут custom DNS.
+
+Приложение:
+
+- не меняет системную настройку Private DNS;
+- не запрашивает `WRITE_SETTINGS`;
+- не создаёт VPN или proxy.
+
+### Приватность raw DNS
+
+DNS/53 выбран как диагностически предсказуемый механизм, который не требует системного DNS для bootstrap самого resolver.
+
+Следствие: запросы DNS/53 не шифруются. Это осознанный компромисс v0.9.0. Пользователь должен настраивать только доверенные DNS-серверы. Android рекомендует приложениям, реализующим собственный DNS при активном Private DNS, учитывать требования к защищённому DNS; в этой версии независимость диагностического маршрута от системного Private DNS является целевой особенностью WhiteListChecker.
+
+## VPN: отдельное ограничение Android
 
 Полностью гарантировать обход любого VPN обычное приложение не может.
 
-Причина: Android `VpnService.Builder.allowBypass()` описывает, что по умолчанию трафик приложений направляется через VPN-интерфейс, и приложения не могут обойти VPN. Обход возможен только если сам VPN разрешил bypass через `allowBypass()`.
+`VpnService.Builder.allowBypass()` определяет, разрешает ли конкретный VPN приложениям обходить его маршрут.
 
 Источник:
 
@@ -43,25 +113,31 @@ ConnectivityManager.requestNetwork(TRANSPORT_CELLULAR + NET_CAPABILITY_INTERNET)
 
 - если VPN разрешает bypass, проверка через cellular `Network` может идти мимо VPN;
 - если VPN не разрешает bypass, приложение не должно обещать обход VPN;
-- приложение не должно использовать VPN service, foreground service или собственный proxy ради обхода.
+- custom DNS не превращает произвольный VPN в обходящийся;
+- Private DNS и VPN диагностируются как разные ограничения.
 
-Коротко для UI/релизных заметок:
+Коротко:
 
 ```text
-Wi-Fi приложение обходит для проверки: да, через cellular Network.
-VPN приложение гарантированно не обходит: зависит от VPN и allowBypass().
-Private DNS приложение гарантированно не обходит: DNS остаётся политикой Android/сети.
+Wi-Fi: проверки принудительно выполняются через запрошенный cellular Network.
+Private DNS: основная проверка использует собственный DNS resolver и не зависит от системного Private DNS.
+VPN: гарантированный bypass отсутствует и зависит от политики конкретного VPN.
 ```
 
-## Private DNS и DNS-серверы
+## TLS и HTTPS
 
-Приложение может направить DNS-resolution на выбранный Android `Network`, но не должно обещать обход всех системных DNS-политик.
+Target checks используют OkHttp только потому, что ему можно одновременно передать:
 
-Практический вывод:
+- `socketFactory` конкретного cellular `Network`;
+- custom `Dns` implementation;
+- исходный hostname URL для штатных SNI и hostname verification.
 
-- `Network.openConnection(...)` и network-bound DNS уменьшают риск проверки через Wi-Fi/DNS активной сети;
-- Android Private DNS, прошивка, операторский APN, корпоративный профиль или VPN могут влиять на резолвинг;
-- если большинство доменов не резолвится через cellular `Network`, приложение классифицирует это как `MOBILE_DNS_FAILURE`, а не как включённые белые списки.
+Запрещено:
+
+- подключаться к `https://IP` с отключённой проверкой hostname;
+- `trustAllCertificates()`;
+- `hostnameVerifier { _, _ -> true }`;
+- отключать certificate validation.
 
 ## Что не добавлять
 
@@ -69,6 +145,7 @@ Private DNS приложение гарантированно не обходи�
 
 - `WRITE_SETTINGS`;
 - собственный VPN/proxy;
-- foreground service;
-- прямой `bindProcessToNetwork(...)` для всего приложения;
+- `bindProcessToNetwork(...)` для всего приложения;
+- root;
+- изменение системного Private DNS;
 - прямой Telegram API fallback.
