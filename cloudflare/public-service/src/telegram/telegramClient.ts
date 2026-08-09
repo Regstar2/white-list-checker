@@ -34,7 +34,7 @@ export class TelegramClient {
   async editMessageText(chatId: string, messageId: string | number, text: string, keyboard?: InlineKeyboard): Promise<void> {
     await this.call("editMessageText", {
       chat_id: chatId,
-      message_id: messageId,
+      message_id: normalizeMessageId(messageId),
       text,
       parse_mode: "HTML",
       disable_web_page_preview: true,
@@ -92,6 +92,14 @@ export class TelegramClient {
     }
     return body.result as T;
   }
+}
+
+function normalizeMessageId(value: string | number): number {
+  const messageId = typeof value === "number" ? value : Number(value);
+  if (!Number.isSafeInteger(messageId) || messageId <= 0) {
+    throw new ApiError("INVALID_TELEGRAM_MESSAGE_ID", "Telegram message id is invalid", 500);
+  }
+  return messageId;
 }
 
 function removeUndefined(value: Record<string, unknown>): Record<string, unknown> {

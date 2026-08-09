@@ -128,15 +128,21 @@ export async function handleApiRequest(request: Request, env: Env, now = Date.no
     const installation = await repo.authenticateDevice(request.headers.get("authorization"));
     const body = await readJsonBody<CommandResultRequest>(request);
     requireSchemaVersion(body);
-    const { command, duplicate } = await repo.saveCommandResult(installation, commandResultMatch[1], body, now);
-    if (!duplicate && await repo.markCommandTelegramResultSent(command.commandId, now)) {
+    const commandId = commandResultMatch[1];
+    const { command, duplicate } = await repo.saveCommandResult(installation, commandId, body, now);
+
+    await repo.createPublicReportFromCommandResult(installation, commandId, body, now);
+
+    if (command.telegramResultSentAt == null) {
       const telegram = new TelegramClient(env);
       const text = remoteResultText(installation.deviceAlias ?? "Мой телефон", body);
-      if (command.telegramMessageId) {
-        await telegram.editMessageText(command.telegramChatId, command.telegramMessageId, text);
-      } else {
-        await telegram.sendMessage(command.telegramChatId, text);
-      }
+      await deliverRemoteResult(
+        telegram,
+        command.telegramChatId,
+        command.telegramMessageId,
+        text,
+      );
+      await repo.markCommandTelegramResultSent(command.commandId, now);
     }
     return jsonResponse({ schemaVersion: 1, requestId: body.requestId, accepted: true, duplicate });
   }
@@ -183,6 +189,23 @@ export async function handleApiRequest(request: Request, env: Env, now = Date.no
   }
 
   return notFound();
+}
+
+async function deliverRemoteResult(
+  telegram: TelegramClient,
+  chatId: string,
+  messageId: string | null,
+  text: string,
+): Promise<void> {
+  if (messageId) {
+    try {
+      await telegram.editMessageText(chatId, messageId, text);
+      return;
+    } catch {
+      // The original bot message may no longer be editable. Deliver the result as a new message instead.
+    }
+  }
+  await telegram.sendMessage(chatId, text);
 }
 
 function catalogResponse(items: unknown[]): Response {
