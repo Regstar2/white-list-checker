@@ -13,8 +13,8 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 23
-        versionName = "0.8.15"
+        versionCode = 24
+        versionName = "0.9.0"
 
         buildConfigField(
             "String",
@@ -78,6 +78,7 @@ dependencies {
     testImplementation(libs.junit)
     testImplementation(libs.mockito.kotlin)
     testImplementation(libs.kotlinx.coroutines.test)
+    testImplementation(libs.json)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
     androidTestImplementation(platform(libs.androidx.compose.bom))
