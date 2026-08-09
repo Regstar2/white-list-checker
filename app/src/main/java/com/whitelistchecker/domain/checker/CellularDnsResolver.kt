@@ -20,10 +20,10 @@ class CellularDnsResolver internal constructor(
         val normalized = hostname.trim().lowercase()
         if (normalized.isBlank()) throw UnknownHostException("Hostname is empty")
         cache[normalized]?.let { return it }
-        val resolved = synchronized(cache) {
-            cache[normalized] ?: resolveUncached(normalized).also { cache[normalized] = it }
-        }
-        return resolved
+
+        val resolved = resolveUncached(normalized)
+        val cached = cache.putIfAbsent(normalized, resolved)
+        return cached ?: resolved
     }
 
     fun cachedHostCount(): Int = cache.size
@@ -34,21 +34,21 @@ class CellularDnsResolver internal constructor(
         }
         val failures = mutableListOf<String>()
         resolvers.forEach { server ->
-            val addresses = mutableListOf<InetAddress>()
             val aResult = queryExecutor.query(network, server, hostname, DnsRecordType.A)
-            if (aResult.successful) {
-                addresses += aResult.addresses
-            } else {
+            if (aResult.successful && aResult.addresses.isNotEmpty()) {
+                return aResult.addresses.distinctBy { it.hostAddress }
+            }
+            if (!aResult.successful) {
                 failures += "${server.name}/A=${aResult.errorType.name}"
             }
+
             val aaaaResult = queryExecutor.query(network, server, hostname, DnsRecordType.AAAA)
-            if (aaaaResult.successful) {
-                addresses += aaaaResult.addresses
-            } else {
+            if (aaaaResult.successful && aaaaResult.addresses.isNotEmpty()) {
+                return aaaaResult.addresses.distinctBy { it.hostAddress }
+            }
+            if (!aaaaResult.successful) {
                 failures += "${server.name}/AAAA=${aaaaResult.errorType.name}"
             }
-            val distinct = addresses.distinctBy { it.hostAddress }
-            if (distinct.isNotEmpty()) return distinct
         }
         throw UnknownHostException(
             buildString {
