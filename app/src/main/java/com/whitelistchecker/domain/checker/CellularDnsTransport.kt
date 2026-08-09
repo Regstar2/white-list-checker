@@ -1,13 +1,13 @@
 package com.whitelistchecker.domain.checker
 
 import android.net.Network
+import com.whitelistchecker.domain.model.DnsServerAddress
 import com.whitelistchecker.domain.model.EditableDnsServer
 import java.io.EOFException
 import java.net.DatagramPacket
 import java.net.DatagramSocket
 import java.net.InetAddress
 import java.net.InetSocketAddress
-import java.net.SocketTimeoutException
 
 internal interface DnsTransport {
     fun queryUdp(
@@ -86,15 +86,8 @@ internal class CellularDnsTransport : DnsTransport {
     }
 
     private fun parseIpv4Literal(raw: String): InetAddress {
-        val parts = raw.trim().split('.')
-        require(parts.size == 4) { "DNS server address must be a literal IPv4 address" }
-        val bytes = ByteArray(4)
-        parts.forEachIndexed { index, part ->
-            val value = part.toIntOrNull()
-            require(value != null && value in 0..255 && (part == "0" || !part.startsWith('0'))) {
-                "Invalid IPv4 DNS server address"
-            }
-            bytes[index] = value.toByte()
+        val bytes = requireNotNull(DnsServerAddress.parseIpv4Bytes(raw)) {
+            "DNS server address must be a literal IPv4 address"
         }
         return InetAddress.getByAddress(bytes)
     }
