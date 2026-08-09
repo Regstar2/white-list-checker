@@ -1,230 +1,197 @@
 # AGENTS.md
 
-# WhiteListChecker Android Project Instructions
+# Whitelist Checker Android Project Instructions
 
-WhiteListChecker is an Android-native Kotlin application for detecting observable signs of mobile-network whitelist mode.
+This project is an Android-native Kotlin application for detecting signs of mobile-network whitelist mode.
 
-The application must remain conservative: it reports network symptoms, not an operator's internal policy. User-facing wording for a positive result must remain cautious, for example «Похоже на включённые белые списки».
+The app periodically checks the mobile network, classifies whether whitelist mode appears to be enabled or disabled, and notifies the user when the confirmed state changes.
 
-Before network changes, read:
+The user develops this project through Cursor. The user may connect an Android phone in USB debugging mode. After every implemented version/milestone, the agent must build and install the new debug APK onto the connected device and tell the user exactly what to test manually.
 
-- `docs/network-routing-notes.md`;
-- the current version document under `docs/versions/`;
-- `docs/universal_development_principles.md` when present.
+Do not skip device installation after a completed version unless the build fails or no device is connected.
 
 ---
 
-## 1. Core stack and scope
+## 1. Main product goal
 
-Use the existing stack unless a task explicitly requires something else:
+Build an Android app that:
 
-- Kotlin;
-- native Android;
-- Jetpack Compose / Material 3;
-- Coroutines / Flow;
-- DataStore for settings and lightweight state;
-- Room for structured history/queues/statistics;
-- WorkManager for periodic work;
-- OkHttp for the existing Worker/public-service clients and for cellular target checks that require custom DNS.
-
-Do not introduce without an explicit requirement:
-
-- Flutter or Kotlin Multiplatform;
-- Firebase;
-- Retrofit or Ktor;
-- RxJava;
-- a new multi-module architecture;
-- a custom backend for target checks;
-- root requirements;
-- a local proxy;
-- a new VPN service;
-- process-wide network binding.
-
-Do not rewrite working areas merely because they can be refactored.
+1. Checks the mobile network, even when Wi-Fi is active.
+2. Detects signs of whitelist mode by comparing availability of FOREIGN and LOCAL target groups.
+3. Uses debounce/confirmation logic before treating a state as changed.
+4. Sends notifications only when the confirmed whitelist state changes:
+   - whitelist OFF → whitelist ON;
+   - whitelist ON → whitelist OFF.
+5. Supports local Android notifications.
+6. Supports optional Telegram notifications through a user-owned Cloudflare Worker relay.
+7. Each user creates their own Telegram bot and Worker; Android stores only Worker URL, Relay Secret, and recipients (chat_id list).
+8. `BOT_TOKEN` must never be stored in Android.
+9. No shared Worker, shared Relay Secret, or direct Telegram fallback from the app.
+10. Can later perform periodic checks through WorkManager.
+11. Uses configured custom DNS servers for target resolution so Android Private DNS does not control the main whitelist-check path.
 
 ---
 
-## 2. Architecture rules
+## 2. Important project constraints
 
-Keep responsibilities separated:
+Do not add unnecessary technologies.
 
-```text
-ui -> ViewModel -> domain/use cases -> repositories/infrastructure
-```
+Use:
 
-Rules:
+- Kotlin
+- Android native
+- Jetpack Compose
+- Material 3
+- Coroutines
+- Flow where useful
+- DataStore for settings/state
+- Room only when structured queue/history storage is needed
+- WorkManager only for periodic checks
+- OkHttp for HTTPS calls to the user's Cloudflare Worker relay
+- OkHttp for target checks only when it is configured with the requested cellular `Network.socketFactory` and the app's custom DNS resolver
 
-1. Composables do not create or receive repositories/network clients.
-2. `AppContainer` is the composition root for infrastructure dependencies.
-3. Domain logic returns typed states/errors, not localized UI strings.
-4. User-visible strings belong in Android resources.
-5. Keep public APIs small and dependencies explicit.
-6. One business rule should have one implementation location.
-7. Avoid generic `Manager`, `Processor`, `Handler`, or universal repository classes when a precise responsibility exists.
-8. Do not change public-service JSON contracts as a side effect of a local Android feature.
+Do not use unless explicitly requested:
+
+- Flutter
+- Kotlin Multiplatform
+- Firebase
+- Retrofit
+- Ktor
+- RxJava
+- foreground service
+- VPN service
+- custom proxy/VPN implementation
+- multi-module architecture
+- server backend
+- Telegram getUpdates / bot commands in background
+
+Allowed for manual chat_id discovery only:
+
+- `getUpdates` through the user's Cloudflare Worker relay when the user taps discovery buttons in UI
+- Do not use Telegram long polling in background
+- Do not implement app control through Telegram commands
+
+Keep the MVP focused. Do not build an enterprise cathedral for a network checker.
 
 ---
 
-## 3. Cellular target-check routing
+## 3. Network checking rules
 
-Target checks must use the mobile network specifically, even when Wi-Fi is active.
+The app must check the mobile network specifically.
 
-For every check run:
+When checking target sites:
 
-1. Request a network with `ConnectivityManager.requestNetwork(...)`.
-2. Require `NetworkCapabilities.TRANSPORT_CELLULAR`.
-3. Require `NetworkCapabilities.NET_CAPABILITY_INTERNET`.
-4. Do not require `NET_CAPABILITY_VALIDATED` in the request.
-5. Hold the returned `Network` for the complete DNS + HTTPS check run.
-6. Release the callback in `finally` after all stages finish.
-7. Do not use `activeNetwork` for target traffic; it is display/diagnostic data only.
-8. Do not call `bindProcessToNetwork(...)`.
+1. Request a cellular network through `ConnectivityManager.requestNetwork(...)`.
+2. Use `NetworkCapabilities.TRANSPORT_CELLULAR`.
+3. Use `NetworkCapabilities.NET_CAPABILITY_INTERNET`.
+4. Do not request `NET_CAPABILITY_VALIDATED` inside `NetworkRequest`.
+5. Keep the returned cellular `Network` for the entire DNS probe, DNS resolution, and HTTPS target-check run.
+6. DNS probe UDP sockets must be bound to the returned `Network`; TCP DNS fallback must use that `Network.socketFactory`.
+7. Resolve target hostnames through the app's custom DNS resolver. Do not use Android/system DNS, `InetAddress.getByName(...)`, or `Network.getAllByName(...)` as the primary target resolver.
+8. Perform HTTPS target checks with an OkHttp client whose `socketFactory` is the returned cellular `Network.socketFactory` and whose `dns` is the custom resolver for that check run.
+9. Keep the original hostname URL so normal TLS certificate validation, hostname verification, SNI, and redirects remain active.
+10. Do not use plain `URL.openConnection(...)` for target checks.
+11. Do not use `bindProcessToNetwork(...)`.
+12. Do not use `activeNetwork` for actual target checks.
+13. `activeNetwork` may be used only for displaying a label in UI.
+14. Release the cellular network callback only after DNS and HTTPS stages finish, preferably in `finally`.
 
-Correct v0.9+ flow:
+Correct flow from v0.9.0:
 
 ```text
 ConnectivityManager.requestNetwork(TRANSPORT_CELLULAR)
     ↓
 cellular Network
     ↓
-DNS probes bound to that Network
+DNS probes through configured DNS servers
     ↓
 CellularDnsResolver
     ↓
-OkHttp target-check session
-  socketFactory = cellular Network.socketFactory
-  dns = CellularDnsResolver
+OkHttpClient(
+    socketFactory = cellular Network.socketFactory,
+    dns = CellularDnsResolver
+)
     ↓
-FOREIGN / LOCAL sites
+FOREIGN/LOCAL target checks
     ↓
 Site signal + DNS signal
     ↓
 WhitelistStateClassifier
 ```
 
-`CHANGE_NETWORK_STATE` remains required for explicit cellular requests. Do not add `WRITE_SETTINGS` for this feature.
-
----
-
-## 4. Custom DNS rules
-
-Android Private DNS must not be part of the main target-resolution path.
-
-Configured DNS servers have two independent roles:
-
-1. **Resolver role** — resolve control-site hostnames.
-2. **Diagnostic role** — their own availability contributes a second whitelist-related signal.
-
-For raw DNS/53:
-
-- the resolver endpoint must be a literal IP address unless an independently bootstrapped protocol is implemented;
-- UDP sockets must be bound to the supplied cellular `Network`;
-- TCP fallback must use that `Network.socketFactory`;
-- do not call `InetAddress.getByName(...)` for resolver endpoints or target hostnames;
-- do not use `Network.getAllByName(...)` as the target resolver;
-- do not silently fall back to Android/system DNS when custom DNS is unavailable;
-- a DNS server is available only after a valid DNS response, not after a TCP connect alone;
-- validate transaction IDs and malformed responses;
-- use TCP fallback when the UDP response is truncated;
-- keep hostname cache in memory for a single check run only.
-
-DNS groups:
-
-```text
-FOREIGN = external DNS infrastructure
-LOCAL   = local DNS infrastructure
-```
-
-A DNS group is only a classification attribute. Never restrict a FOREIGN site to FOREIGN DNS or a LOCAL site to LOCAL DNS. Any available enabled resolver may resolve any target hostname.
-
-Disabled DNS servers must not participate in probing, resolving, or classification.
-
-At least one custom DNS must remain enabled for a fully independent Private-DNS check. Do not hide a system-DNS fallback from the user.
-
----
-
-## 5. OkHttp target-check exception
-
-The old rule requiring `network.openConnection(URL(...))` for target checks is superseded for custom-DNS checks.
-
-OkHttp is explicitly allowed for target checks because it can combine:
-
-- `cellular Network.socketFactory`;
-- a custom `okhttp3.Dns` implementation;
-- normal hostname-based HTTPS URLs.
-
-This preserves standard TLS behavior, including hostname verification, certificate validation, SNI, and redirects while keeping sockets on the requested cellular network.
-
-Forbidden:
+Do not weaken HTTPS security to make custom DNS work. Forbidden examples:
 
 ```text
 trustAllCertificates()
 hostnameVerifier { _, _ -> true }
 https://IP with disabled certificate/hostname checks
-custom permissive TrustManager
+permissive custom TrustManager
 ```
 
-Do not weaken TLS to make custom DNS easier.
+**Android permissions for cellular requests:**
+
+- Do not remove `CHANGE_NETWORK_STATE`. It is required for explicit cellular `Network` requests through `ConnectivityManager.requestNetwork()`.
+- Do not add `WRITE_SETTINGS` for this use case.
+
+### 3.1 Custom DNS and Android Private DNS
+
+Configured DNS servers have two independent roles:
+
+1. Resolver role: resolve control-site hostnames without Android/system DNS.
+2. Diagnostic role: FOREIGN/LOCAL DNS availability contributes a secondary whitelist-related signal.
+
+For the raw DNS implementation:
+
+- use literal resolver IP addresses so locating the DNS server itself does not require system DNS;
+- use UDP/53 and TCP/53 fallback when a valid UDP response is truncated;
+- validate DNS transaction ID and malformed responses;
+- treat a resolver as available only after receiving a valid DNS response, not merely after opening TCP port 53;
+- keep typed errors such as timeout, connection, invalid response, SERVFAIL, and NXDOMAIN;
+- keep hostname cache in memory for a single check run only;
+- disabled DNS servers do not participate in probes, resolution, or classification;
+- any available resolver may resolve any target hostname regardless of its FOREIGN/LOCAL group.
+
+Do not silently fall back to Android/system DNS when all custom DNS servers are unavailable. The UI/settings layer must keep at least one custom DNS enabled or explicitly expose a degraded mode if that policy changes later.
+
+Private DNS status and hostname may be collected for diagnostics, but they must not choose or modify the DNS route. Do not change Android Private DNS settings and do not request `WRITE_SETTINGS`.
+
+VPN is a separate Android limitation. Do not claim that custom DNS guarantees bypass of an arbitrary VPN, and do not add a VPN service, proxy, root requirement, or process-wide network binding for this milestone.
 
 ---
 
-## 6. Private DNS and VPN
+## 4. Target groups
 
-Private DNS and VPN are different concerns.
+Do not use YouTube, Telegram, or Discord as whitelist-detection targets.
 
-### Private DNS
+They may be blocked separately and are bad baseline targets.
 
-The main WhiteListChecker check uses its own configured DNS resolver and must not depend on Android Private DNS.
+Use groups like:
 
-Private DNS data is diagnostic only:
+```text
+FOREIGN:
+- Google
+- Cloudflare
+- GitHub
+- Wikipedia
 
-- active/inactive;
-- server hostname when Android exposes it;
-- whether custom DNS was used.
+LOCAL:
+- Yandex
+- VK
+- Mail.ru
+- Gosuslugi
+```
 
-Do not:
+The exact target list may evolve, but the classifier must rely on groups, not one single domain.
 
-- change the Android Private DNS setting;
-- request `WRITE_SETTINGS`;
-- route custom DNS back through system DNS.
+DNS servers also use `FOREIGN` and `LOCAL` as diagnostic groups. This grouping is not a routing restriction: a LOCAL DNS resolver may resolve a FOREIGN site and vice versa.
 
-### VPN
-
-Do not claim that custom DNS guarantees bypass of an arbitrary VPN.
-
-VPN bypass depends on Android and the VPN application's policy. Do not add a VPN service, proxy, root requirement, or process-wide binding to solve this milestone.
+Sites remain the primary classification channel. DNS is a secondary channel. Unavailability of foreign public DNS alone must never promote the final result to `WHITELIST_ON`.
 
 ---
 
-## 7. Site and DNS classification
+## 5. Whitelist states
 
-Sites remain the primary source of the final whitelist state.
-
-DNS is a secondary independent signal and must not create a false `WHITELIST_ON` merely because public foreign DNS is blocked.
-
-Current DNS signal model:
-
-```text
-UNKNOWN
-WHITELIST_LIKE
-NORMAL
-NO_DNS_ACCESS
-PARTIAL
-```
-
-Expected combined behavior:
-
-```text
-SITE whitelist-like + DNS whitelist-like -> WHITELIST_ON
-SITE normal         + DNS normal          -> WHITELIST_OFF
-SITE whitelist-like + DNS normal          -> PARTIAL_PROBLEM
-SITE normal         + DNS whitelist-like  -> PARTIAL_PROBLEM
-SITE normal         + DNS unavailable     -> keep clear site result
-```
-
-For inconclusive site results, DNS may appear in diagnostics but must not independently promote the result to confident `WHITELIST_ON`.
-
-Keep the existing state model unless a task explicitly changes it:
+Use this state model unless the user explicitly changes it:
 
 ```kotlin
 enum class WhitelistState {
@@ -234,170 +201,703 @@ enum class WhitelistState {
     NO_MOBILE_INTERNET,
     MOBILE_DNS_FAILURE,
     PARTIAL_PROBLEM,
-    CELLULAR_NETWORK_UNAVAILABLE,
+    CELLULAR_NETWORK_UNAVAILABLE
 }
 ```
 
----
-
-## 8. Target lists and settings persistence
-
-Website targets and DNS servers are separate responsibilities.
-
-Rules:
-
-- keep the existing website DataStore keys unchanged;
-- keep DNS JSON separate from target-site JSON;
-- DNS settings must survive restarts;
-- reset sites must not reset DNS;
-- reset DNS must not reset sites;
-- built-in DNS IDs must be stable;
-- future built-ins may be migrated in without reviving a built-in the user explicitly removed;
-- custom DNS additions must reject duplicate endpoint + port + protocol combinations.
-
-Do not turn `CheckTargetsRepository` into a universal settings manager.
-
----
-
-## 9. Public service and privacy
-
-DNS diagnostics introduced for local checks are local by default.
-
-Do not extend `PublicReport` or the central Worker contract merely because `NetworkCheckResult` gained DNS fields.
-
-If public DNS reporting is ever required, it must be a separate deliberate product/privacy change with backward-compatible API handling.
-
-Telegram bot tokens and Worker secrets must never be stored in source control or included in diagnostics.
-
-The personal Telegram relay and central public service remain separate systems.
-
----
-
-## 10. Notifications and state confirmation
-
-Keep state-change detection separate from notification delivery.
-
-A suspicious state is not automatically a notification event. Existing debounce/confirmation rules remain authoritative.
-
-Do not place notification-sending logic inside classifiers or DNS components.
-
-Network check components return network results; notification components decide whether/how to notify.
-
----
-
-## 11. Tests required for DNS changes
-
-Do not use real public DNS endpoints in unit tests.
-
-Use fake/abstracted transports and deterministic responses.
-
-DNS changes should cover, as applicable:
-
-- default FOREIGN and LOCAL groups;
-- stable/unique built-in IDs and endpoints;
-- JSON round-trip and corrupt input;
-- backward-compatible optional-field defaults;
-- DNS signal thresholds;
-- site/DNS conflict behavior;
-- resolver fallback;
-- malformed DNS packets;
-- NXDOMAIN/SERVFAIL handling;
-- truncated UDP -> TCP fallback;
-- single-run cache;
-- disabled resolvers;
-- cellular Network propagation through DNS and site checking;
-- callback release;
-- Private DNS diagnostic flags;
-- no DNS-only false-positive `WHITELIST_ON`.
-
----
-
-## 12. Build, test, and device verification
-
-After an Android milestone, run when the environment permits:
-
-```powershell
-.\gradlew.bat test
-.\gradlew.bat lint
-.\gradlew.bat assembleDebug
-adb devices
-```
-
-On Unix:
-
-```bash
-./gradlew test
-./gradlew lint
-./gradlew assembleDebug
-adb devices
-```
-
-If exactly one authorized device is connected and the build succeeds:
-
-```powershell
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-```
-
-Never claim a build, test, APK installation, or manual phone test succeeded unless the command actually ran and succeeded.
-
-If no device is available, report that fact rather than inventing an ADB status.
-
-If uninstalling would be required because of a signature mismatch, warn before removing app data.
-
----
-
-## 13. Required implementation report
-
-For a completed milestone, report in Russian:
+Meaning:
 
 ```text
-Версия:
-Статус сборки:
-Статус тестов:
-APK установлен:
-Устройство adb:
+WHITELIST_OFF:
+FOREIGN and LOCAL groups are sufficiently available.
 
-Что реализовано:
-- ...
+WHITELIST_ON:
+FOREIGN group is mostly unavailable while LOCAL group is available.
 
-Архитектура DNS:
-- ...
+NO_MOBILE_INTERNET:
+FOREIGN and LOCAL groups are both unavailable.
 
-Как обеспечена независимость от Private DNS:
-- ...
+MOBILE_DNS_FAILURE:
+Android provided a cellular Network, but domains fail to resolve through that network at scale.
 
-Как DNS участвуют в классификации:
-- ...
+PARTIAL_PROBLEM:
+The result is mixed and does not clearly match whitelist mode or normal internet.
 
-Какие файлы добавлены:
-- ...
+CELLULAR_NETWORK_UNAVAILABLE:
+Android could not provide a cellular Network.
 
-Какие файлы изменены:
-- ...
-
-Какие тесты добавлены:
-- ...
-
-Что протестировать вручную:
-1. ...
-
-Известные ограничения:
-- ...
+UNKNOWN:
+Initial or undefined state.
 ```
 
-Do not report only «готово».
+From v0.9.0, DNS diagnostics may strengthen or conflict with the site result, but sites remain primary. At minimum:
+
+```text
+site whitelist-like + dns whitelist-like -> WHITELIST_ON
+site normal         + dns normal          -> WHITELIST_OFF
+site whitelist-like + dns normal          -> PARTIAL_PROBLEM
+site normal         + dns whitelist-like  -> PARTIAL_PROBLEM
+site normal         + dns unavailable     -> keep clear site result
+```
+
+Do not present `WHITELIST_ON` as absolute truth. In UI use wording like:
+
+```text
+Похоже на включённые белые списки
+```
+
+Do not use wording like:
+
+```text
+Белые списки точно включены
+```
+
+The app detects symptoms, not the mobile operator's internal rules.
 
 ---
 
-## 14. General engineering rules
+## 6. Debounce and confirmed state changes
 
-1. One version = one clear goal.
-2. Do not implement unrelated ideas “along the way”.
-3. Review the diff before accepting AI-generated changes.
-4. Keep user-visible strings in resources.
-5. Prefer typed errors/status models over business logic based on error text.
-6. Inject infrastructure dependencies instead of constructing them inside business logic or Composables.
-7. Preserve existing user data and backward compatibility unless a task explicitly requires a migration.
-8. Do not change vendor/generated code directly.
-9. Do not add abstractions merely for future possibilities.
-10. If a rule must be broken for correctness, document the reason in the same version.
+The app must not notify immediately after one suspicious check.
+
+Use confirmation logic:
+
+```text
+A new state must appear 2 times in a row before it becomes confirmed.
+```
+
+Notify only for these confirmed transitions:
+
+```text
+WHITELIST_OFF → WHITELIST_ON
+WHITELIST_ON → WHITELIST_OFF
+```
+
+Do not notify for:
+
+```text
+UNKNOWN initial state fixation
+pendingStateCount = 1
+OTHER_CONFIRMED_CHANGE
+NO_MOBILE_INTERNET
+MOBILE_DNS_FAILURE
+PARTIAL_PROBLEM
+CELLULAR_NETWORK_UNAVAILABLE
+ordinary checks without state change
+```
+
+The state detector must be independent from notification senders.
+
+Correct architecture:
+
+```text
+Network check
+    ↓
+Classifier
+    ↓
+StateChangeDetector
+    ↓
+WhitelistStateChangeEvent
+    ↓
+Notification dispatchers
+```
+
+Do not put notification logic inside `StateChangeDetector`.
+
+---
+
+## 7. Local notification rules
+
+The app should support local Android notifications.
+
+Local notifications must:
+
+1. Be optional.
+2. Be controlled by a user setting.
+3. Use a notification channel on Android 8+.
+4. Request `POST_NOTIFICATIONS` runtime permission on Android 13+.
+5. Be sent only for:
+   - `WHITELIST_TURNED_ON`;
+   - `WHITELIST_TURNED_OFF`.
+6. Not be sent for pending states or ordinary checks.
+
+Use:
+
+```text
+Channel ID:
+whitelist_events
+
+Channel name:
+События белых списков
+
+Channel description:
+Уведомления о включении и выключении белых списков
+```
+
+Use a proper small notification icon. Do not use the launcher icon as the small icon unless there is no better choice.
+
+---
+
+## 8. Telegram notification rules
+
+Telegram notifications are optional and use a **user-owned Cloudflare Worker relay**.
+
+Each user must create:
+
+```text
+1. Telegram bot (BotFather)
+2. Cloudflare Worker with secrets BOT_TOKEN and RELAY_SECRET
+```
+
+Android app stores only:
+
+```text
+Worker URL
+Relay Secret
+recipients (chat_id list)
+enabled flag
+```
+
+Worker endpoints (POST + header `X-Relay-Secret`):
+
+```text
+<WORKER_URL>/tg/getMe
+<WORKER_URL>/tg/getUpdates
+<WORKER_URL>/tg/sendMessage
+```
+
+`BOT_TOKEN` lives only in Worker secrets. Never in Android, logs, Room queue, or error messages.
+
+Forbidden:
+
+```text
+BOT_TOKEN in Android
+shared Worker URL or Relay Secret baked into APK
+local HTTP/SOCKS proxy for Telegram Bot API as main path
+direct api.telegram.org from Android
+logging relaySecret
+storing relaySecret in Room queue
+```
+
+If Worker is unavailable:
+
+```text
+Do not call Telegram directly from Android.
+Save the report to queue if queue exists (v0.5+).
+Show error in UI.
+```
+
+Manual test checklist:
+
+```text
+1. Worker URL and Relay Secret configured
+2. getMe via Worker succeeds
+3. chat_id obtained via /start + getUpdates
+4. test sendMessage works
+5. notification on whitelist state change via Worker
+```
+
+---
+
+## 9. Version roadmap
+
+Use this roadmap unless the user changes it.
+
+```text
+v0.1   Manual mobile-network check.
+v0.2   Group-based FOREIGN/LOCAL checks.
+v0.3   Debounce and confirmed state tracking.
+v0.3.5 Local Android notifications.
+v0.4   Telegram (legacy local proxy; superseded by v0.4.2 Worker relay).
+v0.4.2 Telegram via user Cloudflare Worker relay.
+v0.5   Telegram pending-message queue.
+v0.6   WorkManager periodic checks.
+v0.7   UI cleanup, history, diagnostics, reliability improvements.
+v0.9.0 Custom cellular DNS, Private DNS independence, and secondary DNS signal.
+```
+
+Do not skip versions.
+
+After each completed version:
+
+1. Build the project.
+2. Install the APK to the connected debug device.
+3. Launch or tell the user how to launch it.
+4. Report exactly what the user must test manually.
+5. Stop and wait for the user's test results before moving to the next version.
+
+---
+
+## 10. Mandatory build and install procedure after each version
+
+After finishing each version/milestone, run these checks.
+
+### 10.1 Check connected devices
+
+Run:
+
+```powershell
+adb devices
+```
+
+Expected:
+
+```text
+Exactly one device should be listed as "device".
+```
+
+If no device is connected:
+
+```text
+Stop.
+Tell the user in Russian: "Телефон не найден через adb. Подключи телефон в режиме USB debugging и проверь adb devices."
+Do not pretend the APK was installed.
+```
+
+If multiple devices are connected:
+
+```text
+Stop.
+Tell the user in Russian to leave only one device connected or provide the target device serial.
+Do not randomly pick a device.
+```
+
+If the device says `unauthorized`:
+
+```text
+Stop.
+Tell the user in Russian to confirm the USB debugging authorization prompt on the phone.
+```
+
+### 10.2 Build debug APK
+
+On Windows PowerShell, run:
+
+```powershell
+.\gradlew.bat assembleDebug
+```
+
+If the project uses a Unix shell, run:
+
+```bash
+./gradlew assembleDebug
+```
+
+If build fails:
+
+```text
+1. Fix compilation errors.
+2. Rebuild.
+3. Do not install an old APK.
+4. Report what was fixed in Russian.
+```
+
+### 10.3 Locate debug APK
+
+Default path:
+
+```text
+app/build/outputs/apk/debug/app-debug.apk
+```
+
+If the module name is not `app`, find the produced debug APK under:
+
+```text
+*/build/outputs/apk/debug/*.apk
+```
+
+Do not guess. Use the actual produced APK.
+
+### 10.4 Install APK to phone
+
+Run:
+
+```powershell
+adb install -r -d app\build\outputs\apk\debug\app-debug.apk
+```
+
+If the path differs, use the actual APK path.
+
+Flags:
+
+```text
+-r = reinstall keeping data
+-d = allow version downgrade
+```
+
+If install fails because of signature mismatch:
+
+```powershell
+adb uninstall <applicationId>
+adb install -r -d <path-to-debug-apk>
+```
+
+Before uninstalling, warn the user in Russian that app data will be removed.
+
+### 10.5 Optional launch command
+
+If `applicationId` is known, launch with:
+
+```powershell
+adb shell monkey -p <applicationId> -c android.intent.category.LAUNCHER 1
+```
+
+If `applicationId` is unknown:
+
+```text
+Read it from app/build.gradle(.kts).
+Do not invent it.
+```
+
+### 10.6 Android 13+ notification permission helper
+
+For versions with local notifications, if needed during debug, the agent may tell the user to grant permission manually in the app UI.
+
+Do not silently grant permission unless the user asked.
+
+Optional debug command if user explicitly wants it:
+
+```powershell
+adb shell pm grant <applicationId> android.permission.POST_NOTIFICATIONS
+```
+
+This may fail on Android versions below 13 or depending on app state. That is acceptable.
+
+---
+
+## 11. Required report after every installed version
+
+After building and installing the APK, the agent must report in Russian using this format:
+
+```text
+Версия: vX.X
+Статус сборки: успешно / ошибка
+APK установлен: да / нет
+Устройство adb: <device id or model if available>
+
+Что изменено:
+- ...
+- ...
+- ...
+
+Что протестировать на телефоне:
+1. ...
+2. ...
+3. ...
+
+Ожидаемый результат:
+- ...
+- ...
+
+Если что-то сломается:
+- пришли скриншот;
+- пришли текст ошибки;
+- пришли relevant logcat, если есть.
+```
+
+Do not say only:
+
+```text
+готово
+```
+
+That is useless.
+
+---
+
+## 12. Manual test checklist by version
+
+### v0.1 manual tests
+
+After installing v0.1, tell the user in Russian to test:
+
+```text
+1. Открой приложение.
+2. Включи Wi-Fi.
+3. Включи мобильные данные.
+4. Нажми "Проверить мобильную сеть".
+5. Проверь, что приложение показывает:
+   - активная сеть телефона: Wi-Fi;
+   - проверяемая сеть: Mobile;
+   - Google доступен/недоступен;
+   - Yandex доступен/недоступен;
+   - итоговый статус.
+6. Выключи мобильные данные и повтори проверку.
+7. Ожидаемо: приложение должно показать, что мобильная сеть недоступна.
+```
+
+### v0.2 manual tests
+
+After installing v0.2, tell the user in Russian to test:
+
+```text
+1. Нажми "Проверить мобильную сеть".
+2. Проверь, что отображаются группы:
+   - внешние сайты;
+   - локальные сайты.
+3. Проверь, что по каждому сайту есть:
+   - доступен/недоступен;
+   - HTTP-код или ошибка;
+   - время ответа.
+4. Проверь итог:
+   - внешние доступны + локальные доступны → БС не обнаружены;
+   - внешние недоступны + локальные доступны → похоже на БС;
+   - обе группы недоступны → мобильного интернета нет.
+```
+
+### v0.3 manual tests
+
+After installing v0.3, tell the user in Russian to test:
+
+```text
+1. Выполни первую проверку.
+2. Проверь, что приложение зафиксировало начальное подтверждённое состояние.
+3. Измени сетевые условия или APN так, чтобы статус изменился.
+4. Выполни проверку один раз.
+5. Ожидаемо: должно появиться pending-состояние 1/2, но события ещё нет.
+6. Выполни проверку второй раз с тем же статусом.
+7. Ожидаемо: состояние подтверждается, появляется событие смены.
+8. Верни сеть в исходное состояние и повтори 2 проверки.
+9. Ожидаемо: появляется обратное событие.
+```
+
+### v0.3.5 manual tests
+
+After installing v0.3.5, tell the user in Russian to test:
+
+```text
+1. Открой секцию локальных уведомлений.
+2. Убедись, что локальные уведомления можно включить/выключить.
+3. На Android 13+ нажми "Разрешить уведомления".
+4. Проверь, что приложение показывает статус разрешения.
+5. Создай подтверждённый переход БС выключены → БС включены.
+6. Ожидаемо: появляется локальное уведомление "Белые списки включились".
+7. Создай подтверждённый переход БС включены → БС выключены.
+8. Ожидаемо: появляется локальное уведомление "Белые списки выключились".
+9. Выключи локальные уведомления в приложении и повтори переход.
+10. Ожидаемо: уведомление не появляется.
+```
+
+### v0.4.2 manual tests
+
+After installing v0.4.2, tell the user in Russian to test:
+
+```text
+1. Открой Telegram-секцию.
+2. Включи Telegram-уведомления.
+3. Введи Worker URL своего Cloudflare Worker.
+4. Введи Relay Secret.
+5. Нажми "Проверить Worker" — ожидаемо: Worker работает, бот доступен.
+6. "Начать получение chat_id" → /start боту → "Получить chat_id" → выбери чат.
+7. "Отправить тестовое сообщение" — сообщение в Telegram.
+8. Создай подтверждённый переход БС — уведомление через Worker.
+```
+
+For groups: add bot to group, /start in group, discover group chat_id, test message to group.
+
+### v0.5 manual tests
+
+After installing v0.5, tell the user in Russian to test:
+
+```text
+1. Настрой Telegram через Cloudflare Worker relay.
+2. Отключи Worker (неверный URL или выключи Worker в Cloudflare).
+3. Создай подтверждённый переход БС.
+4. Ожидаемо: сообщение не отправляется и сохраняется в очередь.
+5. Проверь, что UI показывает количество сообщений в очереди.
+6. Включи Worker снова.
+7. Нажми "Повторить отправку очереди".
+8. Ожидаемо: сообщение отправляется, очередь уменьшается.
+9. Проверь, что direct fallback на api.telegram.org не используется.
+```
+
+### v0.6 manual tests
+
+After installing v0.6, tell the user in Russian to test:
+
+```text
+1. Открой секцию автопроверки.
+2. Включи автопроверку.
+3. Выбери интервал 15 минут.
+4. Проверь, что UI показывает "Автопроверка включена".
+5. Нажми "Запланировать заново", если такая кнопка есть.
+6. Подожди запуска WorkManager или запусти worker через Android Studio, если тестируешь вручную.
+7. Проверь, что обновились:
+   - время последней фоновой проверки;
+   - последний статус;
+   - последняя ошибка, если была.
+8. Выключи автопроверку.
+9. Ожидаемо: периодическая задача отменена.
+```
+
+### v0.9.0 manual tests
+
+After installing v0.9.0, tell the user in Russian to test:
+
+```text
+1. Private DNS выключен: выполни проверку, проверь DNS FOREIGN/LOCAL и сайты.
+2. Private DNS = Automatic: повтори; результат не должен меняться только из-за системного DNS режима.
+3. Private DNS = strict с реальным hostname: Private DNS должен отображаться active, Custom DNS — used, сайты должны проверяться.
+4. Wi-Fi ON + mobile data ON: активная сеть может быть Wi-Fi, проверяемая — Mobile; DNS и сайты должны идти через Mobile.
+5. Отключи один FOREIGN DNS: он не должен участвовать в probe/resolution.
+6. Отключи один LOCAL DNS: то же.
+7. Добавь свой FOREIGN DNS, перезапусти приложение, проверь сохранение.
+8. Добавь свой LOCAL DNS, перезапусти приложение, проверь сохранение.
+9. Удали DNS, перезапусти приложение: запись не должна вернуться сама.
+10. Нажми Reset DNS: стандартные FOREIGN/LOCAL DNS должны восстановиться enabled.
+11. Проверь VPN отдельно: приложение не должно утверждать, что произвольный VPN гарантированно обойдён.
+```
+
+---
+
+## 13. Logcat instructions
+
+When debugging runtime crashes, use:
+
+```powershell
+adb logcat
+```
+
+For focused logs, use package filtering if possible:
+
+```powershell
+adb logcat | findstr <applicationId>
+```
+
+On PowerShell:
+
+```powershell
+adb logcat | Select-String "<applicationId>"
+```
+
+If app crashes on launch:
+
+```text
+1. Capture the exception stacktrace.
+2. Fix the root cause.
+3. Rebuild.
+4. Reinstall APK.
+5. Tell the user in Russian what changed.
+```
+
+Do not ask the user to debug obvious compile/runtime errors that the agent can inspect.
+
+---
+
+## 14. Commit/version discipline
+
+After each version:
+
+```text
+1. Keep changes scoped to that version.
+2. Do not silently implement future versions.
+3. Do not rename large parts of the project without need.
+4. Do not add dependencies unrelated to the version.
+5. Do not leave dead code.
+6. Do not leave TODO in core logic.
+7. Build before reporting.
+8. Install APK before reporting, if a device is connected.
+9. Provide manual test checklist in Russian.
+```
+
+If the user asks for the next version, continue from the current implemented state.
+
+---
+
+## 15. User-facing language
+
+The agent must communicate with the user in Russian.
+
+All progress reports, build reports, install reports, test checklists, error explanations, and final summaries must be written in Russian.
+
+Use English only for:
+
+```text
+1. Code.
+2. File names.
+3. Class names.
+4. Package names.
+5. Gradle tasks.
+6. Android/ADB commands.
+7. API names.
+8. Logs and stacktraces.
+```
+
+The app UI should be Russian-first.
+
+Use clear Russian wording in the app:
+
+```text
+Похоже на включённые белые списки
+Белые списки не обнаружены
+Мобильного интернета нет
+Проблема DNS в мобильной сети
+Частичная проблема сети
+Мобильная сеть недоступна
+Локальные уведомления
+Telegram-уведомления
+Автопроверка
+Проверить мобильную сеть
+```
+
+Avoid overclaiming:
+
+```text
+Белые списки точно включены
+```
+
+Use cautious wording instead:
+
+```text
+Похоже на включённые белые списки
+```
+
+The app detects symptoms, not the operator's internal rules.
+
+When reporting after build/install, use this Russian format:
+
+```text
+Версия: vX.X
+Статус сборки: успешно / ошибка
+APK установлен: да / нет
+Устройство adb: <device id or model if available>
+
+Что изменено:
+- ...
+- ...
+- ...
+
+Что протестировать на телефоне:
+1. ...
+2. ...
+3. ...
+
+Ожидаемый результат:
+- ...
+- ...
+
+Если что-то сломается:
+- пришли скриншот;
+- пришли текст ошибки;
+- пришли relevant logcat, если есть.
+```
+
+Do not answer the user in English unless the user explicitly asks for English.
+
+---
+
+## 16. Done means installed and testable
+
+A version is not done when code was edited.
+
+A version is done only when:
+
+```text
+1. The project compiles.
+2. Debug APK is produced.
+3. APK is installed on the connected debug device, if available.
+4. The app launches or the agent reports why launch could not be verified.
+5. The agent provides a concrete manual test checklist in Russian.
+```
+
+Anything else is theater.
