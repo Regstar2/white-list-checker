@@ -1,6 +1,5 @@
 package com.whitelistchecker
 
-import android.net.ConnectivityManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -8,6 +7,7 @@ import androidx.activity.enableEdgeToEdge
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.ui.checksettings.DnsSettingsViewModel
 import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
@@ -20,6 +20,9 @@ class MainActivity : ComponentActivity() {
     private val viewModelFactory by lazy {
         MainViewModelFactory(appContainer)
     }
+    private val dnsSettingsViewModelFactory by lazy {
+        DnsSettingsViewModelFactory(appContainer)
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -27,7 +30,13 @@ class MainActivity : ComponentActivity() {
         setContent {
             WhiteListCheckerTheme {
                 val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
-                MainScreen(viewModel = viewModel)
+                val dnsSettingsViewModel: DnsSettingsViewModel = viewModel(
+                    factory = dnsSettingsViewModelFactory,
+                )
+                MainScreen(
+                    viewModel = viewModel,
+                    dnsSettingsViewModel = dnsSettingsViewModel,
+                )
             }
         }
     }
@@ -69,6 +78,18 @@ class MainActivity : ComponentActivity() {
                     loadWhitelistTimelineDashboardUseCase = appContainer.loadWhitelistTimelineDashboardUseCase,
                     statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
                 ) as T
+            }
+            throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
+        }
+    }
+
+    private class DnsSettingsViewModelFactory(
+        private val appContainer: AppContainer,
+    ) : ViewModelProvider.Factory {
+        @Suppress("UNCHECKED_CAST")
+        override fun <T : ViewModel> create(modelClass: Class<T>): T {
+            if (modelClass.isAssignableFrom(DnsSettingsViewModel::class.java)) {
+                return DnsSettingsViewModel(appContainer.dnsServersRepository) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
         }
