@@ -17,16 +17,26 @@ internal data class DnsQueryResult(
         get() = errorType == DnsCheckErrorType.NONE
 }
 
-internal class DnsQueryClient(
-    private val transport: DnsTransport = CellularDnsTransport(),
-) {
-
+internal interface DnsQueryExecutor {
     fun query(
         network: Network,
         server: EditableDnsServer,
         hostname: String,
         type: DnsRecordType,
-        timeoutMs: Int = DEFAULT_TIMEOUT_MS,
+        timeoutMs: Int = DnsQueryClient.DEFAULT_TIMEOUT_MS,
+    ): DnsQueryResult
+}
+
+internal class DnsQueryClient(
+    private val transport: DnsTransport = CellularDnsTransport(),
+) : DnsQueryExecutor {
+
+    override fun query(
+        network: Network,
+        server: EditableDnsServer,
+        hostname: String,
+        type: DnsRecordType,
+        timeoutMs: Int,
     ): DnsQueryResult {
         val query = try {
             DnsPacketCodec.buildQuery(hostname, type)
@@ -86,7 +96,7 @@ internal class DnsQueryClient(
     }
 
     companion object {
-        private const val DEFAULT_TIMEOUT_MS = 2_500
+        const val DEFAULT_TIMEOUT_MS = 2_500
         private const val DNS_RCODE_NO_ERROR = 0
         private const val DNS_RCODE_SERVER_FAILURE = 2
         private const val DNS_RCODE_NAME_ERROR = 3
