@@ -10,7 +10,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 
 class CellularDnsProbe internal constructor(
-    private val queryClient: DnsQueryClient = DnsQueryClient(),
+    private val queryExecutor: DnsQueryExecutor = DnsQueryClient(),
 ) {
 
     suspend fun probe(
@@ -29,7 +29,7 @@ class CellularDnsProbe internal constructor(
         server: EditableDnsServer,
     ): DnsCheckResult {
         val startedAt = System.currentTimeMillis()
-        val result = queryClient.query(
+        val result = queryExecutor.query(
             network = network,
             server = server,
             hostname = PROBE_HOSTNAME,
