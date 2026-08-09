@@ -7,6 +7,7 @@ import com.whitelistchecker.data.active.ActiveMonitoringRepository
 import com.whitelistchecker.data.background.BackgroundCheckSettingsRepository
 import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
+import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
@@ -19,6 +20,7 @@ import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.LastCheckDisplayState
 import com.whitelistchecker.domain.model.LastCheckLoadResult
 import com.whitelistchecker.domain.model.EditableCheckTarget
+import com.whitelistchecker.domain.model.EditableDnsServer
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
@@ -98,6 +100,7 @@ class MainViewModel(
     private val publicServiceLinkUseCase: PublicServiceLinkUseCase,
     private val publicReportUploadUseCase: PublicReportUploadUseCase,
     private val checkTargetsRepository: CheckTargetsRepository,
+    private val dnsServersRepository: DnsServersRepository,
     private val detailedReportFormatter: DetailedReportFormatter,
     private val loadStatisticsDashboardUseCase: LoadStatisticsDashboardUseCase,
     private val loadStatisticsDiagnosticsUseCase: LoadStatisticsDiagnosticsUseCase,
@@ -120,6 +123,7 @@ class MainViewModel(
         observeActiveMonitoring()
         observePublicService()
         observeCheckTargets()
+        observeDnsServers()
     }
 
     fun openScreen(screen: AppScreen) {
@@ -265,6 +269,14 @@ class MainViewModel(
         }
     }
 
+    private fun observeDnsServers() {
+        viewModelScope.launch {
+            dnsServersRepository.observeServers().collect { servers ->
+                _uiState.update { it.copy(dnsServers = servers) }
+            }
+        }
+    }
+
     fun setCheckTargetEnabled(id: String, enabled: Boolean) {
         viewModelScope.launch {
             checkTargetsRepository.setTargetEnabled(id, enabled)
@@ -286,6 +298,30 @@ class MainViewModel(
     fun resetCheckTargets() {
         viewModelScope.launch {
             checkTargetsRepository.resetToDefaults()
+        }
+    }
+
+    fun setDnsServerEnabled(id: String, enabled: Boolean) {
+        viewModelScope.launch {
+            dnsServersRepository.setServerEnabled(id, enabled)
+        }
+    }
+
+    fun addDnsServer(server: EditableDnsServer) {
+        viewModelScope.launch {
+            dnsServersRepository.addServer(server)
+        }
+    }
+
+    fun removeDnsServer(id: String) {
+        viewModelScope.launch {
+            dnsServersRepository.removeServer(id)
+        }
+    }
+
+    fun resetDnsServers() {
+        viewModelScope.launch {
+            dnsServersRepository.resetToDefaults()
         }
     }
 
@@ -1537,6 +1573,7 @@ class MainViewModel(
                 val activeSettings = activeMonitoringRepository.getSettings()
                 val activeStatus = activeMonitoringRepository.getStatus()
                 val checkTargets = checkTargetsRepository.getTargets()
+                val dnsServers = dnsServersRepository.getServers()
                 backgroundCheckScheduler.reschedule(backgroundSettings)
                 val useCustom = !backgroundSettings.isPresetInterval
                 _uiState.update { state ->
@@ -1556,6 +1593,7 @@ class MainViewModel(
                         activeMonitoringStatus = activeStatus,
                         activeMonitoringIntervalInput = activeSettings.intervalMinutes.toString(),
                         checkTargets = checkTargets,
+                        dnsServers = dnsServers,
                         useCustomInterval = useCustom,
                         customIntervalInput = backgroundSettings.intervalMinutes.toString(),
                         notificationsAllowed = permissionChecker.areNotificationsAllowed(),
