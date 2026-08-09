@@ -13,6 +13,8 @@ enum class AppScreen(val title: String) {
     PUBLIC_SERVICE("Общий сервис"),
     DIAGNOSTICS("Диагностика"),
     STATISTICS("Статистика"),
+    SETTINGS("Настройки"),
+    ABOUT("О приложении"),
 }
 
 fun AppScreen.parentScreen(): AppScreen? = when (this) {
@@ -23,6 +25,8 @@ fun AppScreen.parentScreen(): AppScreen? = when (this) {
     AppScreen.AUTO_CHECK,
     AppScreen.PUBLIC_SERVICE,
     AppScreen.DIAGNOSTICS,
+    AppScreen.SETTINGS,
+    AppScreen.ABOUT,
     -> AppScreen.HOME
     AppScreen.LOCAL_NOTIFICATIONS,
     AppScreen.TELEGRAM_NOTIFICATIONS,

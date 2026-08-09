@@ -3,6 +3,7 @@ package com.whitelistchecker.ui.publicservice
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -16,8 +17,33 @@ import com.whitelistchecker.R
 
 @Composable
 internal fun LinkCodeCopyButton(code: String) {
+    LinkCodeCopyButton(code = code, compact = false)
+}
+
+@Composable
+internal fun LinkCodeCopyButton(
+    code: String,
+    compact: Boolean,
+) {
     val clipboardManager = LocalClipboardManager.current
     var copied by remember(code) { mutableStateOf(false) }
+
+    val onCopy = {
+        clipboardManager.setText(AnnotatedString(code))
+        copied = true
+    }
+    val text = if (copied) {
+        stringResource(R.string.public_service_link_code_copied)
+    } else {
+        stringResource(R.string.public_service_copy_link_code)
+    }
+
+    if (compact) {
+        TextButton(onClick = onCopy) {
+            Text(text)
+        }
+        return
+    }
 
     OutlinedButton(
         onClick = {
@@ -26,12 +52,6 @@ internal fun LinkCodeCopyButton(code: String) {
         },
         modifier = Modifier.fillMaxWidth(),
     ) {
-        Text(
-            if (copied) {
-                stringResource(R.string.public_service_link_code_copied)
-            } else {
-                stringResource(R.string.public_service_copy_link_code)
-            },
-        )
+        Text(text)
     }
 }

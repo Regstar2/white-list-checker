@@ -18,6 +18,7 @@ import com.whitelistchecker.domain.model.UserArea
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.TelegramSendResult
 import com.whitelistchecker.domain.model.TelegramSettings
+import com.whitelistchecker.domain.model.UserSettings
 import com.whitelistchecker.domain.model.TelegramTestResult
 import com.whitelistchecker.domain.model.WhitelistMonitorState
 import com.whitelistchecker.domain.model.WhitelistStateChangeEvent
@@ -73,6 +74,7 @@ data class MainUiState(
     val checkTargets: List<EditableCheckTarget> = emptyList(),
     val dnsServers: List<EditableDnsServer> = emptyList(),
     val telegramChatDiscovery: TelegramChatDiscoveryUiState = TelegramChatDiscoveryUiState(),
+    val userSettings: UserSettings = UserSettings(),
     val errorMessage: String? = null,
     val statisticsUiState: StatisticsUiState = StatisticsUiState.Loading,
     val homeStatisticsUiState: HomeStatisticsUiState = HomeStatisticsUiState.Loading,

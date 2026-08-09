@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.whitelistchecker.ui.autocheck.AutoCheckScreen
+import com.whitelistchecker.ui.about.AboutScreen
 import com.whitelistchecker.ui.checksettings.CheckSettingsScreen
 import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
@@ -24,6 +25,7 @@ import com.whitelistchecker.ui.notifications.TelegramQueueScreen
 import com.whitelistchecker.ui.notifications.TelegramRecipientDiscoveryScreen
 import com.whitelistchecker.ui.notifications.TelegramWorkerSetupScreen
 import com.whitelistchecker.ui.publicservice.PublicServiceScreen
+import com.whitelistchecker.ui.settings.SettingsScreen
 import com.whitelistchecker.ui.statistics.StatisticsScreen
 
 @Composable
@@ -190,6 +192,15 @@ fun MainScreen(
             detailedReport = viewModel.buildDetailedReport(),
             onLoadStatisticsDiagnostics = viewModel::loadStatisticsDiagnostics,
             onRebuildStatistics = viewModel::rebuildStatisticsFromHistory,
+        )
+        AppScreen.SETTINGS -> SettingsScreen(
+            uiState = uiState,
+            onBack = viewModel::navigateBack,
+            onThemeModeChange = viewModel::updateThemeMode,
+            onLanguageChange = viewModel::updateLanguage,
+        )
+        AppScreen.ABOUT -> AboutScreen(
+            onBack = viewModel::navigateBack,
         )
     }
 }

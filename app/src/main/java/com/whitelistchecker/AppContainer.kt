@@ -15,6 +15,7 @@ import com.whitelistchecker.data.publicservice.PendingPublicReportRepository
 import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
 import com.whitelistchecker.data.publicservice.SecureDeviceTokenStore
 import com.whitelistchecker.data.resources.AndroidDetailedReportTextProvider
+import com.whitelistchecker.data.settings.UserSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.PendingTelegramReportRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
@@ -140,6 +141,7 @@ class AppContainer(context: Context) {
     val publicServiceAreaDetector = PublicServiceAreaDetector(appContext)
     val mobileOperatorDetector = MobileOperatorDetector(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
+    val userSettingsRepository = UserSettingsRepository(appContext)
     val pendingTelegramReportRepository = PendingTelegramReportRepository(
         dao = database.pendingTelegramReportDao(),
     )

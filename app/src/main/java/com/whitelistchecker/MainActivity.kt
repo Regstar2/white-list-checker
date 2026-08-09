@@ -4,11 +4,15 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.runtime.LaunchedEffect
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.domain.model.UserSettings
 import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
+import com.whitelistchecker.ui.settings.AppLocaleController
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
 
 class MainActivity : ComponentActivity() {
@@ -24,7 +28,16 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            WhiteListCheckerTheme {
+            val userSettings = appContainer.userSettingsRepository
+                .observeSettings()
+                .collectAsStateWithLifecycle(initialValue = UserSettings())
+                .value
+
+            LaunchedEffect(userSettings.language) {
+                AppLocaleController.apply(userSettings.language)
+            }
+
+            WhiteListCheckerTheme(themeMode = userSettings.themeMode) {
                 val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
                 MainScreen(viewModel = viewModel)
             }
@@ -68,6 +81,7 @@ class MainActivity : ComponentActivity() {
                     rebuildWhitelistTimelineUseCase = appContainer.rebuildWhitelistTimelineUseCase,
                     loadWhitelistTimelineDashboardUseCase = appContainer.loadWhitelistTimelineDashboardUseCase,
                     statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
+                    userSettingsRepository = appContainer.userSettingsRepository,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

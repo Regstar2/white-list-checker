@@ -10,6 +10,7 @@ import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
 import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
+import com.whitelistchecker.data.settings.UserSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.active.ActiveMonitoringController
@@ -26,6 +27,8 @@ import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.NotificationPolicy
 import com.whitelistchecker.domain.model.AreaSource
+import com.whitelistchecker.domain.model.AppLanguage
+import com.whitelistchecker.domain.model.AppThemeMode
 import com.whitelistchecker.domain.model.DetectedOperator
 import com.whitelistchecker.domain.model.OperatorDetectionSource
 import com.whitelistchecker.domain.model.OperatorSelectionMode
@@ -109,6 +112,7 @@ class MainViewModel(
     private val rebuildWhitelistTimelineUseCase: RebuildWhitelistTimelineUseCase,
     private val loadWhitelistTimelineDashboardUseCase: LoadWhitelistTimelineDashboardUseCase,
     private val statisticsDiagnosticsMetaRepository: StatisticsDiagnosticsMetaRepository,
+    private val userSettingsRepository: UserSettingsRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(MainUiState())
@@ -125,6 +129,7 @@ class MainViewModel(
         observePublicService()
         observeCheckTargets()
         observeDnsServers()
+        observeUserSettings()
     }
 
     fun openScreen(screen: AppScreen) {
@@ -327,6 +332,18 @@ class MainViewModel(
     fun resetDnsServers() {
         viewModelScope.launch {
             dnsServersRepository.resetToDefaults()
+        }
+    }
+
+    fun updateThemeMode(themeMode: AppThemeMode) {
+        viewModelScope.launch {
+            userSettingsRepository.setThemeMode(themeMode)
+        }
+    }
+
+    fun updateLanguage(language: AppLanguage) {
+        viewModelScope.launch {
+            userSettingsRepository.setLanguage(language)
         }
     }
 
@@ -1613,6 +1630,14 @@ class MainViewModel(
                 _uiState.update {
                     it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName)
                 }
+            }
+        }
+    }
+
+    private fun observeUserSettings() {
+        viewModelScope.launch {
+            userSettingsRepository.observeSettings().collect { settings ->
+                _uiState.update { it.copy(userSettings = settings) }
             }
         }
     }

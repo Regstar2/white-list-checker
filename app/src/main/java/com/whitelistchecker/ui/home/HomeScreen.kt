@@ -78,11 +78,7 @@ private fun HomeHeader() {
 
 @Composable
 private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(
-            text = stringResource(R.string.home_quick_actions_title),
-            style = MaterialTheme.typography.titleSmall,
-        )
+    Column(verticalArrangement = Arrangement.spacedBy(0.dp)) {
         ActionGrid(
             items = listOf(
                 ActionGridItem(
@@ -115,6 +111,16 @@ private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
                     subtitleRes = R.string.home_action_diagnostics_subtitle,
                     iconRes = R.drawable.ic_home_action_diagnostics,
                 ) { onOpenScreen(AppScreen.DIAGNOSTICS) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_settings_title,
+                    subtitleRes = R.string.home_action_settings_subtitle,
+                    iconRes = R.drawable.ic_home_action_settings,
+                ) { onOpenScreen(AppScreen.SETTINGS) },
+                ActionGridItem(
+                    titleRes = R.string.home_action_about_title,
+                    subtitleRes = R.string.home_action_about_subtitle,
+                    iconRes = R.drawable.ic_home_action_about,
+                ) { onOpenScreen(AppScreen.ABOUT) },
             ),
         )
     }
