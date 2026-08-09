@@ -2,6 +2,7 @@ import { loadConfig } from "../config";
 import { PublicStatusAggregator } from "../domain/publicStatusAggregator";
 import { ApiError } from "../http/errors";
 import { D1PublicServiceRepository } from "../repositories/d1PublicServiceRepository";
+import { D1ReportAvailabilityRepository } from "../repositories/d1ReportAvailabilityRepository";
 import { D1RateLimiter } from "../security/rateLimit";
 import type { Env, LinkedDeviceRecord, TelegramCallbackQuery, TelegramMessage, TelegramUpdate } from "../types";
 import {
@@ -25,6 +26,8 @@ import {
   helpText,
   linkedDeviceText,
   missingStatusSelectionText,
+  noAvailableOperatorsText,
+  noAvailableRegionsText,
   operatorSavedText,
   remoteRequestQueuedText,
   regionSavedText,
@@ -38,12 +41,14 @@ import { TelegramClient } from "./telegramClient";
 
 export class PublicTelegramBot {
   private readonly repo: D1PublicServiceRepository;
+  private readonly availabilityRepo: D1ReportAvailabilityRepository;
   private readonly telegram: TelegramClient;
   private readonly config;
   private readonly limiter: D1RateLimiter;
 
   constructor(private readonly env: Env) {
     this.repo = new D1PublicServiceRepository(env.DB, env);
+    this.availabilityRepo = new D1ReportAvailabilityRepository(env.DB);
     this.telegram = new TelegramClient(env);
     this.config = loadConfig(env);
     this.limiter = new D1RateLimiter(env.DB);
@@ -84,10 +89,10 @@ export class PublicTelegramBot {
         await this.sendStatus(chatId, now);
         return;
       case "/region":
-        await this.telegram.sendMessage(chatId, chooseRegionText(), regionKeyboard());
+        await this.sendRegionSelection(chatId, now);
         return;
       case "/operator":
-        await this.telegram.sendMessage(chatId, chooseOperatorText(), operatorKeyboard());
+        await this.sendOperatorSelection(chatId, now);
         return;
       case "/devices":
         await this.sendDevices(chatId, now);
@@ -140,10 +145,10 @@ export class PublicTelegramBot {
         await this.sendStatus(chatId, now, message.message_id);
         return;
       case "regions":
-        await this.telegram.editMessageText(chatId, message.message_id, chooseRegionText(), regionKeyboard());
+        await this.sendRegionSelection(chatId, now, message.message_id);
         return;
       case "operators":
-        await this.telegram.editMessageText(chatId, message.message_id, chooseOperatorText(), operatorKeyboard());
+        await this.sendOperatorSelection(chatId, now, message.message_id);
         return;
       case "region":
         if (id) {
@@ -190,16 +195,43 @@ export class PublicTelegramBot {
     await this.telegram.sendMessage(chatId, text, mainKeyboard(await this.hasDevices(chatId)));
   }
 
+  private async sendRegionSelection(chatId: string, now: number, editMessageId?: number): Promise<void> {
+    const regions = await this.availabilityRepo.listAvailableRegions(this.reportAvailabilitySince(now));
+    const text = regions.length > 0 ? chooseRegionText() : noAvailableRegionsText();
+    const keyboard = regionKeyboard(regions);
+    if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, keyboard);
+    else await this.telegram.sendMessage(chatId, text, keyboard);
+  }
+
+  private async sendOperatorSelection(chatId: string, now: number, editMessageId?: number): Promise<void> {
+    const prefs = await this.repo.getTelegramPreference(chatId);
+    const operators = await this.availabilityRepo.listAvailableOperators(this.reportAvailabilitySince(now), prefs.regionCode);
+    const text = operators.length > 0 ? chooseOperatorText(prefs.regionCode) : noAvailableOperatorsText(prefs.regionCode);
+    const keyboard = operatorKeyboard(operators);
+    if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, keyboard);
+    else await this.telegram.sendMessage(chatId, text, keyboard);
+  }
+
   private async sendStatus(chatId: string, now: number, editMessageId?: number): Promise<void> {
     const prefs = await this.repo.getTelegramPreference(chatId);
-    if (!prefs.regionCode || !prefs.operatorCode) {
-      const text = missingStatusSelectionText();
-      if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, regionKeyboard());
-      else await this.telegram.sendMessage(chatId, text, regionKeyboard());
+    if (!prefs.regionCode) {
+      const regions = await this.availabilityRepo.listAvailableRegions(this.reportAvailabilitySince(now));
+      const text = regions.length > 0 ? missingStatusSelectionText() : noAvailableRegionsText();
+      const keyboard = regionKeyboard(regions);
+      if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, keyboard);
+      else await this.telegram.sendMessage(chatId, text, keyboard);
+      return;
+    }
+    if (!prefs.operatorCode) {
+      const operators = await this.availabilityRepo.listAvailableOperators(this.reportAvailabilitySince(now), prefs.regionCode);
+      const text = operators.length > 0 ? missingStatusSelectionText() : noAvailableOperatorsText(prefs.regionCode);
+      const keyboard = operatorKeyboard(operators);
+      if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, keyboard);
+      else await this.telegram.sendMessage(chatId, text, keyboard);
       return;
     }
     const primarySince = now - this.config.reportPrimaryWindowMinutes * 60_000;
-    const fallbackSince = now - this.config.reportFallbackWindowMinutes * 60_000;
+    const fallbackSince = this.reportAvailabilitySince(now);
     const [primarySamples, fallbackSamples] = await Promise.all([
       this.repo.getLatestSamples(prefs.regionCode, prefs.operatorCode, primarySince),
       this.repo.getLatestSamples(prefs.regionCode, prefs.operatorCode, fallbackSince),
@@ -221,6 +253,10 @@ export class PublicTelegramBot {
     const text = statusText(result);
     if (editMessageId) await this.telegram.editMessageText(chatId, editMessageId, text, statusKeyboard());
     else await this.telegram.sendMessage(chatId, text, statusKeyboard());
+  }
+
+  private reportAvailabilitySince(now: number): number {
+    return now - this.config.reportFallbackWindowMinutes * 60_000;
   }
 
   private async sendDevices(chatId: string, now: number, editMessageId?: number): Promise<void> {
