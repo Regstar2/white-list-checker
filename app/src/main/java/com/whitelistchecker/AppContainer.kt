@@ -38,6 +38,7 @@ import com.whitelistchecker.domain.statistics.RebuildWhitelistTimelineUseCase
 import com.whitelistchecker.domain.statistics.WhitelistTimelineWriter
 import com.whitelistchecker.domain.checker.MobileSiteChecker
 import com.whitelistchecker.domain.checker.NetworkDiagnosticsUseCase
+import com.whitelistchecker.domain.checker.PrivateDnsDiagnosticsProvider
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
 import com.whitelistchecker.domain.classifier.DnsWhitelistSignalClassifier
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
@@ -220,6 +221,7 @@ class AppContainer(context: Context) {
         dnsSignalClassifier = DnsWhitelistSignalClassifier(),
         classifier = WhitelistStateClassifier(),
         networkDiagnosticsUseCase = NetworkDiagnosticsUseCase(),
+        privateDnsDiagnosticsProvider = PrivateDnsDiagnosticsProvider(connectivityManager),
     )
 
     private val whitelistMonitorUseCase = WhitelistMonitorUseCase(
