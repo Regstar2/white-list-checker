@@ -16,7 +16,7 @@ class CellularDnsResolverTest {
     private val network: Network = mock()
 
     @Test
-    fun lookup_firstResolverSuccess_doesNotUseSecondResolver() {
+    fun lookup_firstResolverARecordSuccess_doesNotUseAaaaOrSecondResolver() {
         val first = server("first", "1.1.1.1")
         val second = server("second", "8.8.8.8")
         val executor = FakeDnsQueryExecutor { server, type ->
@@ -31,7 +31,7 @@ class CellularDnsResolverTest {
         val result = resolver.lookup("example.com")
 
         assertEquals(listOf("1.2.3.4"), result.map { it.hostAddress })
-        assertTrue(executor.calls.all { it.first == first.id })
+        assertEquals(listOf(first.id to DnsRecordType.A), executor.calls)
     }
 
     @Test
@@ -54,6 +54,27 @@ class CellularDnsResolverTest {
     }
 
     @Test
+    fun lookup_aEmpty_usesAaaaFallback() {
+        val server = server("first", "1.1.1.1")
+        val ipv6 = InetAddress.getByAddress(ByteArray(16).also { it[15] = 1 })
+        val executor = FakeDnsQueryExecutor { _, type ->
+            when (type) {
+                DnsRecordType.A -> success()
+                DnsRecordType.AAAA -> success(ipv6)
+            }
+        }
+        val resolver = CellularDnsResolver(network, listOf(server), executor)
+
+        val result = resolver.lookup("ipv6.example")
+
+        assertEquals(listOf(ipv6.hostAddress), result.map { it.hostAddress })
+        assertEquals(
+            listOf(server.id to DnsRecordType.A, server.id to DnsRecordType.AAAA),
+            executor.calls,
+        )
+    }
+
+    @Test
     fun lookup_sameHostTwice_usesRunLocalCache() {
         val server = server("first", "1.1.1.1")
         val executor = FakeDnsQueryExecutor { _, type ->
@@ -64,7 +85,7 @@ class CellularDnsResolverTest {
         resolver.lookup("Example.COM")
         resolver.lookup("example.com")
 
-        assertEquals(2, executor.calls.size)
+        assertEquals(1, executor.calls.size)
         assertEquals(1, resolver.cachedHostCount())
     }
 
