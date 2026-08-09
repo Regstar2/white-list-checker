@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
 class CellularDnsResolver internal constructor(
     private val network: Network,
     servers: List<EditableDnsServer>,
-    private val queryClient: DnsQueryClient = DnsQueryClient(),
+    private val queryExecutor: DnsQueryExecutor = DnsQueryClient(),
 ) : Dns {
 
     private val resolvers = servers.filter { it.enabled }.toList()
@@ -35,13 +35,13 @@ class CellularDnsResolver internal constructor(
         val failures = mutableListOf<String>()
         resolvers.forEach { server ->
             val addresses = mutableListOf<InetAddress>()
-            val aResult = queryClient.query(network, server, hostname, DnsRecordType.A)
+            val aResult = queryExecutor.query(network, server, hostname, DnsRecordType.A)
             if (aResult.successful) {
                 addresses += aResult.addresses
             } else {
                 failures += "${server.name}/A=${aResult.errorType.name}"
             }
-            val aaaaResult = queryClient.query(network, server, hostname, DnsRecordType.AAAA)
+            val aaaaResult = queryExecutor.query(network, server, hostname, DnsRecordType.AAAA)
             if (aaaaResult.successful) {
                 addresses += aaaaResult.addresses
             } else {
@@ -63,8 +63,8 @@ class CellularDnsResolver internal constructor(
     }
 }
 
-class CellularDnsResolverFactory(
-    private val queryClient: DnsQueryClient = DnsQueryClient(),
+class CellularDnsResolverFactory internal constructor(
+    private val queryExecutor: DnsQueryExecutor = DnsQueryClient(),
 ) {
     fun create(
         network: Network,
@@ -73,7 +73,7 @@ class CellularDnsResolverFactory(
         return CellularDnsResolver(
             network = network,
             servers = servers,
-            queryClient = queryClient,
+            queryExecutor = queryExecutor,
         )
     }
 }
