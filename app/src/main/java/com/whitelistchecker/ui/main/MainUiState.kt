@@ -6,6 +6,7 @@ import com.whitelistchecker.domain.model.ActiveMonitoringSettings
 import com.whitelistchecker.domain.model.ActiveMonitoringStatus
 import com.whitelistchecker.domain.model.CheckPersistenceStatus
 import com.whitelistchecker.domain.model.EditableCheckTarget
+import com.whitelistchecker.domain.model.EditableDnsServer
 import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.LastCheckDisplayState
@@ -70,6 +71,7 @@ data class MainUiState(
     val customIntervalInput: String = "15",
     val intervalError: String? = null,
     val checkTargets: List<EditableCheckTarget> = emptyList(),
+    val dnsServers: List<EditableDnsServer> = emptyList(),
     val telegramChatDiscovery: TelegramChatDiscoveryUiState = TelegramChatDiscoveryUiState(),
     val errorMessage: String? = null,
     val statisticsUiState: StatisticsUiState = StatisticsUiState.Loading,

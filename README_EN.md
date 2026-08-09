@@ -12,9 +12,7 @@ An Android application for checking mobile-network availability and detecting si
 [![AI-assisted development](https://img.shields.io/badge/Development-AI--assisted-8A2BE2)](#ai-assisted-development)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
-[Quick start](#quick-start) ·
-[Documentation](#documentation) ·
-[Releases](../../releases)
+[Quick start](#quick-start) · [Documentation](#documentation) · [Releases](../../releases)
 
 </div>
 
@@ -24,15 +22,19 @@ An Android application for checking mobile-network availability and detecting si
 
 WhiteListChecker checks local and external websites through the cellular network, classifies the result, and stores observation history. It is intended for manual diagnostics, periodic checks, and notifications when the observed network state changes.
 
+Starting with `0.9.0`, control domains are resolved through a user-managed DNS list bound to the same cellular `Network`. The main target-check path therefore does not use Android system Private DNS.
+
 The project detects observable network behavior only. It has no access to an operator's internal rules and cannot prove allowlist mode with complete certainty.
 
 ## Project status
 
-The project is in **MVP / beta**. The current development line is `0.8.x`; the Android `versionName` stored in the repository is `0.8.15`.
+The project is in **MVP / beta**. The current development line is `0.9.x`; the Android `versionName` stored in the repository is `0.9.0`.
 
 | Area | Status |
 |---|---|
 | Manual cellular-network check | Beta |
+| Custom DNS over cellular Network | Beta |
+| FOREIGN / LOCAL DNS signal | Beta |
 | Background checks with WorkManager | Beta |
 | Active monitoring with a foreground service | Beta |
 | Local and personal Telegram notifications | Beta |
@@ -41,19 +43,42 @@ The project is in **MVP / beta**. The current development line is `0.8.x`; the A
 
 ## Features
 
-- explicit cellular routing through `ConnectivityManager` and `Network.openConnection()`;
-- `FOREIGN` and `LOCAL` target groups with an editable target list;
+- explicit cellular routing through `ConnectivityManager.requestNetwork(...)`;
+- editable `FOREIGN` and `LOCAL` website targets;
+- a separate editable DNS list split into `FOREIGN` and `LOCAL` groups;
+- raw DNS over UDP/53 with TCP/53 fallback bound to the cellular `Network`;
+- custom target hostname resolution without Android system DNS;
+- HTTPS target checks through OkHttp using `cellular Network.socketFactory` while keeping normal TLS and hostname verification;
+- DNS availability as a secondary independent signal that cannot by itself create `WHITELIST_ON`;
 - classification of availability, DNS failures, partial outages, and allowlist signs;
 - state-change confirmation using consecutive checks;
-- history, statistics, and diagnostic reports;
+- history, statistics, and detailed diagnostics;
 - local Android notifications;
 - periodic checks through WorkManager;
 - active monitoring through a foreground service;
 - personal Telegram notifications through a user-owned Cloudflare Worker relay;
 - a central Cloudflare Worker with a public Telegram bot;
-- optional submission of anonymized results for aggregate statistics;
+- optional anonymized aggregate-statistics submission;
 - one-time-code linking between a Telegram chat and a device;
-- remote check commands while active monitoring is running on the device.
+- remote check commands while active monitoring is running.
+
+## Default DNS servers
+
+The initial list contains at least two resolvers in each group:
+
+```text
+FOREIGN
+Cloudflare   1.1.1.1:53
+Google       8.8.8.8:53
+
+LOCAL
+Yandex DNS             77.88.8.8:53
+Yandex DNS Secondary   77.88.8.1:53
+```
+
+Resolvers can be enabled, disabled, added, removed, and reset to defaults. At least one resolver must remain enabled because a fully independent Private-DNS check is impossible without a custom resolver.
+
+A DNS group is used only for diagnostic classification. Any available enabled resolver may resolve any target hostname.
 
 ## Quick start
 
@@ -84,34 +109,29 @@ Published builds are available under [GitHub Releases](../../releases) and may l
 - Git and ADB for local development and installation;
 - Node.js and npm for central Cloudflare Worker development.
 
-## Installation
-
-The debug APK is generated at:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-Install it over an existing debug build:
-
-```powershell
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-```
-
 ## Usage
 
 ### Manual check
 
 1. Keep mobile data enabled.
-2. Wi-Fi may remain enabled because the application requests the cellular network separately.
-3. Start a check from the home screen.
-4. Open the detailed report when some targets fail or the result is ambiguous.
+2. Wi-Fi may remain enabled because the app requests a cellular network separately.
+3. If needed, open **Check settings → DNS** and configure resolvers.
+4. Start a check from the home screen.
+5. Open the detailed report if DNS or site results are mixed.
+
+### Android Private DNS
+
+WhiteListChecker resolves control domains through configured literal-IP DNS servers. DNS probes, DNS resolution, and target HTTPS traffic use the same requested cellular `Network`.
+
+Android Private DNS remains a system setting but does not participate in the main WhiteListChecker resolver path. The app does not change Private DNS and does not request `WRITE_SETTINGS`.
+
+The current DNS/53 transport is unencrypted. Configure only trusted resolvers.
 
 ### Background and active checks
 
 - WorkManager performs approximate periodic checks with Android's 15-minute minimum interval.
 - Active monitoring uses a foreground service and a persistent notification.
-- Android may restrict or stop the foreground service, especially under aggressive battery management.
+- Android may restrict or stop the foreground service under aggressive battery management.
 
 ### Public service and Telegram bot
 
@@ -133,7 +153,10 @@ Android UI
    ▼
 ViewModel / Use cases
    │
-   ├── Cellular network checker
+   ├── Cellular Network
+   │      ├── DNS probes (UDP/TCP 53)
+   │      ├── CellularDnsResolver
+   │      └── OkHttp target checks
    ├── DataStore / Room
    ├── WorkManager / Foreground service
    ├── User-owned Telegram relay Worker
@@ -143,14 +166,17 @@ ViewModel / Use cases
             └── Public Telegram bot
 ```
 
-The Android application uses Kotlin, Jetpack Compose, Material 3, Coroutines/Flow, DataStore, Room, WorkManager, and OkHttp. The central service is located under `cloudflare/public-service/` and is implemented as a Cloudflare Worker backed by D1.
+The Android application uses Kotlin, Jetpack Compose, Material 3, Coroutines/Flow, DataStore, Room, WorkManager, and OkHttp. The central service lives under `cloudflare/public-service/` and is implemented as a Cloudflare Worker backed by D1.
+
+See [docs/network-routing-notes.md](docs/network-routing-notes.md) for routing details.
 
 ## Security
 
+- TLS certificate and hostname verification are never disabled for target checks.
 - Telegram bot tokens and Worker secrets must not be stored in Android code or Git.
-- The central-service device token is stored on the device using Android Keystore-backed encryption.
+- The central-service device token is stored using Android Keystore-backed encryption.
 - The central Worker stores a device-token hash rather than the original token.
-- Do not publish `local.properties`, release keystores, tokens, passwords, or diagnostic logs containing secrets.
+- Do not publish `local.properties`, release keystores, tokens, passwords, or logs containing secrets.
 
 See [SECURITY.md](SECURITY.md).
 
@@ -158,42 +184,47 @@ See [SECURITY.md](SECURITY.md).
 
 Public-service data submission is disabled by default.
 
-When enabled, the service receives the selected region, optional city, mobile operator, application version, check time, resulting state, and aggregate target results.
+When enabled, the service receives the selected region, optional city, mobile operator, application version, check time, final state, and aggregate target results. DNS diagnostics introduced in v0.9.0 remain local and are not silently added to the public-service contract.
 
 It does not receive coordinates, an exact address, phone number, IMEI, IMSI, SIM serial, Wi-Fi SSID/BSSID, device contents, personal Telegram messages, bot tokens, or Relay Secrets.
 
 See [docs/privacy/public-data-sharing.md](docs/privacy/public-data-sharing.md).
 
-## Troubleshooting
+## Diagnostics
+
+The detailed report includes:
+
+- active and checked network;
+- Private DNS active/inactive and server hostname when available;
+- whether custom DNS was used;
+- FOREIGN/LOCAL DNS summaries;
+- per-resolver latency and typed errors;
+- Site signal;
+- DNS signal;
+- final state.
 
 ### Active monitoring reports `Worker HTTP 404`
 
-The active-monitoring route should return `405`, not `404`, for a diagnostic GET request. Run the production verification command from the Worker directory:
+The active-monitoring route should return `405`, not `404`, for a diagnostic GET request. Run:
 
 ```powershell
 cd cloudflare\public-service
 npm run verify:production
 ```
 
-When the command reports a legacy revision or a missing `service-sync` capability, deploy the current Worker version:
+If it reports a legacy revision or missing `service-sync`, deploy the current Worker:
 
 ```powershell
 npm run deploy
 ```
 
-After deployment, `/health` with `Accept: application/json` must return JSON containing a `revision` field and the `service-sync` capability.
-
 ### ADB is not found
 
 Add the Android SDK `platform-tools` directory to `PATH`, or invoke `adb.exe` with its full path.
 
-Additional scenarios are covered by [docs/testing/public-service-manual-test-plan.md](docs/testing/public-service-manual-test-plan.md).
-
 ## Development
 
 Read [AGENTS.md](AGENTS.md) before making changes. Architecture and product documentation are stored under `docs/`.
-
-Main directories:
 
 ```text
 app/                         Android application
@@ -208,17 +239,15 @@ AI is used as an auxiliary development tool for analysis, implementation alterna
 - every change is reviewed by the project maintainer;
 - the maintainer remains responsible for accepted code, architecture, security, and releases;
 - AI is not a WhiteListChecker product component;
-- AI does not process user traffic, passwords, tokens, or server configuration while the application is running.
+- AI does not process user traffic, passwords, tokens, or server configuration while the app is running.
 
 ## Build
-
-Android:
 
 ```powershell
 .\gradlew.bat assembleDebug
 ```
 
-Central Worker dry-run without publishing:
+Central Worker dry-run:
 
 ```powershell
 cd cloudflare\public-service
@@ -228,7 +257,7 @@ npm run build
 
 ## Testing
 
-Android project commands:
+Android:
 
 ```powershell
 .\gradlew.bat test
@@ -236,7 +265,7 @@ Android project commands:
 .\gradlew.bat assembleDebug
 ```
 
-Worker commands:
+Worker:
 
 ```powershell
 cd cloudflare\public-service
@@ -247,30 +276,24 @@ npm test
 npm run build
 ```
 
-Production Worker verification:
-
-```powershell
-npm run verify:production
-```
-
 ## Documentation
 
 | Task | Document |
 |---|---|
 | Current MVP | [docs/WhiteListChecker - current MVP.md](docs/WhiteListChecker%20-%20current%20MVP.md) |
+| Network, VPN, and Private DNS | [docs/network-routing-notes.md](docs/network-routing-notes.md) |
+| Version 0.9.0 | [docs/versions/v0.9.0.md](docs/versions/v0.9.0.md) |
 | Technology stack | [docs/stack.md](docs/stack.md) |
 | Central service | [docs/architecture/central-public-service.md](docs/architecture/central-public-service.md) |
 | Remote commands | [docs/architecture/remote-command-flow.md](docs/architecture/remote-command-flow.md) |
-| Personal Telegram relay | [docs/cloudflare-worker/README.md](docs/cloudflare-worker/README.md) |
-| Public-service deployment | [docs/cloudflare-public-service/README.md](docs/cloudflare-public-service/README.md) |
-| Manual test plan | [docs/testing/public-service-manual-test-plan.md](docs/testing/public-service-manual-test-plan.md) |
 | Change history | [CHANGELOG.md](CHANGELOG.md) |
 | Development rules | [AGENTS.md](AGENTS.md) |
 
 ## Limitations
 
 - Classification is based on observed results and may produce false positives.
-- Results depend on the operator, region, Android firmware, VPN, Private DNS, and the current state of target websites.
+- VPN remains a separate Android limitation; custom DNS does not guarantee bypass of an arbitrary VPN.
+- Raw DNS v0.9.0 accepts literal IPv4 resolver endpoints and sends unencrypted DNS/53 traffic.
 - WorkManager does not guarantee exact execution times.
 - Android may restrict or stop a foreground service.
 - Remote checks require a current production Worker, stored consent, and active monitoring running on the device.

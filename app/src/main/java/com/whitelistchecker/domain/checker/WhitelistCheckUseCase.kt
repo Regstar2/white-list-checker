@@ -2,10 +2,15 @@ package com.whitelistchecker.domain.checker
 
 import android.net.ConnectivityManager
 import android.net.NetworkCapabilities
+import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
+import com.whitelistchecker.domain.classifier.DnsWhitelistSignalClassifier
 import com.whitelistchecker.domain.classifier.WhitelistStateClassifier
 import com.whitelistchecker.domain.model.CheckTarget
+import com.whitelistchecker.domain.model.DnsCheckResult
+import com.whitelistchecker.domain.model.EditableDnsServer
 import com.whitelistchecker.domain.model.NetworkCheckResult
+import com.whitelistchecker.domain.model.SiteCheckErrorType
 import com.whitelistchecker.domain.model.SiteCheckResult
 import com.whitelistchecker.domain.model.TargetGroup
 import com.whitelistchecker.domain.model.TargetGroupSummary
@@ -17,19 +22,27 @@ import kotlinx.coroutines.coroutineScope
 class WhitelistCheckUseCase(
     private val connectivityManager: ConnectivityManager,
     private val targetsRepository: CheckTargetsRepository,
+    private val dnsServersRepository: DnsServersRepository,
     private val cellularNetworkProvider: CellularNetworkProvider,
+    private val dnsProbe: CellularDnsProbe,
+    private val dnsResolverFactory: CellularDnsResolverFactory,
     private val mobileSiteChecker: MobileSiteChecker,
+    private val dnsSignalClassifier: DnsWhitelistSignalClassifier,
     private val classifier: WhitelistStateClassifier,
     private val networkDiagnosticsUseCase: NetworkDiagnosticsUseCase,
+    private val privateDnsDiagnosticsProvider: PrivateDnsDiagnosticsProvider,
 ) {
 
     suspend fun execute(): NetworkCheckResult {
         val checkedAtMillis = System.currentTimeMillis()
         val activeNetworkLabel = resolveActiveNetworkLabel()
-        val checkedNetworkLabel = "Mobile"
+        val checkedNetworkLabel = LABEL_MOBILE
         val targets = targetsRepository.getEnabledTargets()
-        val emptyForeignSummary = emptySummary(TargetGroup.FOREIGN, targets)
-        val emptyLocalSummary = emptySummary(TargetGroup.LOCAL, targets)
+        val dnsServers = dnsServersRepository.getEnabledServers()
+        val emptyForeignSummary = emptySiteSummary(TargetGroup.FOREIGN, targets)
+        val emptyLocalSummary = emptySiteSummary(TargetGroup.LOCAL, targets)
+        val emptyForeignDnsSummary = emptyDnsSummary(TargetGroup.FOREIGN, dnsServers)
+        val emptyLocalDnsSummary = emptyDnsSummary(TargetGroup.LOCAL, dnsServers)
 
         val cellularRequest = cellularNetworkProvider.requestCellularNetwork()
         val cellularNetwork = cellularRequest.network
@@ -50,21 +63,47 @@ class WhitelistCheckUseCase(
                 checkedNetworkLabel = checkedNetworkLabel,
                 checkedAtMillis = checkedAtMillis,
                 error = errorMessage,
+                foreignDnsSummary = emptyForeignDnsSummary,
+                localDnsSummary = emptyLocalDnsSummary,
             )
         }
 
         return try {
-            val siteResults = coroutineScope {
-                targets.map { target ->
-                    async {
-                        mobileSiteChecker.checkTarget(cellularNetwork, target)
-                    }
-                }.awaitAll()
+            val privateDns = privateDnsDiagnosticsProvider.read(cellularNetwork)
+            val dnsResults = dnsProbe.probe(cellularNetwork, dnsServers)
+            val foreignDnsSummary = buildDnsSummary(TargetGroup.FOREIGN, dnsResults)
+            val localDnsSummary = buildDnsSummary(TargetGroup.LOCAL, dnsResults)
+            val dnsSignal = dnsSignalClassifier.classify(foreignDnsSummary, localDnsSummary)
+            val availableResolvers = dnsResults
+                .filter { it.available }
+                .sortedWith(compareBy<DnsCheckResult> { it.responseTimeMs }.thenBy { it.server.id })
+                .map { it.server }
+
+            val customDnsUsed = availableResolvers.isNotEmpty()
+            val siteResults = if (customDnsUsed) {
+                val resolver = dnsResolverFactory.create(cellularNetwork, availableResolvers)
+                val session = mobileSiteChecker.createSession(cellularNetwork, resolver)
+                coroutineScope {
+                    targets.map { target ->
+                        async {
+                            session.checkTarget(target)
+                        }
+                    }.awaitAll()
+                }
+            } else {
+                targets.map(::dnsUnavailableResult)
             }
-            val foreignSummary = buildSummary(TargetGroup.FOREIGN, siteResults)
-            val localSummary = buildSummary(TargetGroup.LOCAL, siteResults)
-            val state = classifier.classify(foreignSummary, localSummary, siteResults)
-            val diagnosticsMessage = if (state == WhitelistState.MOBILE_DNS_FAILURE) {
+
+            val foreignSummary = buildSiteSummary(TargetGroup.FOREIGN, siteResults)
+            val localSummary = buildSiteSummary(TargetGroup.LOCAL, siteResults)
+            val siteState = classifier.classifySites(foreignSummary, localSummary, siteResults)
+            val state = classifier.classify(
+                foreignSummary = foreignSummary,
+                localSummary = localSummary,
+                siteResults = siteResults,
+                dnsSignal = dnsSignal,
+            )
+            val diagnosticsMessage = if (siteState == WhitelistState.MOBILE_DNS_FAILURE) {
                 networkDiagnosticsUseCase.diagnoseDnsConnectivity(cellularNetwork)
             } else {
                 null
@@ -78,13 +117,21 @@ class WhitelistCheckUseCase(
                 checkedNetworkLabel = checkedNetworkLabel,
                 checkedAtMillis = checkedAtMillis,
                 diagnosticsMessage = diagnosticsMessage,
+                dnsResults = dnsResults,
+                foreignDnsSummary = foreignDnsSummary,
+                localDnsSummary = localDnsSummary,
+                dnsSignal = dnsSignal,
+                siteState = siteState,
+                privateDnsActive = privateDns.active,
+                privateDnsServerName = privateDns.serverName,
+                customDnsUsed = customDnsUsed,
             )
         } finally {
             cellularNetworkProvider.release()
         }
     }
 
-    private fun buildSummary(
+    private fun buildSiteSummary(
         group: TargetGroup,
         results: List<SiteCheckResult>,
     ): TargetGroupSummary {
@@ -96,12 +143,45 @@ class WhitelistCheckUseCase(
         )
     }
 
-    private fun emptySummary(group: TargetGroup, targets: List<CheckTarget>): TargetGroupSummary {
-        val totalCount = targets.count { it.group == group }
+    private fun buildDnsSummary(
+        group: TargetGroup,
+        results: List<DnsCheckResult>,
+    ): TargetGroupSummary {
+        val groupResults = results.filter { it.server.group == group }
+        return TargetGroupSummary(
+            group = group,
+            availableCount = groupResults.count { it.available },
+            totalCount = groupResults.size,
+        )
+    }
+
+    private fun emptySiteSummary(group: TargetGroup, targets: List<CheckTarget>): TargetGroupSummary {
         return TargetGroupSummary(
             group = group,
             availableCount = 0,
-            totalCount = totalCount,
+            totalCount = targets.count { it.group == group },
+        )
+    }
+
+    private fun emptyDnsSummary(
+        group: TargetGroup,
+        servers: List<EditableDnsServer>,
+    ): TargetGroupSummary {
+        return TargetGroupSummary(
+            group = group,
+            availableCount = 0,
+            totalCount = servers.count { it.group == group },
+        )
+    }
+
+    private fun dnsUnavailableResult(target: CheckTarget): SiteCheckResult {
+        return SiteCheckResult(
+            target = target,
+            available = false,
+            httpCode = null,
+            error = null,
+            errorType = SiteCheckErrorType.DNS,
+            durationMs = 0,
         )
     }
 

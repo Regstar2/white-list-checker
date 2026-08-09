@@ -6,13 +6,12 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.ui.Modifier
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
-import androidx.compose.runtime.LaunchedEffect
 import com.whitelistchecker.ui.autocheck.AutoCheckScreen
 import com.whitelistchecker.ui.checksettings.CheckSettingsScreen
 import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
@@ -23,7 +22,9 @@ import com.whitelistchecker.ui.publicservice.PublicServiceScreen
 import com.whitelistchecker.ui.statistics.StatisticsScreen
 
 @Composable
-fun MainScreen(viewModel: MainViewModel) {
+fun MainScreen(
+    viewModel: MainViewModel,
+) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
@@ -99,8 +100,12 @@ fun MainScreen(viewModel: MainViewModel) {
             onBack = viewModel::goHome,
             onToggleTarget = viewModel::setCheckTargetEnabled,
             onAddTarget = viewModel::addCheckTarget,
-            onResetDefaults = viewModel::resetCheckTargets,
+            onResetTargets = viewModel::resetCheckTargets,
             onRemoveTarget = viewModel::removeCheckTarget,
+            onToggleDns = viewModel::setDnsServerEnabled,
+            onAddDns = viewModel::addDnsServer,
+            onResetDns = viewModel::resetDnsServers,
+            onRemoveDns = viewModel::removeDnsServer,
         )
         AppScreen.AUTO_CHECK -> AutoCheckScreen(
             uiState = uiState,

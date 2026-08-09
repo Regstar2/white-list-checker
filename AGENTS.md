@@ -28,6 +28,7 @@ Build an Android app that:
 8. `BOT_TOKEN` must never be stored in Android.
 9. No shared Worker, shared Relay Secret, or direct Telegram fallback from the app.
 10. Can later perform periodic checks through WorkManager.
+11. Uses configured custom DNS servers for target resolution so Android Private DNS does not control the main whitelist-check path.
 
 ---
 
@@ -46,7 +47,8 @@ Use:
 - DataStore for settings/state
 - Room only when structured queue/history storage is needed
 - WorkManager only for periodic checks
-- OkHttp only for HTTPS calls to the user's Cloudflare Worker relay (not direct Telegram Bot API from Android)
+- OkHttp for HTTPS calls to the user's Cloudflare Worker relay
+- OkHttp for target checks only when it is configured with the requested cellular `Network.socketFactory` and the app's custom DNS resolver
 
 Do not use unless explicitly requested:
 
@@ -83,31 +85,77 @@ When checking target sites:
 2. Use `NetworkCapabilities.TRANSPORT_CELLULAR`.
 3. Use `NetworkCapabilities.NET_CAPABILITY_INTERNET`.
 4. Do not request `NET_CAPABILITY_VALIDATED` inside `NetworkRequest`.
-5. Perform site checks through the returned `Network`.
-6. Use `network.openConnection(URL(...))`.
-7. Do not use plain `URL.openConnection(...)` for target checks.
-8. Do not use `bindProcessToNetwork(...)`.
-9. Do not use `activeNetwork` for actual target checks.
-10. `activeNetwork` may be used only for displaying a label in UI.
+5. Keep the returned cellular `Network` for the entire DNS probe, DNS resolution, and HTTPS target-check run.
+6. DNS probe UDP sockets must be bound to the returned `Network`; TCP DNS fallback must use that `Network.socketFactory`.
+7. Resolve target hostnames through the app's custom DNS resolver. Do not use Android/system DNS, `InetAddress.getByName(...)`, or `Network.getAllByName(...)` as the primary target resolver.
+8. Perform HTTPS target checks with an OkHttp client whose `socketFactory` is the returned cellular `Network.socketFactory` and whose `dns` is the custom resolver for that check run.
+9. Keep the original hostname URL so normal TLS certificate validation, hostname verification, SNI, and redirects remain active.
+10. Do not use plain `URL.openConnection(...)` for target checks.
+11. Do not use `bindProcessToNetwork(...)`.
+12. Do not use `activeNetwork` for actual target checks.
+13. `activeNetwork` may be used only for displaying a label in UI.
+14. Release the cellular network callback only after DNS and HTTPS stages finish, preferably in `finally`.
 
-Correct flow:
+Correct flow from v0.9.0:
 
 ```text
 ConnectivityManager.requestNetwork(TRANSPORT_CELLULAR)
     ↓
-Network
+cellular Network
     ↓
-network.openConnection(...)
+DNS probes through configured DNS servers
+    ↓
+CellularDnsResolver
+    ↓
+OkHttpClient(
+    socketFactory = cellular Network.socketFactory,
+    dns = CellularDnsResolver
+)
     ↓
 FOREIGN/LOCAL target checks
     ↓
+Site signal + DNS signal
+    ↓
 WhitelistStateClassifier
+```
+
+Do not weaken HTTPS security to make custom DNS work. Forbidden examples:
+
+```text
+trustAllCertificates()
+hostnameVerifier { _, _ -> true }
+https://IP with disabled certificate/hostname checks
+permissive custom TrustManager
 ```
 
 **Android permissions for cellular requests:**
 
 - Do not remove `CHANGE_NETWORK_STATE`. It is required for explicit cellular `Network` requests through `ConnectivityManager.requestNetwork()`.
 - Do not add `WRITE_SETTINGS` for this use case.
+
+### 3.1 Custom DNS and Android Private DNS
+
+Configured DNS servers have two independent roles:
+
+1. Resolver role: resolve control-site hostnames without Android/system DNS.
+2. Diagnostic role: FOREIGN/LOCAL DNS availability contributes a secondary whitelist-related signal.
+
+For the raw DNS implementation:
+
+- use literal resolver IP addresses so locating the DNS server itself does not require system DNS;
+- use UDP/53 and TCP/53 fallback when a valid UDP response is truncated;
+- validate DNS transaction ID and malformed responses;
+- treat a resolver as available only after receiving a valid DNS response, not merely after opening TCP port 53;
+- keep typed errors such as timeout, connection, invalid response, SERVFAIL, and NXDOMAIN;
+- keep hostname cache in memory for a single check run only;
+- disabled DNS servers do not participate in probes, resolution, or classification;
+- any available resolver may resolve any target hostname regardless of its FOREIGN/LOCAL group.
+
+Do not silently fall back to Android/system DNS when all custom DNS servers are unavailable. The UI/settings layer must keep at least one custom DNS enabled or explicitly expose a degraded mode if that policy changes later.
+
+Private DNS status and hostname may be collected for diagnostics, but they must not choose or modify the DNS route. Do not change Android Private DNS settings and do not request `WRITE_SETTINGS`.
+
+VPN is a separate Android limitation. Do not claim that custom DNS guarantees bypass of an arbitrary VPN, and do not add a VPN service, proxy, root requirement, or process-wide network binding for this milestone.
 
 ---
 
@@ -134,6 +182,10 @@ LOCAL:
 ```
 
 The exact target list may evolve, but the classifier must rely on groups, not one single domain.
+
+DNS servers also use `FOREIGN` and `LOCAL` as diagnostic groups. This grouping is not a routing restriction: a LOCAL DNS resolver may resolve a FOREIGN site and vice versa.
+
+Sites remain the primary classification channel. DNS is a secondary channel. Unavailability of foreign public DNS alone must never promote the final result to `WHITELIST_ON`.
 
 ---
 
@@ -176,6 +228,16 @@ Android could not provide a cellular Network.
 
 UNKNOWN:
 Initial or undefined state.
+```
+
+From v0.9.0, DNS diagnostics may strengthen or conflict with the site result, but sites remain primary. At minimum:
+
+```text
+site whitelist-like + dns whitelist-like -> WHITELIST_ON
+site normal         + dns normal          -> WHITELIST_OFF
+site whitelist-like + dns normal          -> PARTIAL_PROBLEM
+site normal         + dns whitelist-like  -> PARTIAL_PROBLEM
+site normal         + dns unavailable     -> keep clear site result
 ```
 
 Do not present `WHITELIST_ON` as absolute truth. In UI use wording like:
@@ -351,6 +413,7 @@ v0.4.2 Telegram via user Cloudflare Worker relay.
 v0.5   Telegram pending-message queue.
 v0.6   WorkManager periodic checks.
 v0.7   UI cleanup, history, diagnostics, reliability improvements.
+v0.9.0 Custom cellular DNS, Private DNS independence, and secondary DNS signal.
 ```
 
 Do not skip versions.
@@ -665,6 +728,24 @@ After installing v0.6, tell the user in Russian to test:
    - последняя ошибка, если была.
 8. Выключи автопроверку.
 9. Ожидаемо: периодическая задача отменена.
+```
+
+### v0.9.0 manual tests
+
+After installing v0.9.0, tell the user in Russian to test:
+
+```text
+1. Private DNS выключен: выполни проверку, проверь DNS FOREIGN/LOCAL и сайты.
+2. Private DNS = Automatic: повтори; результат не должен меняться только из-за системного DNS режима.
+3. Private DNS = strict с реальным hostname: Private DNS должен отображаться active, Custom DNS — used, сайты должны проверяться.
+4. Wi-Fi ON + mobile data ON: активная сеть может быть Wi-Fi, проверяемая — Mobile; DNS и сайты должны идти через Mobile.
+5. Отключи один FOREIGN DNS: он не должен участвовать в probe/resolution.
+6. Отключи один LOCAL DNS: то же.
+7. Добавь свой FOREIGN DNS, перезапусти приложение, проверь сохранение.
+8. Добавь свой LOCAL DNS, перезапусти приложение, проверь сохранение.
+9. Удали DNS, перезапусти приложение: запись не должна вернуться сама.
+10. Нажми Reset DNS: стандартные FOREIGN/LOCAL DNS должны восстановиться enabled.
+11. Проверь VPN отдельно: приложение не должно утверждать, что произвольный VPN гарантированно обойдён.
 ```
 
 ---

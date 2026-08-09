@@ -10,4 +10,12 @@ data class NetworkCheckResult(
     val checkedAtMillis: Long,
     val error: String? = null,
     val diagnosticsMessage: String? = null,
+    val dnsResults: List<DnsCheckResult> = emptyList(),
+    val foreignDnsSummary: TargetGroupSummary? = null,
+    val localDnsSummary: TargetGroupSummary? = null,
+    val dnsSignal: DnsWhitelistSignal = DnsWhitelistSignal.UNKNOWN,
+    val siteState: WhitelistState = state,
+    val privateDnsActive: Boolean = false,
+    val privateDnsServerName: String? = null,
+    val customDnsUsed: Boolean = false,
 )

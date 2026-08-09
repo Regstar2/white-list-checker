@@ -1,6 +1,5 @@
 package com.whitelistchecker
 
-import android.net.ConnectivityManager
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -61,6 +60,7 @@ class MainActivity : ComponentActivity() {
                     publicServiceLinkUseCase = appContainer.publicServiceLinkUseCase,
                     publicReportUploadUseCase = appContainer.publicReportUploadUseCase,
                     checkTargetsRepository = appContainer.checkTargetsRepository,
+                    dnsServersRepository = appContainer.dnsServersRepository,
                     detailedReportFormatter = appContainer.detailedReportFormatter,
                     loadStatisticsDashboardUseCase = appContainer.loadStatisticsDashboardUseCase,
                     loadStatisticsDiagnosticsUseCase = appContainer.loadStatisticsDiagnosticsUseCase,
