@@ -13,6 +13,8 @@ import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
 private val Context.dnsServersDataStore: DataStore<Preferences> by preferencesDataStore(
     name = "dns_servers",
@@ -21,6 +23,8 @@ private val Context.dnsServersDataStore: DataStore<Preferences> by preferencesDa
 class DnsServersRepository(
     private val dataStore: DataStore<Preferences>,
 ) {
+
+    private val mutationMutex = Mutex()
 
     constructor(context: Context) : this(context.applicationContext.dnsServersDataStore)
 
@@ -39,22 +43,22 @@ class DnsServersRepository(
 
     suspend fun getEnabledServers(): List<EditableDnsServer> = getServers().filter { it.enabled }
 
-    suspend fun addServer(server: EditableDnsServer): Boolean {
+    suspend fun addServer(server: EditableDnsServer): Boolean = mutationMutex.withLock {
         val current = getServers()
         val duplicate = current.any { existing ->
             existing.address.equals(server.address, ignoreCase = true) &&
                 existing.port == server.port &&
                 existing.protocol == server.protocol
         }
-        if (duplicate) return false
+        if (duplicate) return@withLock false
         saveServers(current + server)
-        return true
+        true
     }
 
-    suspend fun removeServer(id: String): Boolean {
+    suspend fun removeServer(id: String): Boolean = mutationMutex.withLock {
         val current = getServers()
-        val target = current.firstOrNull { it.id == id } ?: return false
-        if (target.enabled && current.count { it.enabled } <= 1) return false
+        val target = current.firstOrNull { it.id == id } ?: return@withLock false
+        if (target.enabled && current.count { it.enabled } <= 1) return@withLock false
         val remaining = current.filterNot { it.id == id }
         if (target.builtIn) {
             dataStore.edit { preferences ->
@@ -65,22 +69,24 @@ class DnsServersRepository(
         } else {
             saveServers(remaining)
         }
-        return true
+        true
     }
 
-    suspend fun setServerEnabled(id: String, enabled: Boolean): Boolean {
+    suspend fun setServerEnabled(id: String, enabled: Boolean): Boolean = mutationMutex.withLock {
         val current = getServers()
-        val target = current.firstOrNull { it.id == id } ?: return false
-        if (!enabled && target.enabled && current.count { it.enabled } <= 1) return false
+        val target = current.firstOrNull { it.id == id } ?: return@withLock false
+        if (!enabled && target.enabled && current.count { it.enabled } <= 1) {
+            return@withLock false
+        }
         saveServers(
             current.map { server ->
                 if (server.id == id) server.copy(enabled = enabled) else server
             },
         )
-        return true
+        true
     }
 
-    suspend fun resetToDefaults() {
+    suspend fun resetToDefaults() = mutationMutex.withLock {
         dataStore.edit { preferences ->
             preferences[Keys.SERVERS_JSON] = DnsServersJsonCodec.encode(DefaultDnsServers.defaults())
             preferences[Keys.REMOVED_BUILT_IN_IDS] = emptySet()
