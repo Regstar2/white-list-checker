@@ -2,9 +2,13 @@ package com.whitelistchecker
 
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivityResultRegistryOwner
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.remember
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
@@ -37,9 +41,18 @@ class MainActivity : ComponentActivity() {
                 AppLocaleController.apply(userSettings.language)
             }
 
-            WhiteListCheckerTheme(themeMode = userSettings.themeMode) {
-                val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
-                MainScreen(viewModel = viewModel)
+            val localizedContext = remember(userSettings.language) {
+                AppLocaleController.localizedContext(this, userSettings.language)
+            }
+
+            CompositionLocalProvider(
+                LocalContext provides localizedContext,
+                LocalActivityResultRegistryOwner provides this,
+            ) {
+                WhiteListCheckerTheme(themeMode = userSettings.themeMode) {
+                    val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
+                    MainScreen(viewModel = viewModel)
+                }
             }
         }
     }

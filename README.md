@@ -12,9 +12,7 @@ Android-приложение для проверки доступности мо
 [![AI-assisted development](https://img.shields.io/badge/Development-AI--assisted-8A2BE2)](#использование-ai)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
-[Быстрый старт](#быстрый-старт) ·
-[Документация](#документация) ·
-[Релизы](../../releases)
+[Быстрый старт](#быстрый-старт) · [Документация](#документация) · [Релизы](../../releases)
 
 </div>
 
@@ -22,15 +20,15 @@ Android-приложение для проверки доступности мо
 
 ## О проекте
 
-WhiteListChecker проверяет набор локальных и внешних сайтов через мобильную сеть, классифицирует результат и сохраняет историю наблюдений. Приложение предназначено для ручной диагностики, периодических проверок и уведомлений при изменении состояния сети.
+WhiteListChecker проверяет локальные и внешние сайты через мобильную сеть, классифицирует результат и сохраняет историю наблюдений. Приложение предназначено для ручной диагностики, периодических проверок и уведомлений при изменении наблюдаемого состояния сети.
 
-Начиная с `0.9.0`, контрольные домены разрешаются через управляемый пользователем набор DNS-серверов, привязанных к тому же cellular `Network`. Поэтому системный Android Private DNS не используется в основном маршруте проверки сайтов.
+Начиная с `0.9.0`, контрольные домены разрешаются через управляемый пользователем список DNS-серверов, привязанных к тому же cellular `Network`. Поэтому основной маршрут проверки сайтов не использует системный Android Private DNS.
 
-Проект определяет только наблюдаемые сетевые признаки. Он не имеет доступа к внутренним правилам оператора и не может подтвердить наличие белых списков со стопроцентной точностью.
+Проект определяет только наблюдаемые сетевые признаки. Он не имеет доступа к внутренним правилам оператора и не может доказать наличие белых списков со стопроцентной точностью.
 
 ## Статус проекта
 
-Проект находится на стадии **MVP / beta**. Текущая линия разработки — `0.10.x`; значение `versionName` Android-приложения в репозитории — `0.10.4`.
+Проект находится на стадии **MVP / beta**. Текущая линия разработки - `0.10.x`; значение Android `versionName` в репозитории - `0.10.4`.
 
 | Область | Статус |
 |---|---|
@@ -41,17 +39,17 @@ WhiteListChecker проверяет набор локальных и внешн�
 | Активный мониторинг через foreground service | Beta |
 | Локальные и личные Telegram-уведомления | Beta |
 | Центральный публичный сервис и бот | Beta |
-| Удалённая проверка связанного устройства | Экспериментально |
+| Удалённая проверка связанного устройства | Экспериментально в разработке |
 
 ## Возможности
 
 - явный запрос мобильной сети через `ConnectivityManager.requestNetwork(...)`;
-- проверка групп сайтов `FOREIGN` и `LOCAL` с редактируемым списком целей;
+- редактируемые группы сайтов `FOREIGN` и `LOCAL`;
 - отдельный редактируемый список DNS с группами `FOREIGN` и `LOCAL`;
 - raw DNS через UDP/53 с TCP/53 fallback, привязанный к cellular `Network`;
 - custom DNS resolution контрольных сайтов без системного Android DNS;
 - HTTPS target checks через OkHttp с `cellular Network.socketFactory` и штатной TLS/hostname verification;
-- DNS-сигнал как второй независимый источник, не способный сам создать `WHITELIST_ON`;
+- DNS-доступность как вторичный независимый сигнал, который сам по себе не создаёт `WHITELIST_ON`;
 - классификация доступности, DNS-сбоев, частичных проблем и признаков белых списков;
 - подтверждение смены состояния последовательными проверками;
 - история, статистика и подробный диагностический отчёт;
@@ -60,27 +58,15 @@ WhiteListChecker проверяет набор локальных и внешн�
 - активный мониторинг через foreground service;
 - личные Telegram-уведомления через пользовательский Cloudflare Worker relay;
 - центральный Cloudflare Worker с публичным Telegram-ботом;
-- добровольная отправка обезличенных результатов в агрегированную статистику;
+- добровольная отправка обезличенной агрегированной статистики;
 - привязка Telegram-чата к устройству одноразовым кодом;
-- удалённая команда проверки, пока активный мониторинг работает на устройстве.
+- удалённые команды проверки, пока активный мониторинг работает на устройстве.
 
-## DNS по умолчанию
+## Скриншоты
 
-Встроенный стартовый набор содержит по две точки в каждой группе:
-
-```text
-FOREIGN
-Cloudflare   1.1.1.1:53
-Google       8.8.8.8:53
-
-LOCAL
-Yandex DNS             77.88.8.8:53
-Yandex DNS Secondary   77.88.8.1:53
-```
-
-DNS можно включать и выключать, добавлять, удалять и сбрасывать к стандартному набору. Хотя бы один DNS должен оставаться включённым, иначе независимая от Android Private DNS проверка невозможна.
-
-Группа DNS используется для диагностики доступности инфраструктуры, но не ограничивает резолвинг: любой доступный enabled DNS может разрешать любой контрольный домен.
+| Главный экран | Статистика | Настройки проверок |
+|---|---|---|
+| <img src="docs/assets/screenshots/mainscreen.jpg" width="240" alt="Главный экран WhiteListChecker"> | <img src="docs/assets/screenshots/statistics.jpg" width="240" alt="Экран статистики WhiteListChecker"> | <img src="docs/assets/screenshots/checklist.jpg" width="240" alt="Экран настроек проверок WhiteListChecker"> |
 
 ## Быстрый старт
 
@@ -92,13 +78,13 @@ DNS можно включать и выключать, добавлять, уд�
 .\gradlew.bat assembleDebug
 ```
 
-4. Установите APK на подключённое устройство:
+4. Установите APK на подключённое Android-устройство:
 
 ```powershell
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-5. Откройте приложение и нажмите **«Проверить мобильную сеть»**.
+5. Откройте приложение и нажмите **Проверить мобильную сеть**.
 
 Опубликованные сборки находятся в [GitHub Releases](../../releases) и могут отставать от текущей ветки разработки.
 
@@ -107,23 +93,9 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 - Android 8.0 или новее (`minSdk 26`);
 - JDK 17 или новее для сборки;
 - Android SDK Platform 35 и Build-Tools 35.x;
-- подключение к мобильной сети для основного сценария;
+- активное мобильное подключение для основного сценария;
 - Git и ADB для локальной разработки и установки;
 - Node.js и npm для разработки центрального Cloudflare Worker.
-
-## Установка
-
-Debug APK создаётся по пути:
-
-```text
-app/build/outputs/apk/debug/app-debug.apk
-```
-
-Установка поверх существующей debug-сборки:
-
-```powershell
-adb install -r app\build\outputs\apk\debug\app-debug.apk
-```
 
 ## Использование
 
@@ -131,17 +103,17 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 1. Оставьте мобильные данные включёнными.
 2. Wi-Fi можно не отключать: приложение отдельно запрашивает мобильную сеть.
-3. При необходимости откройте **Настройки проверки → DNS** и настройте resolvers.
+3. При необходимости откройте **Настройки проверок -> DNS** и настройте resolver.
 4. Запустите проверку на главном экране.
-5. Откройте подробности, если часть целей или DNS недоступна либо результат неоднозначен.
+5. Откройте подробный отчёт, если результаты сайтов или DNS неоднозначны.
 
 ### Android Private DNS
 
-WhiteListChecker выполняет собственное разрешение контрольных доменов через настроенные literal IP DNS-серверов. DNS-запросы и HTTPS target checks идут через один и тот же запрошенный cellular `Network`.
+WhiteListChecker разрешает контрольные домены через настроенные DNS-серверы с literal IP. DNS probes, DNS resolution и target HTTPS traffic используют один и тот же запрошенный cellular `Network`.
 
-Private DNS Android при этом остаётся системной настройкой телефона, но не участвует в основном resolver path WhiteListChecker. Приложение не изменяет эту настройку и не запрашивает `WRITE_SETTINGS`.
+Android Private DNS остаётся системной настройкой телефона, но не участвует в основном resolver path WhiteListChecker. Приложение не меняет Private DNS и не запрашивает `WRITE_SETTINGS`.
 
-Текущий DNS/53 transport не шифруется. Используйте только доверенные resolvers.
+Текущий DNS/53 transport не шифруется. Используйте только доверенные resolver.
 
 ### Фоновая и активная проверка
 
@@ -151,7 +123,7 @@ Private DNS Android при этом остаётся системной наст
 
 ### Общий сервис и публичный Telegram-бот
 
-Согласия на отправку обезличенных результатов и на удалённые проверки независимы и выключены по умолчанию.
+Согласия на отправку обезличенных отчётов и на удалённые проверки независимы и выключены по умолчанию.
 
 Для удалённой проверки:
 
@@ -161,25 +133,45 @@ Private DNS Android при этом остаётся системной наст
 4. запустите активный мониторинг;
 5. запросите проверку из карточки связанного устройства в боте.
 
+## Конфигурация
+
+### DNS по умолчанию
+
+Встроенный стартовый набор содержит минимум два resolver в каждой группе:
+
+```text
+FOREIGN
+Cloudflare   1.1.1.1:53
+Google       8.8.8.8:53
+
+LOCAL
+Yandex DNS             77.88.8.8:53
+Yandex DNS Secondary   77.88.8.1:53
+```
+
+DNS можно включать, выключать, добавлять, удалять и сбрасывать к стандартному набору. Хотя бы один resolver должен оставаться включённым, иначе независимая от Android Private DNS проверка невозможна.
+
+Группа DNS используется только для диагностической классификации. Любой доступный enabled resolver может разрешать любой контрольный домен.
+
 ## Архитектура
 
 ```text
 Android UI
-   │
-   ▼
+   |
+   v
 ViewModel / Use cases
-   │
-   ├── Cellular Network
-   │      ├── DNS probes (UDP/TCP 53)
-   │      ├── CellularDnsResolver
-   │      └── OkHttp target checks
-   ├── DataStore / Room
-   ├── WorkManager / Foreground service
-   ├── User-owned Telegram relay Worker
-   └── Central public-service Worker
-            │
-            ├── D1
-            └── Public Telegram bot
+   |
+   +-- Cellular Network
+   |      +-- DNS probes (UDP/TCP 53)
+   |      +-- CellularDnsResolver
+   |      +-- OkHttp target checks
+   +-- DataStore / Room
+   +-- WorkManager / Foreground service
+   +-- User-owned Telegram relay Worker
+   +-- Central public-service Worker
+            |
+            +-- D1
+            +-- Public Telegram bot
 ```
 
 Android-приложение использует Kotlin, Jetpack Compose, Material 3, Coroutines/Flow, DataStore, Room, WorkManager и OkHttp. Центральный сервис находится в `cloudflare/public-service/` и реализован как Cloudflare Worker с D1.
@@ -188,11 +180,11 @@ Android-приложение использует Kotlin, Jetpack Compose, Mater
 
 ## Безопасность
 
-- TLS и hostname verification target checks не отключаются.
+- TLS certificate и hostname verification target checks не отключаются.
 - Telegram bot tokens и Worker secrets не должны храниться в Android-коде или Git.
 - Device token центрального сервиса хранится на устройстве с использованием Android Keystore-backed encryption.
-- Центральный Worker хранит хэш device token, а не исходное значение.
-- Не публикуйте `local.properties`, release keystore, токены, пароли и диагностические логи с секретами.
+- Центральный Worker хранит hash device token, а не исходное значение.
+- Не публикуйте `local.properties`, release keystore, токены, пароли и логи с секретами.
 
 Подробнее: [SECURITY.md](SECURITY.md).
 
@@ -200,7 +192,7 @@ Android-приложение использует Kotlin, Jetpack Compose, Mater
 
 Отправка данных в общий сервис выключена по умолчанию.
 
-При включённой отправке используются выбранные регион, необязательный город, оператор, версия приложения, время проверки, итоговое состояние и агрегированные результаты целей. DNS diagnostics v0.9.0 остаются локальными и не добавляются в публичный контракт автоматически.
+При включённой отправке сервис получает выбранный регион, необязательный город, мобильного оператора, версию приложения, время проверки, итоговое состояние и агрегированные результаты целей. DNS diagnostics, добавленные в v0.9.0, остаются локальными и не добавляются в публичный контракт автоматически.
 
 Не отправляются координаты, точный адрес, номер телефона, IMEI, IMSI, SIM serial, Wi-Fi SSID/BSSID, содержимое устройства, личные Telegram-сообщения, bot token и Relay Secret.
 
@@ -208,20 +200,20 @@ Android-приложение использует Kotlin, Jetpack Compose, Mater
 
 ## Диагностика
 
-Подробный отчёт показывает:
+Подробный отчёт включает:
 
 - активную и проверяемую сеть;
 - Private DNS active/inactive и hostname, если он доступен;
 - использовался ли custom DNS;
-- FOREIGN/LOCAL DNS summary;
-- результат каждого resolver, latency и typed error;
+- FOREIGN/LOCAL DNS summaries;
+- latency и typed errors каждого resolver;
 - Site signal;
 - DNS signal;
 - итоговое состояние.
 
 ### Активный мониторинг показывает `Worker HTTP 404`
 
-Маршрут активного мониторинга должен отвечать не `404`, а `405` на диагностический GET-запрос. Из каталога Worker выполните:
+Маршрут активного мониторинга должен отвечать не `404`, а `405` на диагностический GET-запрос. Выполните:
 
 ```powershell
 cd cloudflare\public-service
@@ -240,38 +232,32 @@ npm run deploy
 
 Добавьте каталог `platform-tools` Android SDK в `PATH` или запускайте `adb.exe` по полному пути.
 
-Дополнительные сценарии: [docs/testing/public-service-manual-test-plan.md](docs/testing/public-service-manual-test-plan.md).
-
 ## Разработка
 
 Перед изменениями прочитайте [AGENTS.md](AGENTS.md). Архитектурные и продуктовые документы находятся в `docs/`.
 
-Основные каталоги:
-
 ```text
 app/                         Android-приложение
 cloudflare/public-service/   центральный Worker и публичный бот
-docs/                        архитектура, тест-планы и история версий
+docs/                        архитектура, тест-планы и документы версий
 ```
 
 ## Использование AI
 
-В разработке проекта AI применяется как вспомогательный инструмент для анализа, подготовки вариантов реализации, документации и тестов.
+В разработке проекта AI применяется как вспомогательный инструмент для анализа, вариантов реализации, документации и тестов.
 
-- все изменения проходят проверку сопровождающим проекта;
-- ответственность за принятый код, архитектуру, безопасность и релизы несёт сопровождающий;
-- AI не является компонентом WhiteListChecker;
-- AI не обрабатывает пользовательский трафик, пароли, токены или конфигурацию серверов во время работы приложения.
+- каждое изменение проверяет сопровождающий проекта;
+- сопровождающий отвечает за принятый код, архитектуру, безопасность и релизы;
+- AI не является компонентом продукта WhiteListChecker;
+- AI не обрабатывает пользовательский трафик, пароли, токены или серверную конфигурацию во время работы приложения.
 
 ## Сборка
-
-Android:
 
 ```powershell
 .\gradlew.bat assembleDebug
 ```
 
-Центральный Worker, dry-run без публикации:
+Dry-run центрального Worker:
 
 ```powershell
 cd cloudflare\public-service
@@ -281,7 +267,7 @@ npm run build
 
 ## Тестирование
 
-Команды Android-проекта:
+Android:
 
 ```powershell
 .\gradlew.bat test
@@ -289,7 +275,7 @@ npm run build
 .\gradlew.bat assembleDebug
 ```
 
-Команды Worker:
+Worker:
 
 ```powershell
 cd cloudflare\public-service
@@ -300,38 +286,29 @@ npm test
 npm run build
 ```
 
-Проверка production-развёртывания Worker:
-
-```powershell
-npm run verify:production
-```
-
 ## Документация
 
 | Задача | Документ |
 |---|---|
 | Текущий MVP | [docs/WhiteListChecker - current MVP.md](docs/WhiteListChecker%20-%20current%20MVP.md) |
-| Сеть, VPN и Private DNS | [docs/network-routing-notes.md](docs/network-routing-notes.md) |
+| Network, VPN и Private DNS | [docs/network-routing-notes.md](docs/network-routing-notes.md) |
 | Версия 0.9.0 | [docs/versions/v0.9.0.md](docs/versions/v0.9.0.md) |
-| Стек | [docs/stack.md](docs/stack.md) |
+| Технологический стек | [docs/stack.md](docs/stack.md) |
 | Центральный сервис | [docs/architecture/central-public-service.md](docs/architecture/central-public-service.md) |
 | Удалённые команды | [docs/architecture/remote-command-flow.md](docs/architecture/remote-command-flow.md) |
-| Личный Telegram relay | [docs/cloudflare-worker/README.md](docs/cloudflare-worker/README.md) |
-| Развёртывание public service | [docs/cloudflare-public-service/README.md](docs/cloudflare-public-service/README.md) |
-| Ручной тест-план | [docs/testing/public-service-manual-test-plan.md](docs/testing/public-service-manual-test-plan.md) |
 | История изменений | [CHANGELOG.md](CHANGELOG.md) |
 | Правила разработки | [AGENTS.md](AGENTS.md) |
 
 ## Ограничения
 
 - Классификация основана на наблюдаемых результатах и может давать ложные срабатывания.
-- VPN остаётся отдельным ограничением Android: custom DNS не гарантирует обход произвольного VPN.
-- Raw DNS v0.9.0 использует literal IPv4 endpoints и не шифрует DNS/53 трафик.
+- VPN остаётся отдельным ограничением Android; custom DNS не гарантирует обход произвольного VPN.
+- Raw DNS v0.9.0 принимает literal IPv4 resolver endpoints и отправляет нешифрованный DNS/53 traffic.
 - WorkManager не гарантирует точное время запуска.
-- Foreground service может быть ограничен или остановлен Android.
-- Удалённая проверка требует актуального production Worker, сохранённого разрешения и запущенного активного мониторинга.
-- Агрегированная статистика зависит от количества свежих отчётов и не является официальной информацией оператора.
+- Android может ограничить или остановить foreground service.
+- Удалённые проверки требуют актуальный production Worker, сохранённое согласие и активный мониторинг на устройстве.
+- Агрегированная статистика зависит от свежих отчётов и не является официальной информацией операторов.
 
 ## Лицензия
 
-Проект распространяется по лицензии [MIT](LICENSE).
+Проект распространяется под лицензией [MIT](LICENSE).

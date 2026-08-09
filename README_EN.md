@@ -28,7 +28,7 @@ The project detects observable network behavior only. It has no access to an ope
 
 ## Project status
 
-The project is in **MVP / beta**. The current development line is `0.9.x`; the Android `versionName` stored in the repository is `0.9.0`.
+The project is in **MVP / beta**. The current development line is `0.10.x`; the Android `versionName` stored in the repository is `0.10.4`.
 
 | Area | Status |
 |---|---|
@@ -39,7 +39,7 @@ The project is in **MVP / beta**. The current development line is `0.9.x`; the A
 | Active monitoring with a foreground service | Beta |
 | Local and personal Telegram notifications | Beta |
 | Central public service and bot | Beta |
-| Remote check of a linked device | Experimental |
+| Remote check of a linked device | Experimental, in development |
 
 ## Features
 
@@ -62,23 +62,11 @@ The project is in **MVP / beta**. The current development line is `0.9.x`; the A
 - one-time-code linking between a Telegram chat and a device;
 - remote check commands while active monitoring is running.
 
-## Default DNS servers
+## Screenshots
 
-The initial list contains at least two resolvers in each group:
-
-```text
-FOREIGN
-Cloudflare   1.1.1.1:53
-Google       8.8.8.8:53
-
-LOCAL
-Yandex DNS             77.88.8.8:53
-Yandex DNS Secondary   77.88.8.1:53
-```
-
-Resolvers can be enabled, disabled, added, removed, and reset to defaults. At least one resolver must remain enabled because a fully independent Private-DNS check is impossible without a custom resolver.
-
-A DNS group is used only for diagnostic classification. Any available enabled resolver may resolve any target hostname.
+| Home screen | Statistics | Check settings |
+|---|---|---|
+| <img src="docs/assets/screenshots/mainscreen.jpg" width="240" alt="WhiteListChecker home screen"> | <img src="docs/assets/screenshots/statistics.jpg" width="240" alt="WhiteListChecker statistics screen"> | <img src="docs/assets/screenshots/checklist.jpg" width="240" alt="WhiteListChecker check settings screen"> |
 
 ## Quick start
 
@@ -144,6 +132,26 @@ To use remote checks:
 3. create a link code and send `/link <code>` to the public bot;
 4. start active monitoring;
 5. request a check from the linked-device screen in the bot.
+
+## Configuration
+
+### Default DNS servers
+
+The initial list contains at least two resolvers in each group:
+
+```text
+FOREIGN
+Cloudflare   1.1.1.1:53
+Google       8.8.8.8:53
+
+LOCAL
+Yandex DNS             77.88.8.8:53
+Yandex DNS Secondary   77.88.8.1:53
+```
+
+Resolvers can be enabled, disabled, added, removed, and reset to defaults. At least one resolver must remain enabled because a fully independent Private-DNS check is impossible without a custom resolver.
+
+A DNS group is used only for diagnostic classification. Any available enabled resolver may resolve any target hostname.
 
 ## Architecture
 

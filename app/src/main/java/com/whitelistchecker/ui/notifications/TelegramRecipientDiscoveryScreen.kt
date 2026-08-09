@@ -25,6 +25,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.R
 import com.whitelistchecker.domain.model.TelegramChatCandidate
+import com.whitelistchecker.ui.displayLabel
 import com.whitelistchecker.ui.displayName
 import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.ScreenScaffold

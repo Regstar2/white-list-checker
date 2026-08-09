@@ -51,7 +51,7 @@ fun HomeStatisticsSummaryCard(
                 uiState.lastUpdatedAt,
                 nowMillis,
             )
-            AppCard(title = "Статистика БС") {
+            AppCard(title = stringResource(R.string.whitelist_availability_summary_title)) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     if (uiState.isStale) {
                         StatusChip(
@@ -60,15 +60,21 @@ fun HomeStatisticsSummaryCard(
                         )
                     }
                     CompactDetailRow(
-                        "Сейчас",
+                        stringResource(R.string.statistics_whitelist_summary_current),
                         uiState.currentState.toShortLabel(),
                     )
                     CompactDetailRow(
-                        "Последний сэмпл",
+                        stringResource(R.string.statistics_last_binary_status),
                         lastUpdatedLabel,
                     )
-                    CompactDetailRow("БС были за период", onPercentLabel)
-                    CompactDetailRow("Бинарных сэмплов", uiState.binarySamples.toString())
+                    CompactDetailRow(
+                        stringResource(R.string.statistics_whitelist_on_period_label),
+                        onPercentLabel,
+                    )
+                    CompactDetailRow(
+                        stringResource(R.string.statistics_binary_samples),
+                        uiState.binarySamples.toString(),
+                    )
                     Button(
                         onClick = onOpenStatistics,
                         modifier = Modifier.fillMaxWidth(),
@@ -81,10 +87,11 @@ fun HomeStatisticsSummaryCard(
     }
 }
 
+@Composable
 private fun WhitelistBinaryState.toShortLabel(): String {
     return when (this) {
-        WhitelistBinaryState.ON -> "Похоже на БС"
-        WhitelistBinaryState.OFF -> "БС не обнаружены"
-        WhitelistBinaryState.UNKNOWN -> "Нет бинарного статуса"
+        WhitelistBinaryState.ON -> stringResource(R.string.statistics_status_whitelist_on)
+        WhitelistBinaryState.OFF -> stringResource(R.string.statistics_status_whitelist_off)
+        WhitelistBinaryState.UNKNOWN -> stringResource(R.string.statistics_status_unknown_binary)
     }
 }

@@ -72,13 +72,13 @@ import com.whitelistchecker.ui.statistics.HomeStatisticsMapper
 import com.whitelistchecker.ui.statistics.HomeStatisticsUiState
 import com.whitelistchecker.ui.statistics.StatisticsFreshnessMapper
 import com.whitelistchecker.ui.statistics.StatisticsUiState
-import com.whitelistchecker.ui.userMessage
 import com.whitelistchecker.worker.BackgroundCheckScheduler
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Locale
 
 class MainViewModel(
     private val checkAndNotifyUseCase: CheckAndNotifyUseCase,
@@ -357,7 +357,10 @@ class MainViewModel(
                         telegramSettings = savedSettings,
                         telegramChatDiscovery = it.telegramChatDiscovery.copy(
                             selectedCandidate = candidate,
-                            statusMessage = "Получатель добавлен",
+                            statusMessage = localized(
+                                ru = "Получатель добавлен",
+                                en = "Recipient added",
+                            ),
                             errorMessage = null,
                         ),
                     )
@@ -507,7 +510,10 @@ class MainViewModel(
         if (parsed == null || parsed < BackgroundCheckSettings.MIN_INTERVAL_MINUTES) {
             _uiState.update {
                 it.copy(
-                    intervalError = "Минимальный интервал фоновой проверки через WorkManager — 15 минут.",
+                    intervalError = localized(
+                        ru = "Минимальный интервал фоновой проверки через WorkManager — 15 минут.",
+                        en = "Minimum WorkManager background check interval is 15 minutes.",
+                    ),
                 )
             }
             return null
@@ -706,7 +712,10 @@ class MainViewModel(
                     isDetectingPublicServiceArea = true,
                     pendingDetectedArea = null,
                     errorMessage = null,
-                    publicServiceMessage = "Определяю регион и город",
+                    publicServiceMessage = localized(
+                        ru = "Определяю регион и город",
+                        en = "Detecting region and city",
+                    ),
                 )
             }
             when (val result = publicServiceAreaDetector.detect()) {
@@ -715,7 +724,10 @@ class MainViewModel(
                         it.copy(
                             isDetectingPublicServiceArea = false,
                             pendingDetectedArea = result.area,
-                            publicServiceMessage = "Местоположение определено. Подтвердите результат.",
+                            publicServiceMessage = localized(
+                                ru = "Местоположение определено. Подтвердите результат.",
+                                en = "Location detected. Confirm the result.",
+                            ),
                         )
                     }
                 }
@@ -737,7 +749,10 @@ class MainViewModel(
             it.copy(
                 isDetectingPublicServiceArea = false,
                 pendingDetectedArea = null,
-                errorMessage = "Разрешение на приблизительное местоположение не выдано. Выберите регион вручную.",
+                errorMessage = localized(
+                    ru = "Разрешение на приблизительное местоположение не выдано. Выберите регион вручную.",
+                    en = "Approximate location permission was not granted. Select the region manually.",
+                ),
             )
         }
     }
@@ -761,7 +776,10 @@ class MainViewModel(
                     areaUpdatedAtMillis = confirmed.updatedAtMillis,
                 ),
                 pendingDetectedArea = null,
-                publicServiceMessage = "Местоположение подтверждено",
+                publicServiceMessage = localized(
+                    ru = "Местоположение подтверждено",
+                    en = "Location confirmed",
+                ),
                 errorMessage = null,
             )
         }
@@ -777,7 +795,10 @@ class MainViewModel(
                 it.copy(
                     isDetectingPublicServiceOperator = true,
                     errorMessage = null,
-                    publicServiceMessage = "Определяю оператора мобильной сети",
+                    publicServiceMessage = localized(
+                        ru = "Определяю оператора мобильной сети",
+                        en = "Detecting mobile operator",
+                    ),
                 )
             }
             val detected = mobileOperatorDetector.detect()
@@ -786,7 +807,10 @@ class MainViewModel(
                     it.copy(
                         isDetectingPublicServiceOperator = false,
                         publicServiceMessage = null,
-                        errorMessage = "Не удалось определить оператора автоматически. Выберите его вручную.",
+                        errorMessage = localized(
+                            ru = "Не удалось определить оператора автоматически. Выберите его вручную.",
+                            en = "Could not detect the operator automatically. Select it manually.",
+                        ),
                     )
                 }
                 return@launch
@@ -831,7 +855,10 @@ class MainViewModel(
                 _uiState.update {
                     it.copy(
                         isSavingPublicServiceSettings = false,
-                        publicServiceMessage = "Настройки общего сервиса сохранены",
+                        publicServiceMessage = localized(
+                            ru = "Настройки общего сервиса сохранены",
+                            en = "Public service settings saved",
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -860,7 +887,10 @@ class MainViewModel(
                 _uiState.update {
                     it.copy(
                         isCreatingPublicServiceLinkCode = false,
-                        publicServiceMessage = "Код привязки создан",
+                        publicServiceMessage = localized(
+                            ru = "Код привязки создан",
+                            en = "Link code created",
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -907,7 +937,10 @@ class MainViewModel(
                 val result = publicReportUploadUseCase.flushQueue()
                 _uiState.update {
                     it.copy(
-                        publicServiceMessage = "Отправлено: ${result.sentCount}, ошибок: ${result.failedCount}",
+                        publicServiceMessage = localized(
+                            ru = "Отправлено: ${result.sentCount}, ошибок: ${result.failedCount}",
+                            en = "Sent: ${result.sentCount}, errors: ${result.failedCount}",
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -926,7 +959,10 @@ class MainViewModel(
                     it.copy(
                         isDeletingPublicServiceData = false,
                         publicServiceLinks = emptyList(),
-                        publicServiceMessage = "Серверные данные установки удалены или отозваны",
+                        publicServiceMessage = localized(
+                            ru = "Серверные данные установки удалены или отозваны",
+                            en = "Server data for this installation was deleted or revoked",
+                        ),
                     )
                 }
             } catch (exception: Exception) {
@@ -943,9 +979,15 @@ class MainViewModel(
     private fun validatePublicSharing(settings: com.whitelistchecker.domain.model.PublicServiceSettings): String? {
         return when {
             settings.regionCode == "UNKNOWN" || !settings.areaConfirmedByUser ->
-                "Перед отправкой данных выберите и подтвердите регион"
+                localized(
+                    ru = "Перед отправкой данных выберите и подтвердите регион",
+                    en = "Select and confirm a region before sending data",
+                )
             settings.operatorCode == "UNKNOWN" ->
-                "Не удалось определить оператора. Выберите его вручную."
+                localized(
+                    ru = "Не удалось определить оператора. Выберите его вручную.",
+                    en = "Could not detect the operator. Select it manually.",
+                )
             else -> null
         }
     }
@@ -976,7 +1018,10 @@ class MainViewModel(
                     operatorMccMnc = detected.mccMnc,
                     operatorUpdatedAtMillis = System.currentTimeMillis(),
                 ),
-                publicServiceMessage = "Оператор определён: ${detected.displayName ?: detected.operatorCode}",
+                publicServiceMessage = localized(
+                    ru = "Оператор определён: ${detected.displayName ?: detected.operatorCode}",
+                    en = "Operator detected: ${detected.displayName ?: detected.operatorCode}",
+                ),
                 errorMessage = null,
             )
         }
@@ -1035,7 +1080,10 @@ class MainViewModel(
             if (permissionChecker.requiresRuntimePermission() && !permissionChecker.areNotificationsAllowed()) {
                 _uiState.update {
                     it.copy(
-                        errorMessage = "Разрешите уведомления перед запуском активного мониторинга.",
+                        errorMessage = localized(
+                            ru = "Разрешите уведомления перед запуском активного мониторинга.",
+                            en = "Allow notifications before starting active monitoring.",
+                        ),
                     )
                 }
                 return@launch
@@ -1069,7 +1117,10 @@ class MainViewModel(
             _uiState.update {
                 it.copy(
                     activeMonitoringIntervalError =
-                    "Интервал активного мониторинга должен быть от 1 до 60 минут.",
+                    localized(
+                        ru = "Интервал активного мониторинга должен быть от 1 до 60 минут.",
+                        en = "Active monitoring interval must be from 1 to 60 minutes.",
+                    ),
                 )
             }
             return null
@@ -1159,7 +1210,14 @@ class MainViewModel(
         val checkResult = _uiState.value.result
         if (checkResult == null) {
             _uiState.update {
-                it.copy(lastLocalNotificationResult = LocalNotificationResult.Failure("Сначала выполните проверку мобильной сети"))
+                it.copy(
+                    lastLocalNotificationResult = LocalNotificationResult.Failure(
+                        localized(
+                            ru = "Сначала выполните проверку мобильной сети",
+                            en = "Run a mobile network check first",
+                        ),
+                    ),
+                )
             }
             return
         }
@@ -1314,7 +1372,10 @@ class MainViewModel(
                         isTestingTelegram = false,
                         lastTelegramTestResult = result,
                         lastTelegramTestMessage = when (result) {
-                            TelegramTestResult.Success -> "Worker работает, бот доступен"
+                            TelegramTestResult.Success -> localized(
+                                ru = "Worker работает, бот доступен",
+                                en = "Worker is working, bot is available",
+                            )
                             is TelegramTestResult.Failure -> result.reason
                         },
                     )
@@ -1338,11 +1399,17 @@ class MainViewModel(
             }
             try {
                 telegramSettingsRepository.saveSettings(state.telegramSettings)
-                val result = telegramEventNotifierUseCase.sendTestMessage(TEST_MESSAGE_TEXT)
+                val result = telegramEventNotifierUseCase.sendTestMessage(testMessageText())
                 val broadcastMessage = when (result) {
-                    TelegramSendResult.Success -> "Тестовое сообщение отправлено всем включённым получателям"
+                    TelegramSendResult.Success -> localized(
+                        ru = "Тестовое сообщение отправлено всем включённым получателям",
+                        en = "Test message sent to all enabled recipients",
+                    )
                     is TelegramSendResult.Failure -> result.reason
-                    null -> "Telegram-уведомления выключены или нет включённых получателей"
+                    null -> localized(
+                        ru = "Telegram-уведомления выключены или нет включённых получателей",
+                        en = "Telegram notifications are disabled or there are no enabled recipients",
+                    )
                 }
                 _uiState.update {
                     it.copy(
@@ -1368,7 +1435,12 @@ class MainViewModel(
         val checkResult = state.result
         if (checkResult == null) {
             _uiState.update {
-                it.copy(lastTelegramSendMessage = "Сначала выполните проверку мобильной сети")
+                it.copy(
+                    lastTelegramSendMessage = localized(
+                        ru = "Сначала выполните проверку мобильной сети",
+                        en = "Run a mobile network check first",
+                    ),
+                )
             }
             return
         }
@@ -1380,9 +1452,15 @@ class MainViewModel(
                 telegramSettingsRepository.saveSettings(state.telegramSettings)
                 val result = telegramEventNotifierUseCase.sendOnManualCheck(checkResult)
                 val message = when (result) {
-                    TelegramSendResult.Success -> "Отчёт о проверке отправлен всем включённым получателям"
+                    TelegramSendResult.Success -> localized(
+                        ru = "Отчёт о проверке отправлен всем включённым получателям",
+                        en = "Check report sent to all enabled recipients",
+                    )
                     is TelegramSendResult.Failure -> result.reason
-                    null -> "Telegram-уведомления выключены или нет включённых получателей"
+                    null -> localized(
+                        ru = "Telegram-уведомления выключены или нет включённых получателей",
+                        en = "Telegram notifications are disabled or there are no enabled recipients",
+                    )
                 }
                 _uiState.update {
                     it.copy(
@@ -1478,8 +1556,7 @@ class MainViewModel(
                     offset = offset,
                     loading = false,
                     successStatus = when (result) {
-                        is TelegramChatDiscoveryResult.Success ->
-                            "Найдено кандидатов: ${result.candidates.size}"
+                        is TelegramChatDiscoveryResult.Success -> foundCandidatesMessage(result.candidates.size)
                         else -> null
                     },
                 )
@@ -1502,7 +1579,7 @@ class MainViewModel(
             _uiState.update {
                 it.copy(
                     telegramChatDiscovery = TelegramChatDiscoveryUiState(
-                        statusMessage = RESET_DISCOVERY_MESSAGE,
+                        statusMessage = resetDiscoveryMessage(),
                     ),
                 )
             }
@@ -1540,11 +1617,17 @@ class MainViewModel(
                     loadingRecent = false,
                     successStatus = when (result) {
                         is TelegramChatDiscoveryResult.Success ->
-                            "$RECENT_CHATS_STATUS\nНайдено кандидатов: ${result.candidates.size}"
+                            "${recentChatsStatus()}\n${foundCandidatesMessage(result.candidates.size)}"
                         is TelegramChatDiscoveryResult.Empty ->
                             when {
-                                result.rawUpdatesCount == 0 -> "getUpdates вернул 0 updates"
-                                else -> "getUpdates вернул updates, но message.chat не найден"
+                                result.rawUpdatesCount == 0 -> localized(
+                                    ru = "getUpdates вернул 0 updates",
+                                    en = "getUpdates returned 0 updates",
+                                )
+                                else -> localized(
+                                    ru = "getUpdates вернул updates, но message.chat не найден",
+                                    en = "getUpdates returned updates, but message.chat was not found",
+                                )
                             }
                         else -> null
                     },
@@ -1681,7 +1764,7 @@ class MainViewModel(
                             errorMessage = if (successStatus != null) {
                                 null
                             } else {
-                                result.userMessage()
+                                discoveryUserMessage(result)
                             },
                         ),
                     )
@@ -1710,19 +1793,87 @@ class MainViewModel(
         offset: Long?,
     ): String {
         return buildString {
-            append(PREPARE_SUCCESS_MESSAGE)
+            append(prepareSuccessMessage())
             if (result is TelegramChatDiscoveryResult.Empty && result.rawUpdatesCount > 0 && offset != null) {
-                append("\nСтарые updates пропущены. Offset: $offset")
+                append(
+                    localized(
+                        ru = "\nСтарые updates пропущены. Offset: $offset",
+                        en = "\nOld updates skipped. Offset: $offset",
+                    ),
+                )
             }
         }
     }
 
     private fun discoverySettingsError(settings: TelegramSettings): String {
         return when {
-            settings.workerUrl.isBlank() -> "Worker URL не указан"
-            settings.relaySecret.isBlank() -> "Relay Secret не указан"
-            else -> "Настройки Telegram неполные"
+            settings.workerUrl.isBlank() -> localized(
+                ru = "Worker URL не указан",
+                en = "Worker URL is missing",
+            )
+            settings.relaySecret.isBlank() -> localized(
+                ru = "Relay Secret не указан",
+                en = "Relay Secret is missing",
+            )
+            else -> localized(
+                ru = "Настройки Telegram неполные",
+                en = "Telegram settings are incomplete",
+            )
         }
+    }
+
+    private fun discoveryUserMessage(result: TelegramChatDiscoveryResult.Empty): String {
+        return localized(
+            ru = "Новых сообщений не найдено. Отправь боту новое сообщение после нажатия «Начать получение chat_id» и попробуй снова. " +
+                "Если ты уже писал /start раньше, нажми «Показать последние чаты».",
+            en = "No new messages found. Send the bot a new message after tapping \"Start chat_id discovery\" and try again. " +
+                "If you already sent /start earlier, tap \"Show recent chats\".",
+        )
+    }
+
+    private fun prepareSuccessMessage(): String {
+        return localized(
+            ru = "Поиск chat_id начат. Теперь отправь боту новое сообщение, например /start или id test, затем нажми «Получить chat_id».",
+            en = "chat_id discovery started. Now send the bot a new message, for example /start or id test, then tap \"Get chat_id\".",
+        )
+    }
+
+    private fun resetDiscoveryMessage(): String {
+        return localized(
+            ru = "Поиск chat_id сброшен. Нажми «Начать получение chat_id», затем отправь боту новое сообщение.",
+            en = "chat_id discovery was reset. Tap \"Start chat_id discovery\", then send the bot a new message.",
+        )
+    }
+
+    private fun recentChatsStatus(): String {
+        return localized(
+            ru = "Показаны последние чаты из getUpdates. Проверь, что это нужный чат.",
+            en = "Showing recent chats from getUpdates. Check that this is the right chat.",
+        )
+    }
+
+    private fun foundCandidatesMessage(count: Int): String {
+        return localized(
+            ru = "Найдено кандидатов: $count",
+            en = "Candidates found: $count",
+        )
+    }
+
+    private fun testMessageText(): String {
+        return localized(
+            ru = "Тестовое сообщение Whitelist Monitor",
+            en = "Whitelist Monitor test message",
+        )
+    }
+
+    private fun localized(ru: String, en: String): String {
+        val language = _uiState.value.userSettings.language
+        val useEnglish = when (language) {
+            AppLanguage.ENGLISH -> true
+            AppLanguage.RUSSIAN -> false
+            AppLanguage.SYSTEM -> Locale.getDefault().language.equals("en", ignoreCase = true)
+        }
+        return if (useEnglish) en else ru
     }
 
     private fun resolveLastCheckDisplayState(
@@ -1830,13 +1981,5 @@ class MainViewModel(
 
     companion object {
         private const val TAG = "MainViewModel"
-        private const val PREPARE_SUCCESS_MESSAGE =
-            "Поиск chat_id начат. Теперь отправь боту новое сообщение, например /start или id test, " +
-                "затем нажми «Получить chat_id»."
-        private const val RESET_DISCOVERY_MESSAGE =
-            "Поиск chat_id сброшен. Нажми «Начать получение chat_id», затем отправь боту новое сообщение."
-        private const val RECENT_CHATS_STATUS =
-            "Показаны последние чаты из getUpdates. Проверь, что это нужный чат."
-        private const val TEST_MESSAGE_TEXT = "Тестовое сообщение Whitelist Monitor"
     }
 }

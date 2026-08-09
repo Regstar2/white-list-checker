@@ -122,6 +122,20 @@
     <string name="diagnostics_site_error_tls">Ошибка TLS</string>
     <string name="diagnostics_site_error_http">Ошибка HTTP</string>
     <string name="diagnostics_site_error_unknown">Неизвестная ошибка</string>
+    <string name="whitelist_state_display_unknown">⚪ Неизвестное состояние</string>
+    <string name="whitelist_state_display_whitelist_off">🟢 Белые списки не обнаружены</string>
+    <string name="whitelist_state_display_whitelist_on">🟠 Похоже на включённые белые списки</string>
+    <string name="whitelist_state_display_no_mobile_internet">🔴 Мобильного интернета нет</string>
+    <string name="whitelist_state_display_mobile_dns_failure">🟡 Проблема DNS в мобильной сети</string>
+    <string name="whitelist_state_display_partial_problem">🟡 Частичная проблема сети</string>
+    <string name="whitelist_state_display_cellular_unavailable">⚪ Мобильная сеть недоступна</string>
+    <string name="whitelist_state_description_mobile_dns_failure">Встроенная DNS-проверка не получила ответа от настроенных DNS-серверов через мобильную сеть. Проверь доступность DNS-серверов и ограничения мобильной сети.</string>
+    <string name="whitelist_state_description_cellular_unavailable">Android не дал cellular Network. Мобильные данные, SIM или сигнал могут быть недоступны.</string>
+    <string name="whitelist_event_display_turned_on">🟠 Белые списки включились</string>
+    <string name="whitelist_event_display_turned_off">🟢 Белые списки выключились</string>
+    <string name="whitelist_event_display_manual_check">📊 Результат проверки</string>
+    <string name="whitelist_event_display_test_message">✉️ Тестовое сообщение</string>
+    <string name="whitelist_event_display_other_confirmed_change">⚪ Подтверждённое изменение состояния</string>
     <string name="home_action_settings_title">Настройки</string>
     <string name="home_action_settings_subtitle">Язык и тема</string>
     <string name="home_action_about_title">О приложении</string>
@@ -378,6 +392,7 @@
     <string name="notifications_chat_type_supergroup">Супергруппа</string>
     <string name="notifications_chat_type_channel">Канал</string>
     <string name="notifications_chat_type_unknown">Неизвестно</string>
+    <string name="notifications_chat_no_name">Чат без имени</string>
     <string name="notifications_queue_state_title">Состояние очереди</string>
     <string name="notifications_queue_pending_label">В очереди</string>
     <string name="notifications_queue_sent_label">Отправлено</string>
@@ -487,6 +502,7 @@
     <string name="statistics_value_unknown">Неизвестно</string>
     <string name="statistics_value_corrupted">Данные повреждены</string>
     <string name="statistics_current_status_label">ТЕКУЩИЙ СТАТУС</string>
+    <string name="statistics_whitelist_summary_current">Сейчас</string>
     <string name="statistics_status_whitelist_on">Похоже на включённые белые списки</string>
     <string name="statistics_status_whitelist_off">Белые списки не обнаружены</string>
     <string name="statistics_status_unknown_binary">Нет бинарного статуса</string>
