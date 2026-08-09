@@ -27,6 +27,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import com.whitelistchecker.R
+import com.whitelistchecker.domain.model.DnsServerAddress
 import com.whitelistchecker.domain.model.DnsServerProtocol
 import com.whitelistchecker.domain.model.EditableCheckTarget
 import com.whitelistchecker.domain.model.EditableDnsServer
@@ -420,7 +421,7 @@ private fun validateDns(
     servers: List<EditableDnsServer>,
 ): Int? {
     if (name.isBlank()) return R.string.check_settings_error_name_empty
-    if (!isValidIpv4Literal(address)) return R.string.check_settings_error_dns_ipv4
+    if (!DnsServerAddress.isValidIpv4Literal(address)) return R.string.check_settings_error_dns_ipv4
     if (port == null || port !in 1..65535) return R.string.check_settings_error_port
     if (
         servers.any { server ->
@@ -432,18 +433,6 @@ private fun validateDns(
         return R.string.check_settings_error_dns_duplicate
     }
     return null
-}
-
-private fun isValidIpv4Literal(value: String): Boolean {
-    val parts = value.trim().split('.')
-    if (parts.size != 4) return false
-    return parts.all { part ->
-        val number = part.toIntOrNull()
-        part.isNotEmpty() &&
-            part.all(Char::isDigit) &&
-            number != null && number in 0..255 &&
-            (part == "0" || !part.startsWith('0'))
-    }
 }
 
 private const val TAB_SITES = 0
