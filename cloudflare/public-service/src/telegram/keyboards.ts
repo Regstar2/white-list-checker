@@ -1,4 +1,4 @@
-import { OPERATORS, REGIONS } from "../domain/catalog";
+import { OPERATORS, REGIONS, type OperatorInfo, type RegionInfo } from "../domain/catalog";
 import type { LinkedDeviceRecord } from "../types";
 import type { InlineKeyboard } from "./telegramClient";
 
@@ -31,8 +31,8 @@ export function statusKeyboard(): InlineKeyboard {
   ];
 }
 
-export function regionKeyboard(): InlineKeyboard {
-  const rows = chunk(REGIONS.map((region) => ({
+export function regionKeyboard(regions: RegionInfo[] = REGIONS): InlineKeyboard {
+  const rows = chunk(regions.map((region) => ({
     text: region.label,
     callback_data: `v1:region:${region.code}`,
   })), 2);
@@ -40,8 +40,8 @@ export function regionKeyboard(): InlineKeyboard {
   return rows;
 }
 
-export function operatorKeyboard(): InlineKeyboard {
-  const rows = chunk(OPERATORS.map((operator) => ({
+export function operatorKeyboard(operators: OperatorInfo[] = OPERATORS): InlineKeyboard {
+  const rows = chunk(operators.map((operator) => ({
     text: operator.label,
     callback_data: `v1:operator:${operator.code}`,
   })), 2);
