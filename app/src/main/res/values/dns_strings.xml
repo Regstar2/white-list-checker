@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="check_settings_title">Настройки проверки</string>
+    <string name="check_settings_tab_sites">Сайты</string>
+    <string name="check_settings_tab_dns">DNS</string>
+    <string name="check_settings_foreign_sites">Внешние сайты</string>
+    <string name="check_settings_local_sites">Локальные сайты</string>
+    <string name="check_settings_foreign_dns">Внешние DNS</string>
+    <string name="check_settings_local_dns">Локальные DNS</string>
+    <string name="check_settings_new_site">Новый сайт</string>
+    <string name="check_settings_new_dns">Новый DNS</string>
+    <string name="check_settings_name">Название</string>
+    <string name="check_settings_url">URL</string>
+    <string name="check_settings_address">Адрес</string>
+    <string name="check_settings_port">Порт</string>
+    <string name="check_settings_protocol">Протокол</string>
+    <string name="check_settings_group">Группа</string>
+    <string name="check_settings_group_foreign">Внешние</string>
+    <string name="check_settings_group_local">Локальные</string>
+    <string name="check_settings_dns_protocol_raw">DNS / UDP + TCP</string>
+    <string name="check_settings_save_site">Сохранить сайт</string>
+    <string name="check_settings_save_dns">Сохранить DNS</string>
+    <string name="check_settings_add_site">Добавить сайт</string>
+    <string name="check_settings_add_dns">Добавить DNS</string>
+    <string name="check_settings_reset_sites">Сбросить сайты по умолчанию</string>
+    <string name="check_settings_reset_dns">Сбросить DNS по умолчанию</string>
+    <string name="check_settings_no_sites">Нет сайтов в этой группе.</string>
+    <string name="check_settings_no_dns">Нет DNS в этой группе.</string>
+    <string name="check_settings_delete_dns">Удалить DNS</string>
+    <string name="check_settings_last_dns_hint">Хотя бы один DNS должен оставаться включённым для независимой проверки при Private DNS.</string>
+    <string name="check_settings_error_name_empty">Название не может быть пустым</string>
+    <string name="check_settings_error_url_scheme">URL должен начинаться с https:// или http://</string>
+    <string name="check_settings_error_dns_ipv4">Для DNS/53 укажите literal IPv4-адрес, например 1.1.1.1</string>
+    <string name="check_settings_error_port">Порт должен быть от 1 до 65535</string>
+    <string name="check_settings_error_dns_duplicate">DNS с таким адресом, портом и протоколом уже существует</string>
+</resources>
