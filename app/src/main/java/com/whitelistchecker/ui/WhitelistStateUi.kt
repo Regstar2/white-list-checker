@@ -25,8 +25,8 @@ fun WhitelistState.toPlainLabel(): String = when (this) {
 
 fun WhitelistState.toDescription(): String? = when (this) {
     WhitelistState.MOBILE_DNS_FAILURE ->
-        "Мобильная сеть получена, но домены не резолвятся. " +
-            "Проверь Private DNS, APN и DNS оператора."
+        "Встроенная DNS-проверка не получила ответа от настроенных DNS-серверов " +
+            "через мобильную сеть. Проверь доступность DNS-серверов и ограничения мобильной сети."
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE ->
         "Android не дал cellular Network. Мобильные данные, SIM или сигнал могут быть недоступны."
     else -> null
