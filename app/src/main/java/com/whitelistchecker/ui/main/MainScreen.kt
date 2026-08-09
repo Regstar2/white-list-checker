@@ -14,7 +14,6 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
 import com.whitelistchecker.ui.autocheck.AutoCheckScreen
 import com.whitelistchecker.ui.checksettings.CheckSettingsScreen
-import com.whitelistchecker.ui.checksettings.DnsSettingsViewModel
 import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
 import com.whitelistchecker.ui.navigation.AppScreen
@@ -25,10 +24,8 @@ import com.whitelistchecker.ui.statistics.StatisticsScreen
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
-    dnsSettingsViewModel: DnsSettingsViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val dnsUiState by dnsSettingsViewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
@@ -99,16 +96,16 @@ fun MainScreen(
             onClearQueue = viewModel::clearPendingTelegramReports,
         )
         AppScreen.CHECK_SETTINGS -> CheckSettingsScreen(
-            uiState = uiState.copy(dnsServers = dnsUiState.servers),
+            uiState = uiState,
             onBack = viewModel::goHome,
             onToggleTarget = viewModel::setCheckTargetEnabled,
             onAddTarget = viewModel::addCheckTarget,
             onResetTargets = viewModel::resetCheckTargets,
             onRemoveTarget = viewModel::removeCheckTarget,
-            onToggleDns = dnsSettingsViewModel::setEnabled,
-            onAddDns = dnsSettingsViewModel::add,
-            onResetDns = dnsSettingsViewModel::reset,
-            onRemoveDns = dnsSettingsViewModel::remove,
+            onToggleDns = viewModel::setDnsServerEnabled,
+            onAddDns = viewModel::addDnsServer,
+            onResetDns = viewModel::resetDnsServers,
+            onRemoveDns = viewModel::removeDnsServer,
         )
         AppScreen.AUTO_CHECK -> AutoCheckScreen(
             uiState = uiState,
