@@ -2,11 +2,11 @@ package com.whitelistchecker.ui.statistics
 
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.DatePicker
 import androidx.compose.material3.DatePickerDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -17,136 +17,96 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
-import com.whitelistchecker.domain.statistics.WhitelistBinaryState
-import com.whitelistchecker.domain.statistics.WhitelistTimelineBucket
-import com.whitelistchecker.domain.statistics.WhitelistTimelineDashboard
+import com.whitelistchecker.R
 import com.whitelistchecker.domain.statistics.WhitelistTimelinePeriod
 import com.whitelistchecker.domain.statistics.WhitelistTimelinePeriodBucketBuilder
 import com.whitelistchecker.domain.statistics.WhitelistTimelineSample
 import com.whitelistchecker.ui.components.AppCard
-import com.whitelistchecker.ui.components.CompactDetailRow
 import java.time.DayOfWeek
 import java.time.Instant
 import java.time.LocalDate
 import java.time.YearMonth
-import java.time.ZoneId
 import java.time.ZoneOffset
 
-@OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun WhitelistTimelineContent(
-    dashboard: WhitelistTimelineDashboard,
+    selectedPeriod: TimelinePeriodOption,
+    selectedDate: LocalDate,
+    currentDate: LocalDate,
+    selectedTimelinePeriod: WhitelistTimelinePeriod,
+    onSelectedPeriodChange: (TimelinePeriodOption) -> Unit,
+    onSelectedDateChange: (LocalDate) -> Unit,
+    onPickDate: () -> Unit,
+    onResetCurrentPeriod: () -> Unit,
 ) {
-    val resources = LocalContext.current.resources
-    val zoneId = remember { ZoneId.systemDefault() }
-    val periodBucketBuilder = remember(zoneId) { WhitelistTimelinePeriodBucketBuilder(zoneId) }
-    val currentDate = remember(dashboard.generatedAtMillis, zoneId) {
-        Instant.ofEpochMilli(dashboard.generatedAtMillis).atZone(zoneId).toLocalDate()
-    }
-    val nowMillis = remember(dashboard.lastUpdatedAt) { System.currentTimeMillis() }
-    var selectedPeriod by remember { mutableStateOf(TimelinePeriodOption.DAY) }
-    var selectedDate by remember(dashboard.generatedAtMillis) { mutableStateOf(currentDate) }
-    var showDatePicker by remember { mutableStateOf(false) }
-    val onPercent = StatisticsValueFormatter.formatPercentFraction(dashboard.whitelistOnPercent)
-        .ifBlank { "Нет данных" }
-    val selectedTimelinePeriod = remember(
-        dashboard.samples,
-        periodBucketBuilder,
-        selectedPeriod,
-        selectedDate,
-    ) {
-        selectedPeriod.build(
-            builder = periodBucketBuilder,
-            samples = dashboard.samples,
-            anchorDate = selectedDate,
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        PeriodTypeSelector(
+            selectedPeriod = selectedPeriod,
+            onSelectedPeriodChange = onSelectedPeriodChange,
         )
-    }
-
-    AppCard(title = "Белые списки во времени") {
-        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            CompactDetailRow("Сейчас", dashboard.currentState.toDisplayLabel())
-            CompactDetailRow(
-                "Последний бинарный статус",
-                StatisticsValueFormatter.formatRelativeTime(resources, dashboard.currentStateAtMillis, nowMillis),
-            )
-            CompactDetailRow("БС были за период", onPercent)
-            CompactDetailRow("Сэмплов ON/OFF", "${dashboard.binarySamples}/${dashboard.totalSamples}")
-        }
-    }
-
-    AppCard(title = "График") {
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PeriodTypeSelector(
-                selectedPeriod = selectedPeriod,
-                onSelectedPeriodChange = { selectedPeriod = it },
-            )
-            PeriodNavigator(
-                selectedPeriod = selectedPeriod,
-                selectedDate = selectedDate,
-                currentDate = currentDate,
-                selectedTimelinePeriod = selectedTimelinePeriod,
-                onSelectedDateChange = { selectedDate = it },
-                onPickDate = { showDatePicker = true },
-            )
-            BinaryTimelineChart(buckets = selectedTimelinePeriod.buckets)
-        }
-    }
-
-    if (showDatePicker) {
-        PeriodDatePickerDialog(
+        PeriodNavigator(
             selectedPeriod = selectedPeriod,
             selectedDate = selectedDate,
-            onDateSelected = { selectedDate = it },
-            onDismiss = { showDatePicker = false },
+            currentDate = currentDate,
+            selectedTimelinePeriod = selectedTimelinePeriod,
+            onSelectedDateChange = onSelectedDateChange,
+            onPickDate = onPickDate,
+            onResetCurrentPeriod = onResetCurrentPeriod,
         )
+        AppCard(title = null) {
+            BinaryTimelineChart(buckets = selectedTimelinePeriod.buckets)
+        }
     }
 }
 
 @Composable
 fun WhitelistTimelineEmptyContent() {
-    AppCard(title = "Белые списки во времени") {
+    AppCard(title = stringResource(R.string.statistics_history_title)) {
         Text(
-            text = "Пока нет сохранённых бинарных статусов WHITELIST_ON / WHITELIST_OFF.",
+            text = stringResource(R.string.statistics_timeline_empty_message),
             style = MaterialTheme.typography.bodyMedium,
         )
         Text(
-            text = "Выполни несколько проверок, чтобы появился график.",
+            text = stringResource(R.string.statistics_timeline_empty_hint),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PeriodTypeSelector(
     selectedPeriod: TimelinePeriodOption,
     onSelectedPeriodChange: (TimelinePeriodOption) -> Unit,
 ) {
-    FlowRow(
+    Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.spacedBy(6.dp),
-        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         TimelinePeriodOption.entries.forEach { option ->
             FilterChip(
                 selected = selectedPeriod == option,
                 onClick = { onSelectedPeriodChange(option) },
-                label = { Text(option.label) },
+                label = {
+                    Text(
+                        text = option.label(),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                },
+                modifier = Modifier.weight(1f),
             )
         }
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun PeriodNavigator(
     selectedPeriod: TimelinePeriodOption,
@@ -155,45 +115,57 @@ private fun PeriodNavigator(
     selectedTimelinePeriod: WhitelistTimelinePeriod,
     onSelectedDateChange: (LocalDate) -> Unit,
     onPickDate: () -> Unit,
+    onResetCurrentPeriod: () -> Unit,
 ) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    val previousDescription = stringResource(R.string.statistics_previous_period)
+    val nextDescription = stringResource(R.string.statistics_next_period)
+    val isCurrentPeriod = selectedPeriod.periodStart(selectedDate) == selectedPeriod.periodStart(currentDate)
+
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             OutlinedButton(
                 onClick = { onSelectedDateChange(selectedPeriod.shift(selectedDate, -1)) },
-                modifier = Modifier.width(52.dp),
+                modifier = Modifier
+                    .width(52.dp)
+                    .defaultMinSize(minHeight = 48.dp)
+                    .semantics { contentDescription = previousDescription },
             ) {
                 Text("<")
             }
-            Text(
-                text = "${selectedPeriod.title}: ${selectedTimelinePeriod.title}",
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.titleSmall,
-                textAlign = TextAlign.Center,
-            )
+            TextButton(
+                onClick = onPickDate,
+                modifier = Modifier
+                    .weight(1f)
+                    .defaultMinSize(minHeight = 48.dp),
+            ) {
+                Text(
+                    text = selectedTimelinePeriod.title,
+                    style = MaterialTheme.typography.titleSmall,
+                    textAlign = TextAlign.Center,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
             OutlinedButton(
                 onClick = { onSelectedDateChange(selectedPeriod.shift(selectedDate, 1)) },
                 enabled = selectedPeriod.isBeforeCurrent(selectedDate, currentDate),
-                modifier = Modifier.width(52.dp),
+                modifier = Modifier
+                    .width(52.dp)
+                    .defaultMinSize(minHeight = 48.dp)
+                    .semantics { contentDescription = nextDescription },
             ) {
                 Text(">")
             }
         }
-        FlowRow(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
-            TextButton(onClick = onPickDate) {
-                Text("Выбрать")
-            }
+        if (!isCurrentPeriod) {
             TextButton(
-                onClick = { onSelectedDateChange(currentDate) },
-                enabled = selectedPeriod.periodStart(selectedDate) != selectedPeriod.periodStart(currentDate),
+                onClick = onResetCurrentPeriod,
+                modifier = Modifier.widthIn(min = 48.dp),
             ) {
-                Text("Текущий")
+                Text(stringResource(R.string.statistics_go_to_current_period))
             }
         }
     }
@@ -201,7 +173,7 @@ private fun PeriodNavigator(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun PeriodDatePickerDialog(
+fun PeriodDatePickerDialog(
     selectedPeriod: TimelinePeriodOption,
     selectedDate: LocalDate,
     onDateSelected: (LocalDate) -> Unit,
@@ -222,12 +194,12 @@ private fun PeriodDatePickerDialog(
                     onDismiss()
                 },
             ) {
-                Text("Выбрать")
+                Text(stringResource(R.string.statistics_select_period_confirm))
             }
         },
         dismissButton = {
             TextButton(onClick = onDismiss) {
-                Text("Отмена")
+                Text(stringResource(R.string.statistics_select_period_cancel))
             }
         },
     ) {
@@ -235,7 +207,7 @@ private fun PeriodDatePickerDialog(
             state = pickerState,
             title = {
                 Text(
-                    text = selectedPeriod.pickerTitle,
+                    text = selectedPeriod.pickerTitle(),
                     modifier = Modifier.fillMaxWidth(),
                     textAlign = TextAlign.Center,
                 )
@@ -244,23 +216,31 @@ private fun PeriodDatePickerDialog(
     }
 }
 
-private fun WhitelistBinaryState.toDisplayLabel(): String {
-    return when (this) {
-        WhitelistBinaryState.ON -> "Похоже на включённые белые списки"
-        WhitelistBinaryState.OFF -> "Белые списки не обнаружены"
-        WhitelistBinaryState.UNKNOWN -> "Нет бинарного статуса"
-    }
-}
+enum class TimelinePeriodOption {
+    DAY,
+    WEEK,
+    MONTH,
+    YEAR;
 
-private enum class TimelinePeriodOption(
-    val label: String,
-    val title: String,
-    val pickerTitle: String,
-) {
-    DAY("День", "День", "Выбрать день"),
-    WEEK("Неделя", "Неделя", "Выбрать неделю"),
-    MONTH("Месяц", "Месяц", "Выбрать месяц"),
-    YEAR("Год", "Год", "Выбрать год");
+    @Composable
+    fun label(): String {
+        return when (this) {
+            DAY -> stringResource(R.string.statistics_period_day)
+            WEEK -> stringResource(R.string.statistics_period_week)
+            MONTH -> stringResource(R.string.statistics_period_month)
+            YEAR -> stringResource(R.string.statistics_period_year)
+        }
+    }
+
+    @Composable
+    fun pickerTitle(): String {
+        return when (this) {
+            DAY -> stringResource(R.string.statistics_pick_day)
+            WEEK -> stringResource(R.string.statistics_pick_week)
+            MONTH -> stringResource(R.string.statistics_pick_month)
+            YEAR -> stringResource(R.string.statistics_pick_year)
+        }
+    }
 
     fun build(
         builder: WhitelistTimelinePeriodBucketBuilder,
@@ -299,10 +279,10 @@ private enum class TimelinePeriodOption(
     }
 }
 
-private fun LocalDate.toUtcDateMillis(): Long {
+fun LocalDate.toUtcDateMillis(): Long {
     return atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 }
 
-private fun Long.toUtcLocalDate(): LocalDate {
+fun Long.toUtcLocalDate(): LocalDate {
     return Instant.ofEpochMilli(this).atZone(ZoneOffset.UTC).toLocalDate()
 }

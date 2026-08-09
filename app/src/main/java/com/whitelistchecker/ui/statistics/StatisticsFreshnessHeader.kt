@@ -12,42 +12,37 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.whitelistchecker.R
-import com.whitelistchecker.ui.components.CompactDetailRow
-import com.whitelistchecker.ui.components.StatusChip
-import com.whitelistchecker.ui.components.StatusTone
 
 @Composable
 fun StatisticsFreshnessHeader(freshness: StatisticsFreshnessUi) {
     val resources = LocalContext.current.resources
-    val nowMillis = remember(freshness.dataUpdatedAt) { System.currentTimeMillis() }
+    val nowMillis = remember(freshness.dataUpdatedAt, freshness.lastCheckAt) { System.currentTimeMillis() }
+    val updatedAt = StatisticsValueFormatter.formatRelativeTime(resources, freshness.dataUpdatedAt, nowMillis)
+    val lastCheck = when (freshness.lastCheckStatus) {
+        LastCheckTechnicalStatus.PARTIAL -> stringResource(R.string.statistics_last_check_partial_short)
+        else -> StatisticsValueFormatter.formatRelativeTime(resources, freshness.lastCheckAt, nowMillis)
+    }
+    val freshnessText = if (freshness.isStale) {
+        stringResource(R.string.statistics_freshness_stale_compact, updatedAt)
+    } else {
+        stringResource(R.string.statistics_freshness_compact, updatedAt, lastCheck)
+    }
+
     Column(
         modifier = Modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(2.dp),
     ) {
-        if (freshness.isStale) {
-            StatusChip(
-                text = stringResource(R.string.statistics_data_stale),
-                tone = StatusTone.WARNING,
-            )
-        }
+        Text(
+            text = freshnessText,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
         if (freshness.isLowSample) {
             Text(
-                text = stringResource(R.string.statistics_low_sample_hint),
+                text = stringResource(R.string.statistics_low_sample_compact_hint),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        CompactDetailRow(
-            stringResource(R.string.statistics_updated_at),
-            StatisticsValueFormatter.formatRelativeTime(resources, freshness.dataUpdatedAt, nowMillis),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_last_check),
-            StatisticsValueFormatter.formatRelativeTime(resources, freshness.lastCheckAt, nowMillis),
-        )
-        CompactDetailRow(
-            stringResource(R.string.statistics_last_check_status),
-            StatisticsValueFormatter.formatTechnicalCheckStatus(resources, freshness.lastCheckStatus),
-        )
     }
 }

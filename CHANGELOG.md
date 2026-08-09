@@ -1,5 +1,32 @@
 # Changelog
 
+## 0.10.4 — Statistics UI Redesign & Local Export
+
+### Added
+
+- Добавлен компактный `whitelist-first` dashboard экрана «Статистика»: freshness-строка, главный hero-блок текущего бинарного статуса, две ключевые метрики и отдельный блок истории.
+- Добавлен локальный экспорт статистики через Android Storage Access Framework без storage permissions.
+- Добавлены форматы экспорта `CSV`, `JSON` и `TXT` с выбранным периодом графика или всей локально загруженной историей.
+- Добавлен чистый `StatisticsExportBuilder` с unit-тестами для CSV escaping, UTF-8 BOM, JSON escaping/null/statuses, scope DAY/WEEK/MONTH/YEAR, all history и boundary timestamps.
+- Добавлен документ версии `docs/versions/v0.10.4.md`.
+
+### Changed
+
+- Выбор периода `День / Неделя / Месяц / Год` и выбранная дата подняты на уровень экрана статистики, чтобы график и export использовали одни и те же границы `startMillis/endMillis`.
+- Навигация по периоду упрощена до строки со стрелками, центральной датой и компактным действием «К текущему» только для прошлого периода.
+- Большой технический dashboard убран с основного экрана статистики; диагностика остаётся доступной через компактную navigation-card.
+- Легенда timeline и новые пользовательские строки вынесены в Android resources.
+- Версия Android-приложения поднята до `0.10.4` / `versionCode 25`.
+
+### Privacy
+
+- Экспорт полностью локальный и не отправляется в Telegram, Cloudflare Worker, public service, аналитику или другие внешние сервисы.
+- В export не включаются Telegram secrets, chat_id, device tokens, auth headers, SIM/IMEI/IMSI, Wi-Fi SSID/BSSID, координаты и внутренние ID.
+
+### Not changed
+
+- Не изменялись classifier, network checker, DNS checker, VPN/Private DNS logic, WorkManager, Telegram, Cloudflare Worker, public service, D1 и Room schema.
+
 ## 0.9.0 — Custom DNS and Private DNS independence
 
 ### Added
