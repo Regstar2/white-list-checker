@@ -5,6 +5,7 @@ import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.whitelistchecker.domain.model.EditableDnsServer
 import kotlinx.coroutines.flow.Flow
@@ -24,7 +25,8 @@ class DnsServersRepository(
     fun observeServers(): Flow<List<EditableDnsServer>> {
         return dataStore.data.map { preferences ->
             val stored = DnsServersJsonCodec.decode(preferences[Keys.SERVERS_JSON])
-            DefaultDnsServers.mergeNewBuiltIns(stored)
+            val removedBuiltInIds = preferences[Keys.REMOVED_BUILT_IN_IDS].orEmpty()
+            DefaultDnsServers.mergeNewBuiltIns(stored, removedBuiltInIds)
         }
     }
 
@@ -48,7 +50,16 @@ class DnsServersRepository(
         val current = getServers()
         val target = current.firstOrNull { it.id == id } ?: return false
         if (target.enabled && current.count { it.enabled } <= 1) return false
-        saveServers(current.filterNot { it.id == id })
+        val remaining = current.filterNot { it.id == id }
+        if (target.builtIn) {
+            dataStore.edit { preferences ->
+                preferences[Keys.SERVERS_JSON] = DnsServersJsonCodec.encode(remaining)
+                preferences[Keys.REMOVED_BUILT_IN_IDS] =
+                    preferences[Keys.REMOVED_BUILT_IN_IDS].orEmpty() + target.id
+            }
+        } else {
+            saveServers(remaining)
+        }
         return true
     }
 
@@ -65,7 +76,10 @@ class DnsServersRepository(
     }
 
     suspend fun resetToDefaults() {
-        saveServers(DefaultDnsServers.defaults())
+        dataStore.edit { preferences ->
+            preferences[Keys.SERVERS_JSON] = DnsServersJsonCodec.encode(DefaultDnsServers.defaults())
+            preferences[Keys.REMOVED_BUILT_IN_IDS] = emptySet()
+        }
     }
 
     private suspend fun saveServers(servers: List<EditableDnsServer>) {
@@ -76,5 +90,6 @@ class DnsServersRepository(
 
     private object Keys {
         val SERVERS_JSON = stringPreferencesKey("dns_servers_json")
+        val REMOVED_BUILT_IN_IDS = stringSetPreferencesKey("removed_builtin_dns_ids")
     }
 }
