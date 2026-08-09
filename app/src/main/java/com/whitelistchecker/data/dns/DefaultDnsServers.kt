@@ -32,10 +32,14 @@ object DefaultDnsServers {
         ),
     )
 
-    fun mergeNewBuiltIns(storedServers: List<EditableDnsServer>): List<EditableDnsServer> {
-        if (storedServers.isEmpty()) return defaults()
+    fun mergeNewBuiltIns(
+        storedServers: List<EditableDnsServer>,
+        removedBuiltInIds: Set<String> = emptySet(),
+    ): List<EditableDnsServer> {
         val storedIds = storedServers.map { it.id }.toSet()
-        val additions = defaults().filterNot { it.id in storedIds }
+        val additions = defaults().filter { default ->
+            default.id !in storedIds && default.id !in removedBuiltInIds
+        }
         return storedServers + additions
     }
 
