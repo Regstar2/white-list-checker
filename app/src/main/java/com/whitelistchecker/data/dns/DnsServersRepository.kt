@@ -9,7 +9,9 @@ import androidx.datastore.preferences.core.stringSetPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.whitelistchecker.domain.model.EditableDnsServer
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.map
 
 private val Context.dnsServersDataStore: DataStore<Preferences> by preferencesDataStore(
@@ -22,12 +24,15 @@ class DnsServersRepository(
 
     constructor(context: Context) : this(context.applicationContext.dnsServersDataStore)
 
-    fun observeServers(): Flow<List<EditableDnsServer>> {
-        return dataStore.data.map { preferences ->
-            val stored = DnsServersJsonCodec.decode(preferences[Keys.SERVERS_JSON])
-            val removedBuiltInIds = preferences[Keys.REMOVED_BUILT_IN_IDS].orEmpty()
-            DefaultDnsServers.mergeNewBuiltIns(stored, removedBuiltInIds)
-        }
+    fun observeServers(): Flow<List<EditableDnsServer>> = flow {
+        initializeIfNeeded()
+        emitAll(
+            dataStore.data.map { preferences ->
+                val stored = DnsServersJsonCodec.decode(preferences[Keys.SERVERS_JSON])
+                val removedBuiltInIds = preferences[Keys.REMOVED_BUILT_IN_IDS].orEmpty()
+                DefaultDnsServers.mergeNewBuiltIns(stored, removedBuiltInIds)
+            },
+        )
     }
 
     suspend fun getServers(): List<EditableDnsServer> = observeServers().first()
@@ -79,6 +84,16 @@ class DnsServersRepository(
         dataStore.edit { preferences ->
             preferences[Keys.SERVERS_JSON] = DnsServersJsonCodec.encode(DefaultDnsServers.defaults())
             preferences[Keys.REMOVED_BUILT_IN_IDS] = emptySet()
+        }
+    }
+
+    private suspend fun initializeIfNeeded() {
+        val preferences = dataStore.data.first()
+        if (preferences[Keys.SERVERS_JSON] != null) return
+        dataStore.edit { mutablePreferences ->
+            if (mutablePreferences[Keys.SERVERS_JSON] == null) {
+                mutablePreferences[Keys.SERVERS_JSON] = DnsServersJsonCodec.encode(DefaultDnsServers.defaults())
+            }
         }
     }
 
