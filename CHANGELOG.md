@@ -1,5 +1,45 @@
 # Changelog
 
+## 0.9.0 — Custom DNS and Private DNS independence
+
+### Added
+
+- Добавлен отдельный редактируемый список DNS-серверов с группами `FOREIGN` и `LOCAL`, сохранением в DataStore, включением/отключением, удалением и reset defaults.
+- Добавлены встроенные DNS Cloudflare `1.1.1.1`, Google `8.8.8.8`, Yandex `77.88.8.8` и `77.88.8.1` со стабильными ID.
+- Добавлен `CellularDnsResolver` с raw DNS через UDP/53, TCP/53 fallback при truncated response, A/AAAA resolution и cache на один check run.
+- Добавлен `CellularDnsProbe` с typed DNS errors, latency и отдельными FOREIGN/LOCAL summaries.
+- Добавлен `DnsWhitelistSignal` как второй независимый диагностический канал.
+- Добавлена диагностика Android Private DNS и признака `customDnsUsed`.
+- Экран «Настройки проверки» разделён на вкладки «Сайты» и «DNS».
+- Добавлены unit tests defaults, JSON codec, DNS classifier, resolver fallback/cache, malformed/NXDOMAIN/TCP fallback и orchestration check flow.
+- Добавлен документ версии `docs/versions/v0.9.0.md`.
+
+### Changed
+
+- Target HTTPS checks переведены на OkHttp session с `cellular Network.socketFactory` и custom `Dns`, без отключения TLS/certificate/hostname verification.
+- `WhitelistCheckUseCase` удерживает один cellular `Network` на DNS probe, hostname resolution и HTTPS target checks и освобождает callback после всего run.
+- Сайты остаются первичным источником классификации; конфликт site/DNS signals даёт осторожный `PARTIAL_PROBLEM`.
+- DNS-only блокировка не создаёт `WHITELIST_ON`.
+- `NetworkCheckResult` и подробный отчёт получили структурированные DNS и Private DNS diagnostics.
+- Пользовательские строки нового DNS UI и подробной диагностики вынесены в Android resources.
+- `AGENTS.md` и `docs/network-routing-notes.md` обновлены под custom-DNS architecture.
+- Версия приложения поднята до `0.9.0` / `versionCode 24`.
+
+### Compatibility
+
+- Существующий DataStore сайтов и остальные пользовательские настройки не меняются.
+- DNS используют отдельный DataStore; defaults создаются автоматически при первом использовании.
+- Удалённые built-in DNS не возвращаются после перезапуска благодаря tombstones; Reset восстанавливает стандартный набор.
+- Public Service JSON contract не расширяется DNS diagnostics автоматически.
+
+### Known Issues
+
+- Custom DNS endpoint в v0.9.0 принимает literal IPv4; IPv6 endpoint пока не поддержан.
+- Raw DNS/53 не шифруется.
+- Custom DNS не гарантирует обход произвольного VPN.
+- Figma-макет не удалось автоматически сверить через MCP из-за лимита Figma integration; функциональная структура UI реализована по ТЗ.
+- Сборка, unit tests, ADB installation и manual phone tests должны быть фактически запущены в среде с Android SDK/ADB перед merge/release.
+
 ## 0.8.16 - migrate existing relay Worker to public service
 
 ### Added
