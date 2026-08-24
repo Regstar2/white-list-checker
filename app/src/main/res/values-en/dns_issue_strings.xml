@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dns_issue_home_headline">Could not resolve domains through the mobile network</string>
+    <string name="dns_issue_display_label">🟡 Could not resolve domains through the mobile network</string>
+    <string name="dns_issue_plain_label">Could not resolve domains through the mobile network</string>
+    <string name="dns_issue_description">All site checks failed while resolving hostnames on the acquired cellular network. Unreachable individual public DNS resolvers alone do not trigger this status.</string>
+</resources>
