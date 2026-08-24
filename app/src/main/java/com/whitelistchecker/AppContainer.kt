@@ -11,9 +11,6 @@ import com.whitelistchecker.data.db.AppDatabase
 import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.monitor.MonitorStateRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
-import com.whitelistchecker.data.publicservice.PendingPublicReportRepository
-import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
-import com.whitelistchecker.data.publicservice.SecureDeviceTokenStore
 import com.whitelistchecker.data.resources.AndroidDetailedReportTextProvider
 import com.whitelistchecker.data.settings.UserSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
@@ -54,15 +51,6 @@ import com.whitelistchecker.domain.notifications.LocalNotificationEventUseCase
 import com.whitelistchecker.domain.notifications.LocalNotificationFormatter
 import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChecker
 import com.whitelistchecker.domain.notifications.LocalNotificationSender
-import com.whitelistchecker.domain.publicservice.PublicReportPayloadBuilder
-import com.whitelistchecker.domain.publicservice.PublicReportUploadUseCase
-import com.whitelistchecker.domain.publicservice.MobileOperatorDetector
-import com.whitelistchecker.domain.publicservice.PublicServiceClient
-import com.whitelistchecker.domain.publicservice.PublicServiceAreaDetector
-import com.whitelistchecker.domain.publicservice.PublicServiceLinkUseCase
-import com.whitelistchecker.domain.publicservice.PublicServiceRegistrationUseCase
-import com.whitelistchecker.domain.publicservice.PublicServiceRemoteCommandLoop
-import com.whitelistchecker.domain.publicservice.PublicServiceUrlBuilder
 import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
 import com.whitelistchecker.domain.telegram.DetailedReportFormatter
@@ -84,7 +72,6 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
     private val appVersionProvider = PackageAppVersionProvider(appContext)
-    val publicServiceBaseUrl: String = BuildConfig.PUBLIC_SERVICE_BASE_URL
 
     val database: AppDatabase = AppDatabase.getInstance(appContext)
 
@@ -136,17 +123,10 @@ class AppContainer(context: Context) {
         whitelistTimelineRepository = whitelistTimelineRepository,
     )
     val localNotificationSettingsRepository = LocalNotificationSettingsRepository(appContext)
-    val publicServiceSettingsRepository = PublicServiceSettingsRepository(appContext)
-    private val secureDeviceTokenStore = SecureDeviceTokenStore(appContext)
-    val publicServiceAreaDetector = PublicServiceAreaDetector(appContext)
-    val mobileOperatorDetector = MobileOperatorDetector(appContext)
     val telegramSettingsRepository = TelegramSettingsRepository(appContext)
     val userSettingsRepository = UserSettingsRepository(appContext)
     val pendingTelegramReportRepository = PendingTelegramReportRepository(
         dao = database.pendingTelegramReportDao(),
-    )
-    val pendingPublicReportRepository = PendingPublicReportRepository(
-        dao = database.pendingPublicReportDao(),
     )
     val checkTargetsRepository = CheckTargetsRepository(appContext)
     val dnsServersRepository = DnsServersRepository(appContext)
@@ -174,38 +154,6 @@ class AppContainer(context: Context) {
             .retryOnConnectionFailure(true)
             .build(),
         workerUrlBuilder = WorkerUrlBuilder(),
-    )
-
-    private val publicServiceClient = PublicServiceClient(
-        httpClient = OkHttpClient.Builder()
-            .connectTimeout(10, TimeUnit.SECONDS)
-            .readTimeout(20, TimeUnit.SECONDS)
-            .writeTimeout(10, TimeUnit.SECONDS)
-            .callTimeout(30, TimeUnit.SECONDS)
-            .retryOnConnectionFailure(true)
-            .build(),
-        urlBuilder = PublicServiceUrlBuilder(publicServiceBaseUrl),
-    )
-
-    val publicServiceRegistrationUseCase = PublicServiceRegistrationUseCase(
-        settingsRepository = publicServiceSettingsRepository,
-        tokenStore = secureDeviceTokenStore,
-        client = publicServiceClient,
-        appVersionProvider = appVersionProvider::versionName,
-    )
-
-    val publicReportUploadUseCase = PublicReportUploadUseCase(
-        settingsRepository = publicServiceSettingsRepository,
-        pendingReportRepository = pendingPublicReportRepository,
-        registrationUseCase = publicServiceRegistrationUseCase,
-        client = publicServiceClient,
-        payloadBuilder = PublicReportPayloadBuilder(appVersionProvider::versionName),
-    )
-
-    val publicServiceLinkUseCase = PublicServiceLinkUseCase(
-        settingsRepository = publicServiceSettingsRepository,
-        registrationUseCase = publicServiceRegistrationUseCase,
-        client = publicServiceClient,
     )
 
     val telegramChatIdResolverUseCase = TelegramChatIdResolverUseCase(
@@ -279,15 +227,6 @@ class AppContainer(context: Context) {
         saveCheckHistoryUseCase = saveCheckHistoryUseCase,
         localStatisticsWriter = localStatisticsWriter,
         whitelistTimelineWriter = whitelistTimelineWriter,
-        publicReportUploadUseCase = publicReportUploadUseCase,
-    )
-
-    val publicServiceRemoteCommandLoop = PublicServiceRemoteCommandLoop(
-        settingsRepository = publicServiceSettingsRepository,
-        registrationUseCase = publicServiceRegistrationUseCase,
-        publicServiceClient = publicServiceClient,
-        checkAndNotifyUseCase = checkAndNotifyUseCase,
-        appVersionProvider = appVersionProvider,
     )
 
     private val telegramCommandHandler = TelegramCommandHandler(
