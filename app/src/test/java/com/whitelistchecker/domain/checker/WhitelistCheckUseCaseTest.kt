@@ -17,6 +17,7 @@ import com.whitelistchecker.domain.model.WhitelistState
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.mock
@@ -75,7 +76,7 @@ class WhitelistCheckUseCaseTest {
     }
 
     @Test
-    fun execute_noDnsAccess_doesNotCreateWhitelistOnFalsePositive() = runTest {
+    fun execute_noDnsAccess_butSiteChecksSucceed_keepsClearSiteResult() = runTest {
         val network: Network = mock()
         val foreignTarget = target("foreign", TargetGroup.FOREIGN)
         val localTarget = target("local", TargetGroup.LOCAL)
@@ -85,20 +86,66 @@ class WhitelistCheckUseCaseTest {
             dnsResult(foreignDns, available = false, latency = 100),
             dnsResult(localDns, available = false, latency = 100),
         )
+        val resolver: CellularDnsResolver = mock()
+        val session: MobileSiteChecker.Session = mock()
 
         whenever(targetsRepository.getEnabledTargets()).thenReturn(listOf(foreignTarget, localTarget))
         whenever(dnsServersRepository.getEnabledServers()).thenReturn(listOf(foreignDns, localDns))
         whenever(cellularNetworkProvider.requestCellularNetwork()).thenReturn(CellularNetworkRequestResult(network))
         whenever(privateDnsDiagnosticsProvider.read(network)).thenReturn(PrivateDnsDiagnostics(false, null))
         whenever(dnsProbe.probe(network, listOf(foreignDns, localDns))).thenReturn(dnsResults)
-        whenever(networkDiagnosticsUseCase.diagnoseDnsConnectivity(network)).thenReturn("diagnostic")
+        whenever(dnsResolverFactory.create(network, emptyList())).thenReturn(resolver)
+        whenever(mobileSiteChecker.createSession(network, resolver)).thenReturn(session)
+        whenever(session.checkTarget(foreignTarget)).thenReturn(siteResult(foreignTarget, available = true))
+        whenever(session.checkTarget(localTarget)).thenReturn(siteResult(localTarget, available = true))
+
+        val result = useCase().execute()
+
+        assertFalse(result.customDnsUsed)
+        assertEquals(WhitelistState.WHITELIST_OFF, result.state)
+        assertNull(result.diagnosticsMessage)
+        verify(dnsResolverFactory).create(network, emptyList())
+        verify(mobileSiteChecker).createSession(network, resolver)
+        verify(networkDiagnosticsUseCase, never()).diagnoseDnsConnectivity(network)
+        verify(cellularNetworkProvider).release()
+    }
+
+    @Test
+    fun execute_noDnsAccess_andAllSiteChecksFailDns_returnsConfirmedDnsFailure() = runTest {
+        val network: Network = mock()
+        val foreignTarget = target("foreign", TargetGroup.FOREIGN)
+        val localTarget = target("local", TargetGroup.LOCAL)
+        val foreignDns = dns("foreign-dns", "1.1.1.1", TargetGroup.FOREIGN)
+        val localDns = dns("local-dns", "77.88.8.8", TargetGroup.LOCAL)
+        val dnsResults = listOf(
+            dnsResult(foreignDns, available = false, latency = 100),
+            dnsResult(localDns, available = false, latency = 100),
+        )
+        val resolver: CellularDnsResolver = mock()
+        val session: MobileSiteChecker.Session = mock()
+
+        whenever(targetsRepository.getEnabledTargets()).thenReturn(listOf(foreignTarget, localTarget))
+        whenever(dnsServersRepository.getEnabledServers()).thenReturn(listOf(foreignDns, localDns))
+        whenever(cellularNetworkProvider.requestCellularNetwork()).thenReturn(CellularNetworkRequestResult(network))
+        whenever(privateDnsDiagnosticsProvider.read(network)).thenReturn(PrivateDnsDiagnostics(false, null))
+        whenever(dnsProbe.probe(network, listOf(foreignDns, localDns))).thenReturn(dnsResults)
+        whenever(dnsResolverFactory.create(network, emptyList())).thenReturn(resolver)
+        whenever(mobileSiteChecker.createSession(network, resolver)).thenReturn(session)
+        whenever(session.checkTarget(foreignTarget)).thenReturn(
+            siteResult(foreignTarget, available = false, errorType = SiteCheckErrorType.DNS),
+        )
+        whenever(session.checkTarget(localTarget)).thenReturn(
+            siteResult(localTarget, available = false, errorType = SiteCheckErrorType.DNS),
+        )
 
         val result = useCase().execute()
 
         assertFalse(result.customDnsUsed)
         assertEquals(WhitelistState.MOBILE_DNS_FAILURE, result.state)
-        assertFalse(result.state == WhitelistState.WHITELIST_ON)
-        verify(dnsResolverFactory, never()).create(network, emptyList())
+        assertNull(result.diagnosticsMessage)
+        verify(dnsResolverFactory).create(network, emptyList())
+        verify(mobileSiteChecker).createSession(network, resolver)
+        verify(networkDiagnosticsUseCase, never()).diagnoseDnsConnectivity(network)
         verify(cellularNetworkProvider).release()
     }
 
@@ -154,12 +201,16 @@ class WhitelistCheckUseCaseTest {
         resolvedAddressesCount = if (available) 1 else 0,
     )
 
-    private fun siteResult(target: CheckTarget, available: Boolean) = SiteCheckResult(
+    private fun siteResult(
+        target: CheckTarget,
+        available: Boolean,
+        errorType: SiteCheckErrorType = if (available) SiteCheckErrorType.NONE else SiteCheckErrorType.CONNECTION,
+    ) = SiteCheckResult(
         target = target,
         available = available,
         httpCode = if (available) 200 else null,
         error = if (available) null else "failed",
-        errorType = if (available) SiteCheckErrorType.NONE else SiteCheckErrorType.CONNECTION,
+        errorType = errorType,
         durationMs = 50,
     )
 }
