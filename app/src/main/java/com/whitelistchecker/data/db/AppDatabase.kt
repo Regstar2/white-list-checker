@@ -20,8 +20,6 @@ import com.whitelistchecker.data.statistics.DailyCheckStatisticsEntity
 import com.whitelistchecker.data.statistics.NetworkStatisticsEntity
 import com.whitelistchecker.data.statistics.RouteKindStatisticsEntity
 import com.whitelistchecker.data.statistics.TargetStatisticsEntity
-import com.whitelistchecker.data.publicservice.PendingPublicReportDao
-import com.whitelistchecker.data.publicservice.PendingPublicReportEntity
 import com.whitelistchecker.data.telegram.PendingTelegramReportDao
 import com.whitelistchecker.data.telegram.PendingTelegramReportEntity
 import com.whitelistchecker.data.timeline.WhitelistTimelineDao
@@ -42,9 +40,8 @@ import com.whitelistchecker.data.timeline.WhitelistTimelineSampleEntity
         WhitelistDailyAvailabilityEntity::class,
         WhitelistTargetAvailabilityEntity::class,
         WhitelistTimelineSampleEntity::class,
-        PendingPublicReportEntity::class,
     ],
-    version = 7,
+    version = 8,
     exportSchema = false,
 )
 abstract class AppDatabase : RoomDatabase() {
@@ -58,8 +55,6 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun whitelistAvailabilityDao(): WhitelistAvailabilityDao
 
     abstract fun whitelistTimelineDao(): WhitelistTimelineDao
-
-    abstract fun pendingPublicReportDao(): PendingPublicReportDao
 
     companion object {
         @Volatile
@@ -383,6 +378,12 @@ abstract class AppDatabase : RoomDatabase() {
             }
         }
 
+        private val MIGRATION_7_8 = object : Migration(7, 8) {
+            override fun migrate(db: SupportSQLiteDatabase) {
+                db.execSQL("DROP TABLE IF EXISTS pending_public_reports")
+            }
+        }
+
         fun getInstance(context: Context): AppDatabase {
             return instance ?: synchronized(this) {
                 instance ?: Room.databaseBuilder(
@@ -397,6 +398,7 @@ abstract class AppDatabase : RoomDatabase() {
                         MIGRATION_4_5,
                         MIGRATION_5_6,
                         MIGRATION_6_7,
+                        MIGRATION_7_8,
                     )
                     .build()
                     .also { instance = it }
