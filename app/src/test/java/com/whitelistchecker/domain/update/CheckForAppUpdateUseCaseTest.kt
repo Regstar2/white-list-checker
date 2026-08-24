@@ -2,7 +2,8 @@ package com.whitelistchecker.domain.update
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertIs
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class CheckForAppUpdateUseCaseTest {
@@ -18,8 +19,9 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        val result = assertIs<AppUpdateCheckResult.UpdateAvailable>(useCase.check())
-        assertEquals("v1.1.0", result.release.tagName)
+        val result = useCase.check()
+        assertTrue(result is AppUpdateCheckResult.UpdateAvailable)
+        assertEquals("v1.1.0", (result as AppUpdateCheckResult.UpdateAvailable).release.tagName)
     }
 
     @Test
@@ -31,7 +33,7 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        assertIs<AppUpdateCheckResult.UpToDate>(useCase.check())
+        assertTrue(useCase.check() is AppUpdateCheckResult.UpToDate)
     }
 
     @Test
@@ -43,8 +45,9 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        val result = assertIs<AppUpdateCheckResult.UpdateAvailable>(useCase.check())
-        assertEquals("v1.1.0", result.release.tagName)
+        val result = useCase.check()
+        assertTrue(result is AppUpdateCheckResult.UpdateAvailable)
+        assertEquals("v1.1.0", (result as AppUpdateCheckResult.UpdateAvailable).release.tagName)
     }
 
     @Test
@@ -57,7 +60,7 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        assertIs<AppUpdateCheckResult.UpToDate>(useCase.check())
+        assertTrue(useCase.check() is AppUpdateCheckResult.UpToDate)
     }
 
     @Test
@@ -67,8 +70,9 @@ class CheckForAppUpdateUseCaseTest {
             installedVersionProvider = { "1.0.0" },
         )
 
-        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
-        assertEquals(AppUpdateError.NETWORK, result.error)
+        val result = useCase.check()
+        assertTrue(result is AppUpdateCheckResult.Failure)
+        assertEquals(AppUpdateError.NETWORK, (result as AppUpdateCheckResult.Failure).error)
     }
 
     @Test
@@ -80,8 +84,9 @@ class CheckForAppUpdateUseCaseTest {
             installedVersionProvider = { "1.0.0" },
         )
 
-        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
-        assertEquals(AppUpdateError.RATE_LIMITED, result.error)
+        val result = useCase.check()
+        assertTrue(result is AppUpdateCheckResult.Failure)
+        assertEquals(AppUpdateError.RATE_LIMITED, (result as AppUpdateCheckResult.Failure).error)
     }
 
     @Test
@@ -95,9 +100,13 @@ class CheckForAppUpdateUseCaseTest {
             installedVersionProvider = { "dev" },
         )
 
-        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
-        assertEquals(AppUpdateError.INVALID_INSTALLED_VERSION, result.error)
-        assertEquals(false, sourceCalled)
+        val result = useCase.check()
+        assertTrue(result is AppUpdateCheckResult.Failure)
+        assertEquals(
+            AppUpdateError.INVALID_INSTALLED_VERSION,
+            (result as AppUpdateCheckResult.Failure).error,
+        )
+        assertFalse(sourceCalled)
     }
 
     private fun useCase(
