@@ -38,14 +38,8 @@ android {
         applicationId = "com.whitelistchecker"
         minSdk = 26
         targetSdk = 35
-        versionCode = 25
-        versionName = "0.10.4"
-
-        buildConfigField(
-            "String",
-            "PUBLIC_SERVICE_BASE_URL",
-            "\"https://whitelist-monitor-tg-relay.carkov195.workers.dev\"",
-        )
+        versionCode = 26
+        versionName = "1.0.0"
     }
 
     signingConfigs {
@@ -60,14 +54,6 @@ android {
     }
 
     buildTypes {
-        debug {
-            buildConfigField(
-                "String",
-                "PUBLIC_SERVICE_BASE_URL",
-                "\"https://whitelist-monitor-tg-relay.carkov195.workers.dev\"",
-            )
-        }
-
         release {
             isMinifyEnabled = false
             if (hasReleaseSigning) {
