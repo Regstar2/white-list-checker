@@ -107,6 +107,11 @@ fun AboutScreen(
                     )
                 }
                 is AppUpdateUiState.Available -> {
+                    val releaseNotes = if (updateUiState.release.notes.isBlank()) {
+                        stringResource(R.string.update_release_notes_empty)
+                    } else {
+                        updateUiState.release.notes
+                    }
                     Text(
                         text = stringResource(
                             R.string.update_available_inline,
@@ -124,9 +129,7 @@ fun AboutScreen(
                         style = MaterialTheme.typography.labelLarge,
                     )
                     Text(
-                        text = updateUiState.release.notes.ifBlank {
-                            stringResource(R.string.update_release_notes_empty)
-                        },
+                        text = releaseNotes,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 8,
