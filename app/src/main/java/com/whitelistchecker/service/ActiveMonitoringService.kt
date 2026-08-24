@@ -28,7 +28,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicBoolean
-import java.util.UUID
 
 class ActiveMonitoringService : Service() {
 
@@ -38,15 +37,10 @@ class ActiveMonitoringService : Service() {
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
     private var monitoringJob: Job? = null
     private var telegramCommandsJob: Job? = null
-    private var publicServiceJob: Job? = null
-    private var serviceSessionId: String = UUID.randomUUID().toString()
-    private var serviceStartedAtMillis: Long = 0L
 
     override fun onCreate() {
         super.onCreate()
         running.set(true)
-        serviceStartedAtMillis = System.currentTimeMillis()
-        serviceSessionId = UUID.randomUUID().toString()
         appContainer.channelManager.ensureChannelsCreated()
     }
 
@@ -75,7 +69,6 @@ class ActiveMonitoringService : Service() {
         running.set(false)
         monitoringJob?.cancel()
         telegramCommandsJob?.cancel()
-        publicServiceJob?.cancel()
         serviceScope.cancel()
         super.onDestroy()
     }
@@ -99,7 +92,6 @@ class ActiveMonitoringService : Service() {
                 repository.saveState(ActiveMonitoringState.RUNNING)
                 var settings = repository.getSettings()
                 startTelegramCommandsIfNeeded()
-                startPublicServiceSync()
                 startForegroundWithState(
                     state = ActiveMonitoringState.RUNNING,
                     settings = settings,
@@ -200,8 +192,6 @@ class ActiveMonitoringService : Service() {
         monitoringJob = null
         telegramCommandsJob?.cancel()
         telegramCommandsJob = null
-        publicServiceJob?.cancel()
-        publicServiceJob = null
         val status = repository.getStatus()
         val backgroundSettings = appContainer.backgroundCheckSettingsRepository.getSettings()
         if (status.backgroundWasEnabledBeforeStart && backgroundSettings.enabled) {
@@ -216,20 +206,6 @@ class ActiveMonitoringService : Service() {
         if (telegramCommandsJob?.isActive == true) return
         telegramCommandsJob = serviceScope.launch {
             appContainer.telegramCommandListener.runUntilCancelled()
-        }
-    }
-
-    private fun startPublicServiceSync() {
-        if (publicServiceJob?.isActive == true) return
-        publicServiceJob = serviceScope.launch {
-            appContainer.publicServiceRemoteCommandLoop.runUntilCancelled(
-                serviceSessionId = serviceSessionId,
-                serviceStartedAtMillis = serviceStartedAtMillis,
-                currentStateProvider = { appContainer.activeMonitoringRepository.getStatus().state },
-                checkInProgressProvider = {
-                    appContainer.activeMonitoringRepository.getStatus().state == ActiveMonitoringState.CHECKING
-                },
-            )
         }
     }
 
