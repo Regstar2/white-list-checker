@@ -1,10 +1,12 @@
-# WhiteListChecker v1.0 — current architecture
+# WhiteListChecker 1.0 — текущая архитектура
 
-## Product boundary
+## Граница продукта
 
-WhiteListChecker is an Android-first, local diagnostic application. Core checks, history, statistics, background monitoring, and local notifications do not depend on infrastructure operated by the project owner.
+WhiteListChecker — local-first Android-приложение для диагностики мобильной сети. Основные проверки, история, статистика, background monitoring и local notifications не зависят от инфраструктуры владельца проекта.
 
-The central/public service present in older versions was removed in v1.0. Historical release notes may still describe it.
+Центральный/public service старых версий удалён в `1.0.0`. Исторические release notes и version documents могут продолжать описывать его как часть прошлых версий.
+
+Канонический scope: [../product/mvp-scope.md](../product/mvp-scope.md). Технологический стек: [tech-stack.md](tech-stack.md).
 
 ## Runtime components
 
@@ -28,40 +30,68 @@ MainViewModel
    +-- ActiveMonitoringService
 ```
 
+`AppContainer` является composition root и явно соединяет platform/data implementations с domain use cases. UI отображает state и передаёт действия; checker/classification/persistence не реализуются внутри Compose components.
+
 ## Cellular network isolation
 
-The app explicitly acquires a cellular `Network` through `ConnectivityManager.requestNetwork(...)`. DNS sockets and target HTTP(S) connections are created through that network. The app does not use process-wide `bindProcessToNetwork`.
+Приложение явно получает cellular `Network` через `ConnectivityManager.requestNetwork(...)`. DNS sockets и target HTTP(S) connections создаются через этот network. Process-wide `bindProcessToNetwork` не используется.
 
-Custom DNS is preferred. UDP/53 failures that represent transport timeout/network failures can fall back to TCP/53. If configured public resolvers cannot resolve a target, hostname resolution may fall back to `Network.getAllByName(...)` on the acquired cellular network.
+Custom DNS является предпочтительным диагностическим resolver path. UDP/53 failures, представляющие transport timeout/network failure, могут использовать TCP/53 fallback. Если настроенные resolver не разрешают target, hostname resolution может fallback-иться на `Network.getAllByName(...)` на полученном cellular network.
 
-Site checks are the primary classification signal. DNS availability is secondary diagnostics and the failure of one or more public resolvers does not by itself produce `MOBILE_DNS_FAILURE`.
+Site checks являются основным классификационным сигналом. DNS availability — вторичная диагностика; недоступность одного или нескольких public resolver сама по себе не создаёт `MOBILE_DNS_FAILURE` при ясном site result.
+
+## Network / Proxy project exception
+
+Для основного checker действует намеренное исключение из универсального proxy-стандарта:
+
+> Proxy support: N/A by project-specific design — WhiteListChecker измеряет прямой маршрут cellular-сети; прокси/VPN изменяет измеряемый транспорт и может сделать результат диагностики недостоверным.
+
+Следовательно:
+
+- checker не предоставляет `System / Direct / Custom proxy` modes;
+- HTTP proxy, SOCKS5 и VPN/tunnel не являются checker transports;
+- скрытый fallback через proxy/VPN запрещён;
+- включённый VPN/tunnel рассматривается как ограничение достоверности прямого cellular measurement;
+- optional personal Telegram relay и будущий updater являются отдельными network integrations и должны документировать свой transport отдельно, не меняя checker path.
+
+Полная фиксация применимости стандартов: [../release/standards-compliance.md](../release/standards-compliance.md).
 
 ## Local persistence
 
-Room stores:
+Room хранит:
 
-- check history and per-target results;
+- check history и per-target results;
 - derived statistics;
 - whitelist timeline;
-- the queue for personal Telegram notifications.
+- очередь personal Telegram notifications.
 
-DataStore/shared preferences store application and monitoring settings.
+DataStore/shared preferences хранят application, checker, notification и monitoring settings.
 
-Schema v8 removes the obsolete `pending_public_reports` table through migration `7 -> 8`. The migration does not delete local history, statistics, targets, DNS configuration, or personal Telegram settings.
+Schema `8` удаляет устаревшую `pending_public_reports` миграцией `7 -> 8`. Миграция не удаляет local history, statistics, targets, DNS configuration или personal Telegram settings.
+
+Физический debug update `0.10.4 -> 1.0.0` без очистки app data подтвердил сохранение истории и отсутствие UI общего сервиса. Release-to-release certificate/update path остаётся отдельным release gate.
 
 ## Telegram integration
 
-Only the personal Telegram flow remains:
+Остаётся только personal Telegram flow:
 
 ```text
 Android -> user-owned Cloudflare Worker -> user's Telegram bot
 ```
 
-The user supplies the Worker URL and Relay Secret. The Worker is optional and is not operated by the WhiteListChecker project.
+Пользователь задаёт Worker URL и Relay Secret. Worker опционален и не управляется проектом WhiteListChecker.
 
-Active monitoring may listen for commands through this personal Worker when the user enables Telegram commands.
+Active monitoring может слушать команды через personal Worker, когда пользователь явно включает Telegram commands.
 
-## Removed in v1.0
+`BOT_TOKEN` находится только в Worker secrets и не хранится в Android APK.
+
+## Localization boundary
+
+Пользовательский UI использует Android resources с обязательными RU/EN locale. User-facing text, dialogs, notifications, accessibility descriptions и понятные ошибки должны проходить через resources; technical identifiers, protocols, URLs, machine-readable codes и developer logs могут оставаться стабильными техническими значениями.
+
+Неиспользуемые hardcoded UI helper labels удаляются, а не сохраняются как отдельная параллельная система локализации.
+
+## Removed in 1.0
 
 - project-owned central Cloudflare Worker;
 - public Telegram bot;
