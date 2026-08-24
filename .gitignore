@@ -45,14 +45,21 @@ captures/
 # Node / Cloudflare local artifacts
 node_modules/
 .wrangler/
-.env
 .dev.vars
+
+# Local environment and secret files
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.secrets
 
 # Secrets
 *.keystore
 *.jks
 
-# Log
+# Logs
 *.log
 
 # Syncthing / sync tool conflict copies
@@ -60,3 +67,26 @@ node_modules/
 
 # Local release artifacts (APK for GitHub upload)
 release/
+
+# -----------------------------------------------------------------------------
+# Private project governance files
+# Copied locally when needed; never published in the product repository.
+# -----------------------------------------------------------------------------
+/AGENTS.md
+/.project-rules/
+/README_TEMPLATE.md
+/README_TEMPLATE_EN.md
+/README_*_TEMPLATE.md
+/RELEASE_TEMPLATE.md
+/RELEASE_TEMPLATE_EN.md
+/RELEASE_*_TEMPLATE.md
+/GITHUB_RELEASE_BODY_TEMPLATE.md
+/CHANGELOG_TEMPLATE.md
+/docs/ai-prompts/
+/docs/private/
+
+# Local AI/tool state
+/.cursor/
+/.codex/
+/.claude/
+/.ai/
