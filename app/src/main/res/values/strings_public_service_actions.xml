@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="public_service_copy_link_code">Скопировать код привязки</string>
-    <string name="public_service_link_code_copied">Код привязки скопирован</string>
-</resources>
