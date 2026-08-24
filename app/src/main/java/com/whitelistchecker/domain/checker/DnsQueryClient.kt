@@ -48,9 +48,17 @@ internal class DnsQueryClient(
             )
         }
         return try {
-            val udpResponse = transport.queryUdp(network, server, query.bytes, timeoutMs)
-            val udpParsed = DnsPacketCodec.parseResponse(query, udpResponse)
-            val parsed = if (udpParsed.truncated) {
+            val udpParsed = try {
+                val udpResponse = transport.queryUdp(network, server, query.bytes, timeoutMs)
+                DnsPacketCodec.parseResponse(query, udpResponse)
+            } catch (exception: Exception) {
+                if (shouldFallbackToTcp(exception)) {
+                    null
+                } else {
+                    throw exception
+                }
+            }
+            val parsed = if (udpParsed == null || udpParsed.truncated) {
                 val tcpResponse = transport.queryTcp(network, server, query.bytes, timeoutMs)
                 DnsPacketCodec.parseResponse(query, tcpResponse)
             } else {
@@ -88,6 +96,12 @@ internal class DnsQueryClient(
                 error = describe(exception),
             )
         }
+    }
+
+    private fun shouldFallbackToTcp(exception: Exception): Boolean {
+        return exception is SocketTimeoutException ||
+            exception is ConnectException ||
+            exception is SocketException
     }
 
     private fun describe(exception: Exception): String {

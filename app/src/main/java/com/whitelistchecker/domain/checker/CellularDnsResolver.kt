@@ -11,6 +11,7 @@ class CellularDnsResolver internal constructor(
     private val network: Network,
     servers: List<EditableDnsServer>,
     private val queryExecutor: DnsQueryExecutor = DnsQueryClient(),
+    private val fallbackDns: Dns = CellularNetworkDns(network),
 ) : Dns {
 
     private val resolvers = servers.filter { it.enabled }.toList()
@@ -29,9 +30,6 @@ class CellularDnsResolver internal constructor(
     fun cachedHostCount(): Int = cache.size
 
     private fun resolveUncached(hostname: String): List<InetAddress> {
-        if (resolvers.isEmpty()) {
-            throw UnknownHostException("No enabled custom DNS resolvers are available")
-        }
         val failures = mutableListOf<String>()
         resolvers.forEach { server ->
             val aResult = queryExecutor.query(network, server, hostname, DnsRecordType.A)
@@ -50,16 +48,51 @@ class CellularDnsResolver internal constructor(
                 failures += "${server.name}/AAAA=${aaaaResult.errorType.name}"
             }
         }
-        throw UnknownHostException(
-            buildString {
-                append("Custom DNS could not resolve ")
-                append(hostname)
-                if (failures.isNotEmpty()) {
-                    append(": ")
-                    append(failures.joinToString())
-                }
-            },
-        )
+
+        return resolveThroughCellularNetwork(hostname, failures)
+    }
+
+    private fun resolveThroughCellularNetwork(
+        hostname: String,
+        customDnsFailures: List<String>,
+    ): List<InetAddress> {
+        return try {
+            val addresses = fallbackDns.lookup(hostname).distinctBy { it.hostAddress }
+            if (addresses.isEmpty()) {
+                throw UnknownHostException("Cellular network DNS returned no addresses for $hostname")
+            }
+            addresses
+        } catch (exception: UnknownHostException) {
+            throw UnknownHostException(
+                buildString {
+                    append("Could not resolve ")
+                    append(hostname)
+                    append(" through the cellular Network")
+                    if (customDnsFailures.isNotEmpty()) {
+                        append(" after custom DNS failures: ")
+                        append(customDnsFailures.joinToString())
+                    }
+                    exception.message?.takeIf { it.isNotBlank() }?.let { message ->
+                        append("; fallback=")
+                        append(message)
+                    }
+                },
+            )
+        }
+    }
+}
+
+internal class CellularNetworkDns(
+    private val network: Network,
+) : Dns {
+    override fun lookup(hostname: String): List<InetAddress> {
+        val normalized = hostname.trim()
+        if (normalized.isBlank()) throw UnknownHostException("Hostname is empty")
+        val addresses = network.getAllByName(normalized).toList().distinctBy { it.hostAddress }
+        if (addresses.isEmpty()) {
+            throw UnknownHostException("Cellular network DNS returned no addresses for $normalized")
+        }
+        return addresses
     }
 }
 

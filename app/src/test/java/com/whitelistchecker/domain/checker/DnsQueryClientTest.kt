@@ -8,6 +8,8 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.mockito.kotlin.mock
+import java.net.SocketException
+import java.net.SocketTimeoutException
 
 class DnsQueryClientTest {
 
@@ -57,6 +59,36 @@ class DnsQueryClientTest {
 
         assertTrue(result.successful)
         assertEquals(listOf("1.2.3.4"), result.addresses.map { it.hostAddress })
+        assertEquals(1, transport.tcpCalls)
+    }
+
+    @Test
+    fun query_udpTimeout_usesTcpFallback() {
+        val transport = FakeTransport(
+            udpResponse = { throw SocketTimeoutException("udp timeout") },
+            tcpResponse = { query -> response(query, address = byteArrayOf(4, 3, 2, 1)) },
+        )
+        val client = DnsQueryClient(transport)
+
+        val result = client.query(network, server, "example.com", DnsRecordType.A)
+
+        assertTrue(result.successful)
+        assertEquals(listOf("4.3.2.1"), result.addresses.map { it.hostAddress })
+        assertEquals(1, transport.tcpCalls)
+    }
+
+    @Test
+    fun query_udpNetworkFailure_usesTcpFallback() {
+        val transport = FakeTransport(
+            udpResponse = { throw SocketException("udp blocked") },
+            tcpResponse = { query -> response(query, address = byteArrayOf(9, 9, 9, 9)) },
+        )
+        val client = DnsQueryClient(transport)
+
+        val result = client.query(network, server, "example.com", DnsRecordType.A)
+
+        assertTrue(result.successful)
+        assertEquals(listOf("9.9.9.9"), result.addresses.map { it.hostAddress })
         assertEquals(1, transport.tcpCalls)
     }
 

@@ -29,7 +29,7 @@ class WhitelistCheckUseCase(
     private val mobileSiteChecker: MobileSiteChecker,
     private val dnsSignalClassifier: DnsWhitelistSignalClassifier,
     private val classifier: WhitelistStateClassifier,
-    private val networkDiagnosticsUseCase: NetworkDiagnosticsUseCase,
+    @Suppress("UNUSED_PARAMETER") networkDiagnosticsUseCase: NetworkDiagnosticsUseCase,
     private val privateDnsDiagnosticsProvider: PrivateDnsDiagnosticsProvider,
 ) {
 
@@ -80,33 +80,28 @@ class WhitelistCheckUseCase(
                 .map { it.server }
 
             val customDnsUsed = availableResolvers.isNotEmpty()
-            val siteResults = if (customDnsUsed) {
-                val resolver = dnsResolverFactory.create(cellularNetwork, availableResolvers)
-                val session = mobileSiteChecker.createSession(cellularNetwork, resolver)
-                coroutineScope {
-                    targets.map { target ->
-                        async {
-                            session.checkTarget(target)
-                        }
-                    }.awaitAll()
-                }
-            } else {
-                targets.map(::dnsUnavailableResult)
+            val resolver = dnsResolverFactory.create(cellularNetwork, availableResolvers)
+            val session = mobileSiteChecker.createSession(cellularNetwork, resolver)
+            val siteResults = coroutineScope {
+                targets.map { target ->
+                    async {
+                        session.checkTarget(target)
+                    }
+                }.awaitAll()
             }
 
             val foreignSummary = buildSiteSummary(TargetGroup.FOREIGN, siteResults)
             val localSummary = buildSiteSummary(TargetGroup.LOCAL, siteResults)
             val siteState = classifier.classifySites(foreignSummary, localSummary)
+            val dnsFailureConfirmed = siteResults.isNotEmpty() && siteResults.all { result ->
+                !result.available && result.errorType == SiteCheckErrorType.DNS
+            }
             val state = classifier.classify(
                 foreignSummary = foreignSummary,
                 localSummary = localSummary,
                 dnsSignal = dnsSignal,
+                dnsFailureConfirmed = dnsFailureConfirmed,
             )
-            val diagnosticsMessage = if (state == WhitelistState.MOBILE_DNS_FAILURE) {
-                networkDiagnosticsUseCase.diagnoseDnsConnectivity(cellularNetwork)
-            } else {
-                null
-            }
             NetworkCheckResult(
                 siteResults = siteResults,
                 foreignSummary = foreignSummary,
@@ -115,7 +110,7 @@ class WhitelistCheckUseCase(
                 activeNetworkLabel = activeNetworkLabel,
                 checkedNetworkLabel = checkedNetworkLabel,
                 checkedAtMillis = checkedAtMillis,
-                diagnosticsMessage = diagnosticsMessage,
+                diagnosticsMessage = null,
                 dnsResults = dnsResults,
                 foreignDnsSummary = foreignDnsSummary,
                 localDnsSummary = localDnsSummary,
@@ -170,17 +165,6 @@ class WhitelistCheckUseCase(
             group = group,
             availableCount = 0,
             totalCount = servers.count { it.group == group },
-        )
-    }
-
-    private fun dnsUnavailableResult(target: CheckTarget): SiteCheckResult {
-        return SiteCheckResult(
-            target = target,
-            available = false,
-            httpCode = null,
-            error = null,
-            errorType = SiteCheckErrorType.DNS,
-            durationMs = 0,
         )
     }
 

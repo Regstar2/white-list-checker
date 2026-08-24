@@ -66,7 +66,7 @@ object HomeLastCheckPresentationMapper {
             WhitelistState.WHITELIST_OFF -> R.string.home_result_state_whitelist_off
             WhitelistState.WHITELIST_ON -> R.string.home_result_state_whitelist_on
             WhitelistState.NO_MOBILE_INTERNET -> R.string.home_result_state_no_mobile_internet
-            WhitelistState.MOBILE_DNS_FAILURE -> R.string.home_result_state_mobile_dns_failure
+            WhitelistState.MOBILE_DNS_FAILURE -> R.string.dns_issue_home_headline
             WhitelistState.PARTIAL_PROBLEM -> R.string.home_result_state_partial_problem
             WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> R.string.home_result_state_cellular_unavailable
         }

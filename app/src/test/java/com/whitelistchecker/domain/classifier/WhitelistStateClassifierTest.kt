@@ -52,8 +52,26 @@ class WhitelistStateClassifierTest {
     }
 
     @Test
-    fun classify_dnsUnavailable_returnsMobileDnsFailure() {
+    fun classify_dnsUnavailableWithNormalSites_keepsWhitelistOff() {
         val state = classifyNormalSitePattern(DnsWhitelistSignal.NO_DNS_ACCESS)
+        assertEquals(WhitelistState.WHITELIST_OFF, state)
+    }
+
+    @Test
+    fun classify_dnsUnavailableWithWhitelistSites_keepsWhitelistOn() {
+        val state = classifyWhitelistSitePattern(DnsWhitelistSignal.NO_DNS_ACCESS)
+        assertEquals(WhitelistState.WHITELIST_ON, state)
+    }
+
+    @Test
+    fun classify_confirmedDnsFailure_returnsMobileDnsFailure() {
+        val state = classifier.classify(
+            foreignSummary = summary(TargetGroup.FOREIGN, available = 0, total = 2),
+            localSummary = summary(TargetGroup.LOCAL, available = 0, total = 2),
+            dnsSignal = DnsWhitelistSignal.NO_DNS_ACCESS,
+            dnsFailureConfirmed = true,
+        )
+
         assertEquals(WhitelistState.MOBILE_DNS_FAILURE, state)
     }
 

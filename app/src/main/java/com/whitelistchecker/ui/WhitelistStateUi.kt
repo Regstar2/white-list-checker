@@ -12,7 +12,7 @@ fun WhitelistState.toDisplayLabel(): String = when (this) {
     WhitelistState.WHITELIST_OFF -> stringResource(R.string.whitelist_state_display_whitelist_off)
     WhitelistState.WHITELIST_ON -> stringResource(R.string.whitelist_state_display_whitelist_on)
     WhitelistState.NO_MOBILE_INTERNET -> stringResource(R.string.whitelist_state_display_no_mobile_internet)
-    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.whitelist_state_display_mobile_dns_failure)
+    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.dns_issue_display_label)
     WhitelistState.PARTIAL_PROBLEM -> stringResource(R.string.whitelist_state_display_partial_problem)
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> stringResource(R.string.whitelist_state_display_cellular_unavailable)
 }
@@ -23,14 +23,14 @@ fun WhitelistState.toPlainLabel(): String = when (this) {
     WhitelistState.WHITELIST_OFF -> stringResource(R.string.diagnostics_state_whitelist_off)
     WhitelistState.WHITELIST_ON -> stringResource(R.string.diagnostics_state_whitelist_on)
     WhitelistState.NO_MOBILE_INTERNET -> stringResource(R.string.diagnostics_state_no_mobile_internet)
-    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.diagnostics_state_mobile_dns_failure)
+    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.dns_issue_plain_label)
     WhitelistState.PARTIAL_PROBLEM -> stringResource(R.string.diagnostics_state_partial_problem)
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> stringResource(R.string.diagnostics_state_cellular_unavailable)
 }
 
 @Composable
 fun WhitelistState.toDescription(): String? = when (this) {
-    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.whitelist_state_description_mobile_dns_failure)
+    WhitelistState.MOBILE_DNS_FAILURE -> stringResource(R.string.dns_issue_description)
     WhitelistState.CELLULAR_NETWORK_UNAVAILABLE -> stringResource(R.string.whitelist_state_description_cellular_unavailable)
     else -> null
 }

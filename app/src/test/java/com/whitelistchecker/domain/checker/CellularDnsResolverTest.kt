@@ -4,6 +4,7 @@ import android.net.Network
 import com.whitelistchecker.domain.model.DnsCheckErrorType
 import com.whitelistchecker.domain.model.EditableDnsServer
 import com.whitelistchecker.domain.model.TargetGroup
+import okhttp3.Dns
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
@@ -107,6 +108,43 @@ class CellularDnsResolverTest {
         assertFalse(executor.calls.any { it.first == disabled.id })
     }
 
+    @Test
+    fun lookup_noAvailableCustomResolvers_usesCellularNetworkFallback() {
+        val fallback = FakeDns(listOf(ipv4(10, 20, 30, 40)))
+        val executor = FakeDnsQueryExecutor { _, _ -> error("Custom DNS must not be called") }
+        val resolver = CellularDnsResolver(
+            network = network,
+            servers = emptyList(),
+            queryExecutor = executor,
+            fallbackDns = fallback,
+        )
+
+        val result = resolver.lookup("example.com")
+
+        assertEquals(listOf("10.20.30.40"), result.map { it.hostAddress })
+        assertEquals(listOf("example.com"), fallback.calls)
+        assertTrue(executor.calls.isEmpty())
+    }
+
+    @Test
+    fun lookup_customResolversFail_usesCellularNetworkFallback() {
+        val server = server("first", "1.1.1.1")
+        val executor = FakeDnsQueryExecutor { _, _ -> failure(DnsCheckErrorType.TIMEOUT) }
+        val fallback = FakeDns(listOf(ipv4(7, 7, 7, 7)))
+        val resolver = CellularDnsResolver(
+            network = network,
+            servers = listOf(server),
+            queryExecutor = executor,
+            fallbackDns = fallback,
+        )
+
+        val result = resolver.lookup("example.com")
+
+        assertEquals(listOf("7.7.7.7"), result.map { it.hostAddress })
+        assertEquals(listOf("example.com"), fallback.calls)
+        assertEquals(2, executor.calls.size)
+    }
+
     private fun server(id: String, address: String) = EditableDnsServer.create(
         id = id,
         name = id,
@@ -140,6 +178,17 @@ class CellularDnsResolverTest {
         ): DnsQueryResult {
             calls += server.id to type
             return result(server, type)
+        }
+    }
+
+    private class FakeDns(
+        private val addresses: List<InetAddress>,
+    ) : Dns {
+        val calls = mutableListOf<String>()
+
+        override fun lookup(hostname: String): List<InetAddress> {
+            calls += hostname
+            return addresses
         }
     }
 }
