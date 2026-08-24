@@ -1,80 +1,74 @@
 # Security Policy
 
-## Секреты
+## Модель безопасности v1.0
 
-WhiteListChecker не должен хранить Telegram `BOT_TOKEN` в Android-приложении.
+Начиная с `1.0.0`, WhiteListChecker не использует центральный публичный сервис. В Android runtime отсутствуют общий production Worker URL, public bot, device token, привязка устройства и server-side remote commands.
 
-`BOT_TOKEN` должен находиться только в Cloudflare Worker secrets.
+Проверки, история и статистика хранятся локально. Сетевой checker выполняет DNS/HTTPS операции через явно полученный cellular `Network`; TLS certificate и hostname verification для HTTPS target checks не отключаются.
 
-В Android-приложении пользователь вводит только:
+## Сетевая граница checker
+
+Основной checker измеряет прямой cellular-маршрут. Для него действует проектное исключение:
+
+> Proxy support: N/A by project-specific design — WhiteListChecker измеряет прямой маршрут cellular-сети; прокси/VPN изменяет измеряемый транспорт и может сделать результат диагностики недостоверным.
+
+Поэтому HTTP/SOCKS/VPN transport не добавляется в основной checker path и не используется как скрытый fallback. Если на устройстве включён VPN/tunnel и он меняет фактический маршрут, результат нельзя интерпретировать как чистое измерение прямого доступа мобильного оператора.
+
+## Личный Telegram Worker
+
+Telegram-интеграция остаётся опциональной и принадлежит пользователю:
+
+```text
+Android -> user-owned Cloudflare Worker -> user's Telegram bot
+```
+
+`BOT_TOKEN` должен храниться только в secrets пользовательского Cloudflare Worker и не должен попадать в Android-приложение или Git.
+
+В Android пользователь задаёт:
 
 - Worker URL;
 - Relay Secret;
-- Telegram chat_id / получателей.
-
-## Если секрет утёк
+- Telegram `chat_id` / получателей.
 
 ### Если утёк `RELAY_SECRET`
 
-1. Открой Cloudflare Worker.
-2. Замени `RELAY_SECRET` в Worker secrets.
-3. Обнови Relay Secret в приложении.
-4. Проверь Worker через приложение.
+1. Замените `RELAY_SECRET` в Worker secrets.
+2. Обновите Relay Secret в приложении.
+3. Повторно проверьте Worker из приложения.
 
 ### Если утёк `BOT_TOKEN`
 
-1. Открой BotFather.
-2. Выпусти новый token для бота.
-3. Обнови `BOT_TOKEN` в Cloudflare Worker secrets.
-4. Проверь Worker через приложение.
+1. Выпустите новый token через BotFather.
+2. Обновите `BOT_TOKEN` в Worker secrets.
+3. Повторно проверьте Worker из приложения.
 
-## Что не нужно публиковать
-
-Не публикуйте:
+## Не публиковать
 
 - `BOT_TOKEN`;
 - `RELAY_SECRET`;
-- `PUBLIC_BOT_TOKEN`;
-- `TELEGRAM_WEBHOOK_SECRET`;
-- `DEVICE_TOKEN_PEPPER`;
-- `ADMIN_API_SECRET`;
-- device token;
 - Authorization headers;
 - `local.properties`;
-- release keystore;
+- release keystore и пароли к нему;
 - приватные ключи;
-- реальные логи с секретами.
+- реальные логи, содержащие секреты или персональные данные;
+- `AGENTS.md`, `.project-rules/`, `.codex/` и другое локальное governance/AI-tool state.
 
-## Центральный публичный сервис
+`.gitignore` содержит отдельные правила для private governance, local AI/tool state, environment files и signing secrets.
 
-Центральный Cloudflare Worker использует отдельные secrets:
+Исторические документы старых версий могут упоминать удалённые secrets центрального сервиса. Они описывают прошлую архитектуру и не являются актуальными требованиями v1.0.
 
-- `PUBLIC_BOT_TOKEN`;
-- `TELEGRAM_WEBHOOK_SECRET`;
-- `DEVICE_TOKEN_PEPPER`;
-- `ADMIN_API_SECRET`.
+## Android permissions
 
-Android-приложение не хранит `PUBLIC_BOT_TOKEN` и не вызывает Telegram Bot API напрямую для центрального публичного бота.
+Приложению нужны сетевые разрешения для запроса cellular `Network`, foreground service и уведомлений. Разрешение приблизительного местоположения, ранее использовавшееся для определения региона общего сервиса, в v1.0 удалено.
 
-`BuildConfig.PUBLIC_SERVICE_BASE_URL` не является секретом: это только адрес центрального API. Он не должен содержать tokens, query parameters или пользовательский `Relay Secret`.
+## Release signing и обновления
 
-Device token центрального сервиса:
+Release keystore не хранится в репозитории. Release signing configuration передаётся локально через `WL_RELEASE_*` properties/environment/local properties.
 
-- возвращается Android только при регистрации установки;
-- хранится на устройстве через Android Keystore-backed encryption;
-- в D1 хранится только как hash/HMAC с server-side pepper;
-- не должен попадать в логи, UI, bug reports или документацию.
-
-Публичная статистика не должна раскрывать `installationId`, `chatId`, token hash или raw report отдельного устройства.
-
-Автоопределение региона и города:
-
-- запускается только по явному действию пользователя;
-- использует только приблизительное location permission;
-- не сохраняет и не отправляет координаты, raw address, улицу или postal code.
-
-Автоопределение оператора не должно читать номер телефона, IMEI, IMSI или SIM serial.
+Android разрешает in-place update только при совместимой подписи APK. Перед публикацией `1.0.0` нужно проверить сертификат финального release APK и совместимость обновления с официальным предыдущим release. `adb uninstall` не является допустимым способом проверки migration path, поскольку удаляет локальные данные.
 
 ## Сообщение об уязвимости
 
-Если вы нашли проблему безопасности, создайте GitHub Issue без публикации секретов и приватных данных.
+Для обычного bug report используйте публичные GitHub Issues проекта, но никогда не публикуйте там токены, Relay Secret, `chat_id`, приватные логи или другие чувствительные данные.
+
+Если проблема безопасности требует передачи секрета или приватных данных, не создавайте публичный Issue с этими данными. Публичного безопасного канала для передачи секретов этот документ не обещает; сначала свяжитесь с владельцем репозитория через доступный профильный контакт без отправки самого секрета.

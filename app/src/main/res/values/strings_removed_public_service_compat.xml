@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <!-- Temporary resource parity for stale English entries removed in the next resource cleanup. -->
     <string name="public_service_copy_link_code">Скопировать код привязки</string>
     <string name="public_service_link_code_copied">Код привязки скопирован</string>
 </resources>

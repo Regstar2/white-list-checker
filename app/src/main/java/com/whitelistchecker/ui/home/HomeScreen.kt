@@ -102,11 +102,6 @@ private fun QuickActionsSection(onOpenScreen: (AppScreen) -> Unit) {
                     iconRes = R.drawable.ic_home_action_schedule,
                 ) { onOpenScreen(AppScreen.AUTO_CHECK) },
                 ActionGridItem(
-                    titleRes = R.string.home_action_public_service_title,
-                    subtitleRes = R.string.home_action_public_service_subtitle,
-                    iconRes = R.drawable.ic_home_info,
-                ) { onOpenScreen(AppScreen.PUBLIC_SERVICE) },
-                ActionGridItem(
                     titleRes = R.string.home_action_diagnostics_title,
                     subtitleRes = R.string.home_action_diagnostics_subtitle,
                     iconRes = R.drawable.ic_home_action_diagnostics,

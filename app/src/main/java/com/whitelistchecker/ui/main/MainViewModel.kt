@@ -9,14 +9,12 @@ import com.whitelistchecker.data.check.LastCheckRepository
 import com.whitelistchecker.data.background.BackgroundCheckStatusRepository
 import com.whitelistchecker.data.dns.DnsServersRepository
 import com.whitelistchecker.data.notifications.LocalNotificationSettingsRepository
-import com.whitelistchecker.data.publicservice.PublicServiceSettingsRepository
 import com.whitelistchecker.data.settings.UserSettingsRepository
 import com.whitelistchecker.data.targets.CheckTargetsRepository
 import com.whitelistchecker.data.telegram.TelegramSettingsRepository
 import com.whitelistchecker.domain.active.ActiveMonitoringController
 import com.whitelistchecker.domain.check.LastCheckStateResolver
 import com.whitelistchecker.domain.model.ActiveMonitoringSettings
-import com.whitelistchecker.domain.model.ActiveMonitoringState
 import com.whitelistchecker.domain.model.BackgroundCheckSettings
 import com.whitelistchecker.domain.model.LastCheckDisplayState
 import com.whitelistchecker.domain.model.LastCheckLoadResult
@@ -26,14 +24,8 @@ import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.NetworkCheckResult
 import com.whitelistchecker.domain.model.NotificationPolicy
-import com.whitelistchecker.domain.model.AreaSource
 import com.whitelistchecker.domain.model.AppLanguage
 import com.whitelistchecker.domain.model.AppThemeMode
-import com.whitelistchecker.domain.model.DetectedOperator
-import com.whitelistchecker.domain.model.OperatorDetectionSource
-import com.whitelistchecker.domain.model.OperatorSelectionMode
-import com.whitelistchecker.domain.model.PublicServiceCatalog
-import com.whitelistchecker.domain.model.UserArea
 import com.whitelistchecker.domain.model.TelegramChatCandidate
 import com.whitelistchecker.domain.model.TelegramChatDiscoveryResult
 import com.whitelistchecker.domain.model.TelegramSendResult
@@ -41,11 +33,6 @@ import com.whitelistchecker.domain.model.TelegramSettings
 import com.whitelistchecker.domain.model.TelegramTestResult
 import com.whitelistchecker.domain.notifications.LocalNotificationChannelManager
 import com.whitelistchecker.domain.notifications.LocalNotificationPermissionChecker
-import com.whitelistchecker.domain.publicservice.PublicReportUploadUseCase
-import com.whitelistchecker.domain.publicservice.MobileOperatorDetector
-import com.whitelistchecker.domain.publicservice.PublicServiceAreaDetector
-import com.whitelistchecker.domain.publicservice.PublicServiceLinkUseCase
-import com.whitelistchecker.domain.publicservice.PublicServiceRegistrationUseCase
 import com.whitelistchecker.domain.system.AppSettingsNavigator
 import com.whitelistchecker.domain.checker.WhitelistCheckUseCase
 import com.whitelistchecker.domain.telegram.CheckAndNotifyUseCase
@@ -97,12 +84,6 @@ class MainViewModel(
     private val backgroundCheckScheduler: BackgroundCheckScheduler,
     private val activeMonitoringRepository: ActiveMonitoringRepository,
     private val activeMonitoringController: ActiveMonitoringController,
-    private val publicServiceSettingsRepository: PublicServiceSettingsRepository,
-    private val publicServiceAreaDetector: PublicServiceAreaDetector,
-    private val mobileOperatorDetector: MobileOperatorDetector,
-    private val publicServiceRegistrationUseCase: PublicServiceRegistrationUseCase,
-    private val publicServiceLinkUseCase: PublicServiceLinkUseCase,
-    private val publicReportUploadUseCase: PublicReportUploadUseCase,
     private val checkTargetsRepository: CheckTargetsRepository,
     private val dnsServersRepository: DnsServersRepository,
     private val detailedReportFormatter: DetailedReportFormatter,
@@ -126,7 +107,6 @@ class MainViewModel(
         refreshStatistics()
         observeBackgroundCheck()
         observeActiveMonitoring()
-        observePublicService()
         observeCheckTargets()
         observeDnsServers()
         observeUserSettings()
@@ -137,7 +117,6 @@ class MainViewModel(
         when (screen) {
             AppScreen.STATISTICS -> refreshStatistics(forStatisticsScreen = true)
             AppScreen.DIAGNOSTICS -> loadStatisticsDiagnostics()
-            AppScreen.PUBLIC_SERVICE -> refreshPublicServiceLinks()
             else -> Unit
         }
     }
@@ -585,445 +564,6 @@ class MainViewModel(
             activeMonitoringRepository.observeStatus().collect { status ->
                 _uiState.update { it.copy(activeMonitoringStatus = status) }
             }
-        }
-    }
-
-    private fun observePublicService() {
-        viewModelScope.launch {
-            publicServiceSettingsRepository.observeSettings().collect { settings ->
-                _uiState.update { it.copy(publicServiceSettings = settings) }
-            }
-        }
-        viewModelScope.launch {
-            publicServiceSettingsRepository.observeStatus().collect { status ->
-                _uiState.update { it.copy(publicServiceStatus = status) }
-            }
-        }
-    }
-
-    fun updatePublicServiceShareReports(enabled: Boolean) {
-        if (enabled) {
-            val validationError = validatePublicSharing(_uiState.value.publicServiceSettings)
-            if (validationError != null) {
-                _uiState.update { it.copy(errorMessage = validationError) }
-                return
-            }
-        }
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(shareReports = enabled),
-                errorMessage = null,
-            )
-        }
-    }
-
-    fun updatePublicServiceRemoteChecks(enabled: Boolean) {
-        _uiState.update {
-            it.copy(publicServiceSettings = it.publicServiceSettings.copy(allowRemoteChecks = enabled))
-        }
-    }
-
-    fun selectPublicServiceRegion(code: String) {
-        val region = PublicServiceCatalog.regionByCode(code) ?: return
-        val now = System.currentTimeMillis()
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    regionCode = region.code,
-                    regionName = region.label,
-                    cityCode = null,
-                    cityName = null,
-                    customCityName = null,
-                    areaSource = AreaSource.MANUAL_SELECTION,
-                    areaConfirmedByUser = region.code != "UNKNOWN",
-                    areaUpdatedAtMillis = now,
-                    shareReports = if (region.code == "UNKNOWN") false else it.publicServiceSettings.shareReports,
-                ),
-                pendingDetectedArea = null,
-            )
-        }
-    }
-
-    fun selectPublicServiceCity(cityCode: String?, customCityName: String? = null) {
-        val settings = _uiState.value.publicServiceSettings
-        val city = PublicServiceCatalog.cityByCode(cityCode)
-        val safeCustomCity = customCityName?.let(PublicServiceCatalog::sanitizeCustomCityName).orEmpty()
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = settings.copy(
-                    cityCode = city?.code,
-                    cityName = city?.label,
-                    customCityName = safeCustomCity.ifBlank { null },
-                    areaSource = AreaSource.MANUAL_SELECTION,
-                    areaConfirmedByUser = settings.regionCode != "UNKNOWN",
-                    areaUpdatedAtMillis = System.currentTimeMillis(),
-                ),
-            )
-        }
-    }
-
-    fun clearPublicServiceCity() {
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    cityCode = null,
-                    cityName = null,
-                    customCityName = null,
-                    areaSource = AreaSource.MANUAL_SELECTION,
-                    areaUpdatedAtMillis = System.currentTimeMillis(),
-                ),
-            )
-        }
-    }
-
-    fun selectPublicServiceOperator(code: String) {
-        val operator = PublicServiceCatalog.operatorByCode(code) ?: return
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    operatorCode = operator.code,
-                    operatorSelectionMode = OperatorSelectionMode.MANUAL,
-                    operatorSource = OperatorDetectionSource.MANUAL,
-                    operatorDisplayName = operator.label,
-                    operatorMccMnc = null,
-                    operatorUpdatedAtMillis = System.currentTimeMillis(),
-                    shareReports = if (operator.code == "UNKNOWN") false else it.publicServiceSettings.shareReports,
-                ),
-            )
-        }
-    }
-
-    fun useAutoPublicServiceOperator() {
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    operatorSelectionMode = OperatorSelectionMode.AUTO,
-                    operatorSource = OperatorDetectionSource.UNKNOWN,
-                ),
-            )
-        }
-        detectPublicServiceOperator()
-    }
-
-    fun detectPublicServiceArea() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isDetectingPublicServiceArea = true,
-                    pendingDetectedArea = null,
-                    errorMessage = null,
-                    publicServiceMessage = localized(
-                        ru = "Определяю регион и город",
-                        en = "Detecting region and city",
-                    ),
-                )
-            }
-            when (val result = publicServiceAreaDetector.detect()) {
-                is PublicServiceAreaDetector.AreaDetectionResult.Success -> {
-                    _uiState.update {
-                        it.copy(
-                            isDetectingPublicServiceArea = false,
-                            pendingDetectedArea = result.area,
-                            publicServiceMessage = localized(
-                                ru = "Местоположение определено. Подтвердите результат.",
-                                en = "Location detected. Confirm the result.",
-                            ),
-                        )
-                    }
-                }
-                is PublicServiceAreaDetector.AreaDetectionResult.Error -> {
-                    _uiState.update {
-                        it.copy(
-                            isDetectingPublicServiceArea = false,
-                            publicServiceMessage = null,
-                            errorMessage = result.message,
-                        )
-                    }
-                }
-            }
-        }
-    }
-
-    fun markPublicServiceLocationPermissionDenied() {
-        _uiState.update {
-            it.copy(
-                isDetectingPublicServiceArea = false,
-                pendingDetectedArea = null,
-                errorMessage = localized(
-                    ru = "Разрешение на приблизительное местоположение не выдано. Выберите регион вручную.",
-                    en = "Approximate location permission was not granted. Select the region manually.",
-                ),
-            )
-        }
-    }
-
-    fun confirmDetectedPublicServiceArea() {
-        val area = _uiState.value.pendingDetectedArea ?: return
-        val confirmed = area.copy(
-            confirmedByUser = true,
-            updatedAtMillis = System.currentTimeMillis(),
-        )
-        _uiState.update {
-            it.copy(
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    regionCode = confirmed.regionCode,
-                    regionName = confirmed.regionName,
-                    cityCode = confirmed.cityCode,
-                    cityName = confirmed.cityName,
-                    customCityName = confirmed.customCityName,
-                    areaSource = confirmed.source,
-                    areaConfirmedByUser = true,
-                    areaUpdatedAtMillis = confirmed.updatedAtMillis,
-                ),
-                pendingDetectedArea = null,
-                publicServiceMessage = localized(
-                    ru = "Местоположение подтверждено",
-                    en = "Location confirmed",
-                ),
-                errorMessage = null,
-            )
-        }
-    }
-
-    fun dismissDetectedPublicServiceArea() {
-        _uiState.update { it.copy(pendingDetectedArea = null) }
-    }
-
-    fun detectPublicServiceOperator() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isDetectingPublicServiceOperator = true,
-                    errorMessage = null,
-                    publicServiceMessage = localized(
-                        ru = "Определяю оператора мобильной сети",
-                        en = "Detecting mobile operator",
-                    ),
-                )
-            }
-            val detected = mobileOperatorDetector.detect()
-            if (detected.operatorCode.isNullOrBlank()) {
-                _uiState.update {
-                    it.copy(
-                        isDetectingPublicServiceOperator = false,
-                        publicServiceMessage = null,
-                        errorMessage = localized(
-                            ru = "Не удалось определить оператора автоматически. Выберите его вручную.",
-                            en = "Could not detect the operator automatically. Select it manually.",
-                        ),
-                    )
-                }
-                return@launch
-            }
-            applyDetectedOperator(detected)
-        }
-    }
-
-    fun updatePublicServiceDeviceAlias(value: String) {
-        _uiState.update {
-            it.copy(publicServiceSettings = it.publicServiceSettings.copy(deviceAlias = value.take(64)))
-        }
-    }
-
-    fun savePublicServiceSettings() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isSavingPublicServiceSettings = true,
-                    publicServiceMessage = null,
-                    errorMessage = null,
-                )
-            }
-            try {
-                val settings = _uiState.value.publicServiceSettings.resolveAutoOperatorIfNeeded()
-                val validationError = if (settings.shareReports) validatePublicSharing(settings) else null
-                if (validationError != null) {
-                    _uiState.update {
-                        it.copy(
-                            isSavingPublicServiceSettings = false,
-                            publicServiceSettings = settings.copy(shareReports = false),
-                            errorMessage = validationError,
-                        )
-                    }
-                    return@launch
-                }
-                publicServiceSettingsRepository.saveSettings(settings)
-                if (settings.shareReports || settings.allowRemoteChecks) {
-                    publicServiceRegistrationUseCase.saveSettingsToServer(settings)
-                    refreshPublicServiceLinks()
-                }
-                _uiState.update {
-                    it.copy(
-                        isSavingPublicServiceSettings = false,
-                        publicServiceMessage = localized(
-                            ru = "Настройки общего сервиса сохранены",
-                            en = "Public service settings saved",
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isSavingPublicServiceSettings = false,
-                        errorMessage = exception.message ?: exception.javaClass.simpleName,
-                    )
-                }
-            }
-        }
-    }
-
-    fun createPublicServiceLinkCode() {
-        viewModelScope.launch {
-            _uiState.update {
-                it.copy(
-                    isCreatingPublicServiceLinkCode = true,
-                    publicServiceMessage = null,
-                    errorMessage = null,
-                )
-            }
-            try {
-                publicServiceSettingsRepository.saveSettings(_uiState.value.publicServiceSettings.resolveAutoOperatorIfNeeded())
-                publicServiceLinkUseCase.createLinkCode()
-                _uiState.update {
-                    it.copy(
-                        isCreatingPublicServiceLinkCode = false,
-                        publicServiceMessage = localized(
-                            ru = "Код привязки создан",
-                            en = "Link code created",
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isCreatingPublicServiceLinkCode = false,
-                        errorMessage = exception.message ?: exception.javaClass.simpleName,
-                    )
-                }
-            }
-        }
-    }
-
-    fun refreshPublicServiceLinks() {
-        viewModelScope.launch {
-            try {
-                val settings = publicServiceSettingsRepository.getSettings()
-                if (!settings.isRegistered) {
-                    _uiState.update { it.copy(publicServiceLinks = emptyList()) }
-                    return@launch
-                }
-                val links = publicServiceLinkUseCase.refreshLinks()
-                _uiState.update { it.copy(publicServiceLinks = links) }
-            } catch (exception: Exception) {
-                _uiState.update { it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName) }
-            }
-        }
-    }
-
-    fun revokePublicServiceLink(linkId: String) {
-        viewModelScope.launch {
-            try {
-                publicServiceLinkUseCase.revokeLink(linkId)
-                refreshPublicServiceLinks()
-            } catch (exception: Exception) {
-                _uiState.update { it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName) }
-            }
-        }
-    }
-
-    fun retryPublicReportUpload() {
-        viewModelScope.launch {
-            try {
-                val result = publicReportUploadUseCase.flushQueue()
-                _uiState.update {
-                    it.copy(
-                        publicServiceMessage = localized(
-                            ru = "Отправлено: ${result.sentCount}, ошибок: ${result.failedCount}",
-                            en = "Sent: ${result.sentCount}, errors: ${result.failedCount}",
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update { it.copy(errorMessage = exception.message ?: exception.javaClass.simpleName) }
-            }
-        }
-    }
-
-    fun deletePublicServiceServerData() {
-        viewModelScope.launch {
-            _uiState.update { it.copy(isDeletingPublicServiceData = true) }
-            try {
-                publicServiceRegistrationUseCase.revokeServerData()
-                publicReportUploadUseCase.clearPendingReports()
-                _uiState.update {
-                    it.copy(
-                        isDeletingPublicServiceData = false,
-                        publicServiceLinks = emptyList(),
-                        publicServiceMessage = localized(
-                            ru = "Серверные данные установки удалены или отозваны",
-                            en = "Server data for this installation was deleted or revoked",
-                        ),
-                    )
-                }
-            } catch (exception: Exception) {
-                _uiState.update {
-                    it.copy(
-                        isDeletingPublicServiceData = false,
-                        errorMessage = exception.message ?: exception.javaClass.simpleName,
-                    )
-                }
-            }
-        }
-    }
-
-    private fun validatePublicSharing(settings: com.whitelistchecker.domain.model.PublicServiceSettings): String? {
-        return when {
-            settings.regionCode == "UNKNOWN" || !settings.areaConfirmedByUser ->
-                localized(
-                    ru = "Перед отправкой данных выберите и подтвердите регион",
-                    en = "Select and confirm a region before sending data",
-                )
-            settings.operatorCode == "UNKNOWN" ->
-                localized(
-                    ru = "Не удалось определить оператора. Выберите его вручную.",
-                    en = "Could not detect the operator. Select it manually.",
-                )
-            else -> null
-        }
-    }
-
-    private fun com.whitelistchecker.domain.model.PublicServiceSettings.resolveAutoOperatorIfNeeded():
-        com.whitelistchecker.domain.model.PublicServiceSettings {
-        if (operatorSelectionMode != OperatorSelectionMode.AUTO || operatorCode != "UNKNOWN") return this
-        val detected = mobileOperatorDetector.detect()
-        val code = detected.operatorCode ?: return this
-        return copy(
-            operatorCode = code,
-            operatorSource = detected.source,
-            operatorDisplayName = detected.displayName,
-            operatorMccMnc = detected.mccMnc,
-            operatorUpdatedAtMillis = System.currentTimeMillis(),
-        )
-    }
-
-    private fun applyDetectedOperator(detected: DetectedOperator) {
-        _uiState.update {
-            it.copy(
-                isDetectingPublicServiceOperator = false,
-                publicServiceSettings = it.publicServiceSettings.copy(
-                    operatorCode = detected.operatorCode ?: "UNKNOWN",
-                    operatorSelectionMode = OperatorSelectionMode.AUTO,
-                    operatorSource = detected.source,
-                    operatorDisplayName = detected.displayName,
-                    operatorMccMnc = detected.mccMnc,
-                    operatorUpdatedAtMillis = System.currentTimeMillis(),
-                ),
-                publicServiceMessage = localized(
-                    ru = "Оператор определён: ${detected.displayName ?: detected.operatorCode}",
-                    en = "Operator detected: ${detected.displayName ?: detected.operatorCode}",
-                ),
-                errorMessage = null,
-            )
         }
     }
 

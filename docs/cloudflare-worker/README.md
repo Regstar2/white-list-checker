@@ -1,55 +1,16 @@
-# Cloudflare Worker relay для Telegram-уведомлений
+# Cloudflare Worker relay для личных Telegram-уведомлений
 
-WhiteListChecker не хранит Telegram Bot Token в Android-приложении.
+WhiteListChecker не хранит Telegram `BOT_TOKEN` в Android-приложении. Для личных Telegram-уведомлений пользователь создаёт собственного Telegram-бота и собственный Cloudflare Worker relay.
 
-Для личных Telegram-уведомлений каждый пользователь создаёт своего Telegram-бота и свой Cloudflare Worker relay.
-
-Личный relay остаётся отдельным от общего сервиса WhiteListChecker.
-
-## Важно про старый Worker владельца проекта
-
-Исторический Worker:
-
-```text
-whitelist-monitor-tg-relay
-```
-
-и URL:
-
-```text
-https://whitelist-monitor-tg-relay.carkov195.workers.dev
-```
-
-раньше могли использоваться владельцем проекта как личный relay. Теперь этот экземпляр преобразуется в центральный общий сервис:
-
-```text
-Android
--> BuildConfig.PUBLIC_SERVICE_BASE_URL
--> whitelist-monitor-tg-relay
--> D1
--> общий Telegram-бот
-```
-
-После перехода этот конкретный экземпляр больше не обязан поддерживать `/tg/*`.
-
-Личные relay Worker пользователей продолжают поддерживаться:
-
-```text
-Android
--> пользовательский Worker URL
--> пользовательский Relay Secret
--> пользовательский Telegram-бот
-```
-
-Владелец проекта, если ему нужны личные уведомления отдельно от общего бота, может создать новый отдельный Worker по этому шаблону.
+Начиная с WhiteListChecker `1.0.0`, это единственная поддерживаемая Telegram-интеграция приложения: центрального общего сервиса и общего Telegram-бота в runtime больше нет.
 
 ## Что нужно
 
 1. Telegram-бот, созданный через BotFather.
 2. Cloudflare Worker пользователя.
 3. Worker secrets:
-   - `BOT_TOKEN`
-   - `RELAY_SECRET`
+   - `BOT_TOKEN`;
+   - `RELAY_SECRET`.
 4. В приложении:
    - Worker URL;
    - Relay Secret;
@@ -57,53 +18,38 @@ Android
 
 ## Пример Worker URL
 
-Используйте свой Worker и свой Cloudflare subdomain:
+Используйте только свой Worker и свой Cloudflare subdomain:
 
 ```text
 https://my-whitelist-relay.your-subdomain.workers.dev
 ```
 
-Не используйте URL общего сервиса `https://whitelist-monitor-tg-relay.carkov195.workers.dev` как личный relay.
+WhiteListChecker не содержит встроенного production URL и не предоставляет общий Worker.
 
 ## Создание Worker в Cloudflare Dashboard
 
-1. Открой Cloudflare Dashboard.
-2. Перейди в **Workers & Pages**.
-3. Нажми **Create application**.
-4. Выбери **Worker**.
-5. Задай любое имя для личного relay, например `my-whitelist-relay`.
-6. Нажми **Deploy**.
-7. Открой созданный Worker.
-8. Нажми **Edit code**.
-9. Замени код на содержимое [`telegram-relay-worker.js`](telegram-relay-worker.js).
-10. Нажми **Deploy**.
-11. Открой **Settings -> Variables and Secrets**.
-12. Добавь Secret:
-    - Name: `BOT_TOKEN`
-    - Value: токен Telegram-бота
-13. Добавь Secret:
-    - Name: `RELAY_SECRET`
-    - Value: длинный случайный секрет
-14. Скопируй Worker URL.
-15. Введи Worker URL и Relay Secret в приложении.
+1. Откройте Cloudflare Dashboard → **Workers & Pages**.
+2. Создайте новый Worker, например `my-whitelist-relay`.
+3. Замените его код содержимым [`telegram-relay-worker.js`](telegram-relay-worker.js).
+4. В **Settings → Variables and Secrets** добавьте:
+   - `BOT_TOKEN` — токен вашего Telegram-бота;
+   - `RELAY_SECRET` — длинный случайный секрет.
+5. Разверните Worker и скопируйте его URL.
+6. Введите Worker URL и Relay Secret в WhiteListChecker.
 
 ## Проверка в приложении
 
-1. Открой экран **Уведомления**.
-2. Включи Telegram-уведомления.
-3. Введи Worker URL личного relay.
-4. Введи Relay Secret.
-5. Нажми **Проверить Worker**.
-6. Нажми **Начать получение chat_id**.
-7. Напиши личному боту `/start`.
-8. Вернись в приложение.
-9. Нажми **Получить chat_id**.
-10. Добавь найденный чат в recipients.
-11. Нажми **Отправить тестовое сообщение**.
+1. Откройте **Уведомления → Telegram**.
+2. Включите Telegram-уведомления.
+3. Введите URL своего Worker и Relay Secret.
+4. Нажмите **Проверить Worker**.
+5. Запустите получение `chat_id`, отправьте своему боту `/start`, затем получите список чатов.
+6. Добавьте нужного получателя.
+7. Отправьте тестовое сообщение.
 
-## Endpoints личного relay
+## Endpoints
 
-Android вызывает личный Worker через:
+Android вызывает пользовательский Worker через:
 
 ```text
 POST <WORKER_URL>/tg/getMe
@@ -117,45 +63,37 @@ POST <WORKER_URL>/tg/sendMessage
 X-Relay-Secret: <RELAY_SECRET>
 ```
 
-`BOT_TOKEN` хранится только в secrets личного Worker.
+`BOT_TOKEN` хранится только в secrets Worker.
 
-## Команды бота и long polling
+## Telegram-команды
 
-Для личного relay приложение может получать команды через:
-
-```text
-<WORKER_URL>/tg/getUpdates
-```
-
-Это относится только к пользовательскому личному Worker. Общий бот использует Telegram webhook `/telegram/webhook`, а не `/tg/getUpdates`.
+При включённых командах активный мониторинг может получать updates через личный Worker. Это не создаёт внешней зависимости от инфраструктуры WhiteListChecker: Worker и бот принадлежат пользователю.
 
 ## Частые ошибки
 
 ### Worker HTTP 401
 
-Неверный Relay Secret или secret не добавлен в Cloudflare Worker.
+Relay Secret не совпадает с `RELAY_SECRET` в Worker.
 
 ### BOT_TOKEN is not configured
 
-В Worker secrets не добавлен `BOT_TOKEN`.
+В Worker secrets отсутствует `BOT_TOKEN`.
 
 ### Forbidden: bot can't send messages to the bot
 
-Указан ID самого бота, а не `chat_id` получателя. Нужно написать боту `/start` и получить `chat_id` через приложение.
+Указан ID самого бота вместо `chat_id` получателя.
 
 ### Chat not found
 
-Бот не видел этот чат, пользователь не нажал `/start`, или бот не добавлен в группу.
+Бот ещё не видел этот чат или пользователь не отправил ему `/start`.
 
 ### Timeout
 
-Проверь доступность Cloudflare Worker и Telegram Bot API со стороны Cloudflare.
+Проверьте доступность собственного Cloudflare Worker и Telegram Bot API со стороны Cloudflare.
 
 ## Безопасность
 
-- Не вставляй `BOT_TOKEN` в Android-приложение.
-- Не публикуй `RELAY_SECRET`.
-- Если `RELAY_SECRET` утёк, поменяй его в Cloudflare и в приложении.
-- Для групп `chat_id` обычно отрицательный и может начинаться с `-100`.
-
-См. также: [SECURITY.md](../../SECURITY.md)
+- не вставляйте `BOT_TOKEN` в Android-приложение;
+- не публикуйте `RELAY_SECRET`;
+- при утечке `RELAY_SECRET` замените его в Cloudflare и приложении;
+- не коммитьте реальные secrets или логи с ними.

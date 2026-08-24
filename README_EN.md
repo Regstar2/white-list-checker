@@ -2,311 +2,241 @@
 
 # WhiteListChecker
 
-An Android application for checking mobile-network availability and detecting signs of allowlist-only network access. Checks are routed through the cellular connection even when Wi-Fi remains the phone's active network.
+Android application for checking cellular-network availability and detecting observable signs of allowlist-only access. Checks run through an explicitly acquired cellular `Network`, even when Wi‑Fi remains the phone's active network.
 
 [Русский](README.md) · **English**
 
 [![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml)
-[![Kotlin](https://img.shields.io/badge/Kotlin-2.0.21-blue)](https://kotlinlang.org/)
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
-[![AI-assisted development](https://img.shields.io/badge/Development-AI--assisted-8A2BE2)](#ai-assisted-development)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
-[Quick start](#quick-start) · [Documentation](#documentation) · [Releases](../../releases)
+[Quick start](#quick-start) · [Documentation](#documentation) · [Releases](https://github.com/Regstar2/white-list-checker/releases)
 
 </div>
 
----
-
 ## About
 
-WhiteListChecker checks local and external websites through the cellular network, classifies the result, and stores observation history. It is intended for manual diagnostics, periodic checks, and notifications when the observed network state changes.
+WhiteListChecker checks local and external sites through a separate cellular `Network`, uses DNS as an additional diagnostic signal, and stores results locally. Its main use case is measuring how the mobile network actually reaches control targets without rebinding the whole app process to cellular and without replacing the measured route with proxy/VPN transport.
 
-Starting with `0.9.0`, control domains are resolved through a user-managed DNS list bound to the same cellular `Network`. The main target-check path therefore does not use Android system Private DNS.
+The application observes network behavior only. It cannot access an operator's internal policy, so its result is not proof that an allowlist mode is enabled.
 
-The project detects observable network behavior only. It has no access to an operator's internal rules and cannot prove allowlist mode with complete certainty.
+Starting with `1.0.0`, the central/public service is removed. Core functionality requires no Worker, bot, or other infrastructure maintained by the project owner. Personal Telegram remains optional and uses a Cloudflare Worker owned by the user.
 
 ## Project status
 
-The project is in **MVP / beta**. The current development line is `0.10.x`; the Android `versionName` stored in the repository is `0.10.4`.
+`1.0.0` is in release preparation. The local-first refactor and Room migration `7 -> 8` are implemented; a physical debug upgrade from `0.10.4` to `1.0.0` without clearing app data preserved history and removed the shared-service UI.
 
-| Area | Status |
-|---|---|
-| Manual cellular-network check | Beta |
-| Custom DNS over cellular Network | Beta |
-| FOREIGN / LOCAL DNS signal | Beta |
-| Background checks with WorkManager | Beta |
-| Active monitoring with a foreground service | Beta |
-| Local and personal Telegram notifications | Beta |
-| Central public service and bot | Beta |
-| Remote check of a linked device | Experimental, in development |
+Separate release tasks still remain:
+
+- [#9 — Update Delivery](https://github.com/Regstar2/white-list-checker/issues/9);
+- [#10 — in-app Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
+- [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
+
+The current `1.0.0` code is not an already published stable release until the release checklist is completed.
 
 ## Features
 
-- explicit cellular routing through `ConnectivityManager.requestNetwork(...)`;
-- editable `FOREIGN` and `LOCAL` website targets;
-- a separate editable DNS list split into `FOREIGN` and `LOCAL` groups;
-- raw DNS over UDP/53 with TCP/53 fallback bound to the cellular `Network`;
-- custom target hostname resolution without Android system DNS;
-- HTTPS target checks through OkHttp using `cellular Network.socketFactory` while keeping normal TLS and hostname verification;
-- DNS availability as a secondary independent signal that cannot by itself create `WHITELIST_ON`;
-- classification of availability, DNS failures, partial outages, and allowlist signs;
-- state-change confirmation using consecutive checks;
-- history, statistics, and detailed diagnostics;
+- explicit mobile `Network` acquisition through `ConnectivityManager.requestNetwork(...)`;
+- cellular checks while Wi‑Fi remains enabled;
+- editable `FOREIGN` and `LOCAL` site groups;
+- editable DNS resolver list;
+- DNS over UDP/53 with TCP/53 fallback;
+- hostname fallback through `Network.getAllByName(...)` on the acquired cellular `Network`;
+- HTTPS target checks through a network-bound socket factory with normal TLS/hostname verification;
+- site results as the primary classification signal and DNS as secondary diagnostics;
+- local history, statistics, and timeline stored in Room;
+- statistics export to CSV/JSON/TXT;
 - local Android notifications;
-- periodic checks through WorkManager;
+- background checks through WorkManager;
 - active monitoring through a foreground service;
-- personal Telegram notifications through a user-owned Cloudflare Worker relay;
-- a central Cloudflare Worker with a public Telegram bot;
-- optional anonymized aggregate-statistics submission;
-- one-time-code linking between a Telegram chat and a device;
-- remote check commands while active monitoring is running.
-
-## Screenshots
-
-| Home screen | Statistics | Check settings |
-|---|---|---|
-| <img src="docs/assets/screenshots/mainscreen.jpg" width="240" alt="WhiteListChecker home screen"> | <img src="docs/assets/screenshots/statistics.jpg" width="240" alt="WhiteListChecker statistics screen"> | <img src="docs/assets/screenshots/checklist.jpg" width="240" alt="WhiteListChecker check settings screen"> |
+- personal Telegram notifications and commands through a user-owned Worker;
+- Russian and English UI.
 
 ## Quick start
 
-1. Install Android Studio with JDK 17 and Android SDK 35.
-2. Copy `local.properties.example` to `local.properties` and configure `sdk.dir`.
-3. Build the debug APK:
+For the current source branch:
 
 ```powershell
-.\gradlew.bat assembleDebug
-```
-
-4. Install it on a connected Android device:
-
-```powershell
+.\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-5. Open the application and select **Check mobile network**.
+After launch, select **Check mobile network**. Cellular data must be available; Wi‑Fi may remain enabled.
 
-Published builds are available under [GitHub Releases](../../releases) and may lag behind the current development branch.
+The public stable `1.0.0` APK will be distributed through GitHub Releases after the release checklist is complete.
 
 ## Requirements
 
-- Android 8.0 or later (`minSdk 26`);
-- JDK 17 or later for building;
-- Android SDK Platform 35 and Build-Tools 35.x;
-- an active cellular connection for the primary use case;
-- Git and ADB for local development and installation;
-- Node.js and npm for central Cloudflare Worker development.
+- Android 8.0+ (`minSdk 26`);
+- cellular data and an available cellular transport for the main checker;
+- for source builds: JDK 17 and Android SDK 35;
+- for personal Telegram: your own Telegram bot and user-owned Cloudflare Worker.
+
+## Installation
+
+For a development/debug build:
+
+```powershell
+.\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
+```
+
+For the future stable release, use only an APK from the project's official GitHub Release. Do not uninstall the existing app before a compatible upgrade if you need to preserve local history and settings.
 
 ## Usage
 
-### Manual check
-
-1. Keep mobile data enabled.
-2. Wi-Fi may remain enabled because the app requests a cellular network separately.
-3. If needed, open **Check settings → DNS** and configure resolvers.
-4. Start a check from the home screen.
-5. Open the detailed report if DNS or site results are mixed.
-
-### Android Private DNS
-
-WhiteListChecker resolves control domains through configured literal-IP DNS servers. DNS probes, DNS resolution, and target HTTPS traffic use the same requested cellular `Network`.
-
-Android Private DNS remains a system setting but does not participate in the main WhiteListChecker resolver path. The app does not change Private DNS and does not request `WRITE_SETTINGS`.
-
-The current DNS/53 transport is unencrypted. Configure only trusted resolvers.
-
-### Background and active checks
-
-- WorkManager performs approximate periodic checks with Android's 15-minute minimum interval.
-- Active monitoring uses a foreground service and a persistent notification.
-- Android may restrict or stop the foreground service under aggressive battery management.
-
-### Public service and Telegram bot
-
-Consent for anonymized report submission and consent for remote checks are independent and disabled by default.
-
-To use remote checks:
-
-1. enable remote checks on the public-service screen;
-2. save the settings;
-3. create a link code and send `/link <code>` to the public bot;
-4. start active monitoring;
-5. request a check from the linked-device screen in the bot.
+1. Open the home screen and run a mobile-network check.
+2. Adjust site and DNS lists under check settings when needed.
+3. Use Statistics for state history and data export.
+4. Use Diagnostics for route, DNS, and site details.
+5. Configure local notifications, WorkManager, or active monitoring as needed.
+6. Enable personal Telegram only after configuring your own Worker and bot.
 
 ## Configuration
 
-### Default DNS servers
+Users can configure:
 
-The initial list contains at least two resolvers in each group:
+- enabled LOCAL/FOREIGN sites;
+- enabled DNS resolvers and custom DNS entries;
+- theme and language;
+- local notification policy;
+- background check interval/policy;
+- active monitoring options;
+- personal Telegram Worker URL, Relay Secret, and recipients.
 
-```text
-FOREIGN
-Cloudflare   1.1.1.1:53
-Google       8.8.8.8:53
+`BOT_TOKEN` belongs only in the user's Worker secrets and must not be stored in the Android application.
 
-LOCAL
-Yandex DNS             77.88.8.8:53
-Yandex DNS Secondary   77.88.8.1:53
-```
+## Network and proxy
 
-Resolvers can be enabled, disabled, added, removed, and reset to defaults. At least one resolver must remain enabled because a fully independent Private-DNS check is impossible without a custom resolver.
+The main checker intentionally does not support proxy/VPN transport:
 
-A DNS group is used only for diagnostic classification. Any available enabled resolver may resolve any target hostname.
+> Proxy support: N/A by project-specific design — WhiteListChecker measures the direct cellular-network route; a proxy/VPN changes the measured transport and can make diagnostics unreliable.
+
+Therefore the checker path has no `System / Direct / Custom proxy` modes, HTTP proxy, or SOCKS5. This is a project-specific exception to the universal `NETWORK_PROXY_STANDARD.md`, not an unfinished checker feature.
+
+A VPN/tunnel is treated as a measurement limitation: when it changes the traffic path, results may no longer describe the mobile operator's direct access.
+
+Personal Telegram relay is a separate optional integration. It uses HTTPS to the Worker configured by the user and does not change the main checker transport.
 
 ## Architecture
 
 ```text
-Android UI
-   │
-   ▼
-ViewModel / Use cases
-   │
-   ├── Cellular Network
-   │      ├── DNS probes (UDP/TCP 53)
-   │      ├── CellularDnsResolver
-   │      └── OkHttp target checks
-   ├── DataStore / Room
-   ├── WorkManager / Foreground service
-   ├── User-owned Telegram relay Worker
-   └── Central public-service Worker
-            │
-            ├── D1
-            └── Public Telegram bot
+Compose UI
+   |
+MainViewModel / use cases
+   |
+   +-- Cellular Network
+   |      +-- DNS probes / cellular resolver
+   |      +-- HTTPS target checks
+   |      +-- WhitelistStateClassifier
+   +-- Room / DataStore
+   +-- WorkManager / Foreground service
+   +-- optional user-owned Telegram relay
 ```
 
-The Android application uses Kotlin, Jetpack Compose, Material 3, Coroutines/Flow, DataStore, Room, WorkManager, and OkHttp. The central service lives under `cloudflare/public-service/` and is implemented as a Cloudflare Worker backed by D1.
+Room schema `8` removes the obsolete `pending_public_reports` table through migration `7 -> 8` without destructive migration. History, statistics, and other local data are preserved.
 
-See [docs/network-routing-notes.md](docs/network-routing-notes.md) for routing details.
+See [current architecture](docs/architecture/current-architecture.md) and [technology stack](docs/architecture/tech-stack.md).
 
 ## Security
 
-- TLS certificate and hostname verification are never disabled for target checks.
-- Telegram bot tokens and Worker secrets must not be stored in Android code or Git.
-- The central-service device token is stored using Android Keystore-backed encryption.
-- The central Worker stores a device-token hash rather than the original token.
-- Do not publish `local.properties`, release keystores, tokens, passwords, or logs containing secrets.
+- TLS certificate and hostname verification remain enabled for target checks;
+- there is no production URL for a central shared service;
+- `BOT_TOKEN` is not stored in the APK;
+- release keystores, `local.properties`, passwords, and secrets are excluded from Git;
+- private governance and AI tool state are not published;
+- personal Telegram secrets are user-provided and must not appear in issues or logs.
 
 See [SECURITY.md](SECURITY.md).
 
 ## Privacy
 
-Public-service data submission is disabled by default.
+Checks, history, and statistics remain on the device. There is no runtime path that uploads results to a central project service.
 
-When enabled, the service receives the selected region, optional city, mobile operator, application version, check time, final state, and aggregate target results. DNS diagnostics introduced in v0.9.0 remain local and are not silently added to the public-service contract.
+When personal Telegram is enabled, data explicitly sent to the user's bot passes through that user's Worker and Telegram. The exact content depends on the chosen action: test message, check report, or commands.
 
-It does not receive coordinates, an exact address, phone number, IMEI, IMSI, SIM serial, Wi-Fi SSID/BSSID, device contents, personal Telegram messages, bot tokens, or Relay Secrets.
+## Troubleshooting
 
-See [docs/privacy/public-data-sharing.md](docs/privacy/public-data-sharing.md).
+If a result looks incorrect:
 
-## Diagnostics
+1. open Diagnostics;
+2. compare the checked network with the active network;
+3. inspect LOCAL/FOREIGN site and DNS results separately;
+4. verify that one unavailable resolver is not interpreted as a global DNS failure;
+5. repeat the check with Wi‑Fi enabled and disabled;
+6. disable VPN/tunnel when measuring the direct cellular route.
 
-The detailed report includes:
+The full physical test flow is in [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
 
-- active and checked network;
-- Private DNS active/inactive and server hostname when available;
-- whether custom DNS was used;
-- FOREIGN/LOCAL DNS summaries;
-- per-resolver latency and typed errors;
-- Site signal;
-- DNS signal;
-- final state.
+## Updating
 
-### Active monitoring reports `Worker HTTP 404`
-
-The active-monitoring route should return `405`, not `404`, for a diagnostic GET request. Run:
+A compatibly signed APK can be installed over the existing version through the Android package installer or with:
 
 ```powershell
-cd cloudflare\public-service
-npm run verify:production
+adb install -r path\to\WhiteListChecker.apk
 ```
 
-If it reports a legacy revision or missing `service-sync`, deploy the current Worker:
+The new APK certificate must match the installed version. `adb uninstall` removes local app data and must not be used to validate the migration path.
 
-```powershell
-npm run deploy
-```
-
-### ADB is not found
-
-Add the Android SDK `platform-tools` directory to `PATH`, or invoke `adb.exe` with its full path.
-
-## Development
-
-Read [AGENTS.md](AGENTS.md) before making changes. Architecture and product documentation are stored under `docs/`.
-
-```text
-app/                         Android application
-cloudflare/public-service/   central Worker and public bot
-docs/                        architecture, test plans, and version notes
-```
-
-## AI-assisted development
-
-AI is used as an auxiliary development tool for analysis, implementation alternatives, documentation, and tests.
-
-- every change is reviewed by the project maintainer;
-- the maintainer remains responsible for accepted code, architecture, security, and releases;
-- AI is not a WhiteListChecker product component;
-- AI does not process user traffic, passwords, tokens, or server configuration while the app is running.
+In-app update checking is tracked separately in [Issue #9](https://github.com/Regstar2/white-list-checker/issues/9); until it is complete, this README does not claim auto-update as an implemented feature.
 
 ## Build
 
 ```powershell
 .\gradlew.bat assembleDebug
+.\gradlew.bat assembleRelease
 ```
 
-Central Worker dry-run:
-
-```powershell
-cd cloudflare\public-service
-npm ci
-npm run build
-```
+Release signing is supplied only through local Gradle properties/environment/local properties using `WL_RELEASE_*`; the keystore and credentials are not stored in Git.
 
 ## Testing
 
-Android:
-
 ```powershell
-.\gradlew.bat test
-.\gradlew.bat lint
+.\gradlew.bat testDebugUnitTest
+.\gradlew.bat lintDebug
 .\gradlew.bat assembleDebug
+.\gradlew.bat assembleRelease
 ```
 
-Worker:
-
-```powershell
-cd cloudflare\public-service
-npm ci
-npm run typecheck
-npm run lint
-npm test
-npm run build
-```
+Changes to cellular routing, DNS, and migrations require a physical Android device in addition to automated checks. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
 
 ## Documentation
 
-| Task | Document |
-|---|---|
-| Current MVP | [docs/WhiteListChecker - current MVP.md](docs/WhiteListChecker%20-%20current%20MVP.md) |
-| Network, VPN, and Private DNS | [docs/network-routing-notes.md](docs/network-routing-notes.md) |
-| Version 0.9.0 | [docs/versions/v0.9.0.md](docs/versions/v0.9.0.md) |
-| Technology stack | [docs/stack.md](docs/stack.md) |
-| Central service | [docs/architecture/central-public-service.md](docs/architecture/central-public-service.md) |
-| Remote commands | [docs/architecture/remote-command-flow.md](docs/architecture/remote-command-flow.md) |
-| Change history | [CHANGELOG.md](CHANGELOG.md) |
-| Development rules | [AGENTS.md](AGENTS.md) |
+- [Version 1.0 scope](docs/product/mvp-scope.md)
+- [Current architecture](docs/architecture/current-architecture.md)
+- [Technology stack](docs/architecture/tech-stack.md)
+- [Network and DNS routing](docs/network-routing-notes.md)
+- [Personal Telegram Cloudflare Worker](docs/cloudflare-worker/README.md)
+- [Manual test plan](docs/testing/manual-test-plan.md)
+- [sheduler standards compliance](docs/release/standards-compliance.md)
+- [1.0.0 release checklist](docs/release/release-checklist.md)
+- [Security policy](SECURITY.md)
+- [Change history](CHANGELOG.md)
+
+`docs/versions/`, `docs/releases/`, and `docs/archive/` preserve the factual history of earlier versions and may describe features that no longer exist.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. Private governance files and local AI/tool state must not be committed to the public repository.
+
+## Feedback
+
+Until the in-app feedback flow is available, bugs and feature proposals can be submitted through [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues). Do not attach tokens, Relay Secrets, `chat_id`, private logs, or other sensitive data.
+
+The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2/white-list-checker/issues/10).
 
 ## Limitations
 
-- Classification is based on observed results and may produce false positives.
-- VPN remains a separate Android limitation; custom DNS does not guarantee bypass of an arbitrary VPN.
-- Raw DNS v0.9.0 accepts literal IPv4 resolver endpoints and sends unencrypted DNS/53 traffic.
-- WorkManager does not guarantee exact execution times.
-- Android may restrict or stop a foreground service.
-- Remote checks require a current production Worker, stored consent, and active monitoring running on the device.
-- Aggregate statistics depend on fresh reports and are not official operator information.
+- classification is based on observed results and may be wrong;
+- proxy/VPN transport is intentionally unsupported in the checker path;
+- an enabled VPN/tunnel can make results unrepresentative of the direct cellular network;
+- raw DNS/53 is unencrypted;
+- blocking both UDP/53 and TCP/53 may make a particular custom resolver unavailable;
+- WorkManager does not guarantee exact execution times;
+- Android may restrict foreground services;
+- personal Telegram requires the user's own Worker and Telegram bot;
+- stable `1.0.0` has not been published yet.
 
 ## License
 
-This project is distributed under the [MIT](LICENSE) license.
+Distributed under the [MIT](LICENSE) license.
