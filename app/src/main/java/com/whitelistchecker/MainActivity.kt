@@ -18,6 +18,7 @@ import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.settings.AppLocaleController
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
+import com.whitelistchecker.ui.update.AppUpdateViewModel
 
 class MainActivity : ComponentActivity() {
 
@@ -25,7 +26,7 @@ class MainActivity : ComponentActivity() {
         get() = (application as WhitelistCheckerApplication).appContainer
 
     private val viewModelFactory by lazy {
-        MainViewModelFactory(appContainer)
+        AppViewModelFactory(appContainer)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,14 +51,18 @@ class MainActivity : ComponentActivity() {
                 LocalActivityResultRegistryOwner provides this,
             ) {
                 WhiteListCheckerTheme(themeMode = userSettings.themeMode) {
-                    val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
-                    MainScreen(viewModel = viewModel)
+                    val mainViewModel: MainViewModel = viewModel(factory = viewModelFactory)
+                    val appUpdateViewModel: AppUpdateViewModel = viewModel(factory = viewModelFactory)
+                    MainScreen(
+                        viewModel = mainViewModel,
+                        appUpdateViewModel = appUpdateViewModel,
+                    )
                 }
             }
         }
     }
 
-    private class MainViewModelFactory(
+    private class AppViewModelFactory(
         private val appContainer: AppContainer,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
@@ -89,6 +94,11 @@ class MainActivity : ComponentActivity() {
                     loadWhitelistTimelineDashboardUseCase = appContainer.loadWhitelistTimelineDashboardUseCase,
                     statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
                     userSettingsRepository = appContainer.userSettingsRepository,
+                ) as T
+            }
+            if (modelClass.isAssignableFrom(AppUpdateViewModel::class.java)) {
+                return AppUpdateViewModel(
+                    checkForAppUpdateUseCase = appContainer.checkForAppUpdateUseCase,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
