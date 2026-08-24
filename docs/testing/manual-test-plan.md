@@ -107,7 +107,49 @@
 8. Если Telegram commands включены: проверить `/status` и `/check` во время active monitoring.
 9. Команда от неразрешённого `chat_id` не должна выполнять remote check.
 
-## 11. Localization и UI
+## 11. Update Delivery
+
+### Обычная проверка текущей 1.0.0
+
+1. Запустить приложение с доступом в интернет.
+2. Убедиться, что старт приложения не блокируется ожиданием GitHub.
+3. Открыть «О приложении».
+4. Нажать «Проверить обновления».
+5. Пока публичного stable release новее `1.0.0` нет, увидеть состояние «актуальная версия».
+6. Убедиться, что на экране указан официальный GitHub Releases как источник и нет обещания автоматической установки APK.
+
+### Ошибка сети
+
+1. Отключить интернет или сделать `api.github.com` недоступным.
+2. Перезапустить приложение — startup update check не должен приводить к crash/dialog, блокирующему основной UI.
+3. Выполнить обычную проверку мобильной сети — checker должен продолжать работать независимо от updater failure.
+4. Открыть «О приложении» и нажать ручную проверку обновлений.
+5. Убедиться, что отображается локализованная контролируемая ошибка.
+6. Вернуть интернет и повторить ручную проверку.
+
+### Проверка update available до stable release
+
+Для воспроизводимой проверки без публикации ложного stable релиза использовать test build с временным `versionName`, меньшим уже существующего официального stable release, либо отдельный controlled test fixture/branch. Не публиковать фиктивный production release только ради UI test.
+
+Проверить:
+
+1. При обнаружении новой версии показывается dialog с installed/new version.
+2. «Позже» закрывает dialog и не блокирует приложение.
+3. На экране «О приложении» обновление остаётся видимым после «Позже».
+4. Повторная ручная проверка снова разрешает показать prompt.
+5. «Открыть релиз» ведёт только на `github.com/Regstar2/white-list-checker/releases/tag/...`.
+6. Краткие release notes отображаются в приложении; полные доступны на странице релиза.
+
+### Stable/prerelease policy
+
+Автоматически покрывается unit tests. Перед release дополнительно проверить на controlled fixtures, что:
+
+1. stable installed version не предлагает `alpha/beta/rc` как stable update;
+2. `prerelease=true` игнорируется stable-сборкой;
+3. SemVer prerelease suffix игнорируется stable-сборкой даже при ошибочном `prerelease=false`;
+4. prerelease installed build может увидеть более новый prerelease/stable release.
+
+## 12. Localization и UI
 
 Повторить основные экраны на RU и EN:
 
@@ -118,7 +160,7 @@
 - Notifications;
 - Auto-check / active monitoring;
 - Settings;
-- About.
+- About / Updates.
 
 Проверить:
 
@@ -127,8 +169,9 @@
 3. Нет clipping/overflow на стандартном и увеличенном системном font scale.
 4. Language selection сохраняется после перезапуска.
 5. Unsupported system locale использует предусмотренный fallback.
+6. Update dialog, status, errors, «Позже» и action перехода переведены на RU/EN.
 
-## 12. Crash/log sanity
+## 13. Crash/log sanity
 
 После полного smoke test:
 
@@ -139,6 +182,6 @@ adb logcat -d | Select-String "FATAL EXCEPTION|Room|pending_public_reports|Publi
 
 Упоминание `pending_public_reports` допустимо только как SQL migration/drop context. Crash/error из-за отсутствующей таблицы недопустим.
 
-## 13. Release result
+## 14. Release result
 
 Результаты ручной проверки переносятся в `docs/release/release-checklist.md` и затем только фактически выполненные пункты попадают в `docs/releases/v1.0.0*.md`.
