@@ -11,10 +11,6 @@ import com.whitelistchecker.domain.model.LocalNotificationResult
 import com.whitelistchecker.domain.model.LocalNotificationSettings
 import com.whitelistchecker.domain.model.LastCheckDisplayState
 import com.whitelistchecker.domain.model.NetworkCheckResult
-import com.whitelistchecker.domain.model.PublicServiceLink
-import com.whitelistchecker.domain.model.PublicServiceSettings
-import com.whitelistchecker.domain.model.PublicServiceStatus
-import com.whitelistchecker.domain.model.UserArea
 import com.whitelistchecker.domain.model.TelegramQueueFlushResult
 import com.whitelistchecker.domain.model.TelegramSendResult
 import com.whitelistchecker.domain.model.TelegramSettings
@@ -55,16 +51,6 @@ data class MainUiState(
     val backgroundCheckStatus: BackgroundCheckStatus = BackgroundCheckStatus(),
     val activeMonitoringSettings: ActiveMonitoringSettings = ActiveMonitoringSettings(),
     val activeMonitoringStatus: ActiveMonitoringStatus = ActiveMonitoringStatus(),
-    val publicServiceSettings: PublicServiceSettings = PublicServiceSettings(),
-    val publicServiceStatus: PublicServiceStatus = PublicServiceStatus(),
-    val publicServiceLinks: List<PublicServiceLink> = emptyList(),
-    val pendingDetectedArea: UserArea? = null,
-    val isDetectingPublicServiceArea: Boolean = false,
-    val isDetectingPublicServiceOperator: Boolean = false,
-    val isSavingPublicServiceSettings: Boolean = false,
-    val isCreatingPublicServiceLinkCode: Boolean = false,
-    val isDeletingPublicServiceData: Boolean = false,
-    val publicServiceMessage: String? = null,
     val activeMonitoringIntervalInput: String = ActiveMonitoringSettings.DEFAULT_INTERVAL_MINUTES.toString(),
     val activeMonitoringIntervalError: String? = null,
     val isSavingBackgroundSettings: Boolean = false,
