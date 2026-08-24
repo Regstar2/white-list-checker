@@ -8,7 +8,7 @@ on:
 
 jobs:
   build:
-    name: Build debug APK
+    name: Build and test Android
     runs-on: ubuntu-latest
 
     steps:
@@ -35,3 +35,6 @@ jobs:
 
       - name: Run Android lint
         run: ./gradlew lintDebug
+
+      - name: Build release APK
+        run: ./gradlew assembleRelease
