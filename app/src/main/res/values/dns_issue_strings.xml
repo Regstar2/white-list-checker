@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="dns_issue_home_headline">Не удалось разрешить домены через мобильную сеть</string>
+    <string name="dns_issue_display_label">🟡 Не удалось разрешить домены через мобильную сеть</string>
+    <string name="dns_issue_plain_label">Не удалось разрешить домены через мобильную сеть</string>
+    <string name="dns_issue_description">Все проверки сайтов завершились ошибкой разрешения имён на полученной мобильной сети. Недоступность отдельных публичных DNS-серверов сама по себе не вызывает этот статус.</string>
+</resources>
