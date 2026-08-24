@@ -2,7 +2,7 @@
 
 # WhiteListChecker
 
-Android application for checking cellular-network availability and detecting observable signs of allowlist-only access. Checks use the cellular connection even when Wi‑Fi remains the phone's active network.
+Android application for checking cellular-network availability and detecting observable signs of allowlist-only access. Checks run through an explicitly acquired cellular `Network`, even when Wi‑Fi remains the phone's active network.
 
 [Русский](README.md) · **English**
 
@@ -10,29 +10,42 @@ Android application for checking cellular-network availability and detecting obs
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
+[Quick start](#quick-start) · [Documentation](#documentation) · [Releases](https://github.com/Regstar2/white-list-checker/releases)
+
 </div>
 
 ## About
 
-WhiteListChecker checks local and external sites through an explicitly acquired cellular `Network`, uses DNS as an additional diagnostic signal, and stores results locally. It supports manual diagnostics, background checks, active monitoring, and state-change notifications.
+WhiteListChecker checks local and external sites through a separate cellular `Network`, uses DNS as an additional diagnostic signal, and stores results locally. Its main use case is measuring how the mobile network actually reaches control targets without rebinding the whole app process to cellular and without replacing the measured route with proxy/VPN transport.
 
-Starting with `1.0.0`, WhiteListChecker **does not use a central public service**. The Android application has no project-owned shared Worker, public bot, aggregate user-report upload, device linking to a shared service, or remote commands through that service. Core functionality does not require infrastructure maintained by the project owner.
+The application observes network behavior only. It cannot access an operator's internal policy, so its result is not proof that an allowlist mode is enabled.
 
-Personal Telegram notifications remain available through a Cloudflare Worker deployed and configured by the user.
+Starting with `1.0.0`, the central/public service is removed. Core functionality requires no Worker, bot, or other infrastructure maintained by the project owner. Personal Telegram remains optional and uses a Cloudflare Worker owned by the user.
 
-WhiteListChecker observes network behavior only. It cannot access an operator's internal policy and therefore cannot prove allowlist mode with complete certainty.
+## Project status
+
+`1.0.0` is in release preparation. The local-first refactor and Room migration `7 -> 8` are implemented; a physical debug upgrade from `0.10.4` to `1.0.0` without clearing app data preserved history and removed the shared-service UI.
+
+Separate release tasks still remain:
+
+- [#9 — Update Delivery](https://github.com/Regstar2/white-list-checker/issues/9);
+- [#10 — in-app Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
+- [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
+
+The current `1.0.0` code is not an already published stable release until the release checklist is completed.
 
 ## Features
 
-- explicit cellular routing through `ConnectivityManager.requestNetwork(...)`;
+- explicit mobile `Network` acquisition through `ConnectivityManager.requestNetwork(...)`;
 - cellular checks while Wi‑Fi remains enabled;
 - editable `FOREIGN` and `LOCAL` site groups;
 - editable DNS resolver list;
 - DNS over UDP/53 with TCP/53 fallback;
-- hostname fallback through the acquired cellular `Network` without process-wide binding;
-- HTTPS checks through OkHttp with normal TLS and hostname verification;
+- hostname fallback through `Network.getAllByName(...)` on the acquired cellular `Network`;
+- HTTPS target checks through a network-bound socket factory with normal TLS/hostname verification;
 - site results as the primary classification signal and DNS as secondary diagnostics;
-- local history and statistics stored in Room;
+- local history, statistics, and timeline stored in Room;
+- statistics export to CSV/JSON/TXT;
 - local Android notifications;
 - background checks through WorkManager;
 - active monitoring through a foreground service;
@@ -41,74 +54,142 @@ WhiteListChecker observes network behavior only. It cannot access an operator's 
 
 ## Quick start
 
-Requires JDK 17, Android SDK 35, and Android 8.0+ (`minSdk 26`).
+For the current source branch:
 
 ```powershell
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-After launch, select **Check mobile network**. Wi‑Fi may remain enabled; cellular data must be available.
+After launch, select **Check mobile network**. Cellular data must be available; Wi‑Fi may remain enabled.
 
-## DNS and Android Private DNS
+The public stable `1.0.0` APK will be distributed through GitHub Releases after the release checklist is complete.
 
-WhiteListChecker first uses enabled user-configured DNS servers through the acquired cellular `Network`. Failure of an individual Cloudflare, Google, or Yandex resolver is not by itself treated as a broken cellular DNS path and must not override a clear site result.
+## Requirements
 
-When custom resolvers are unavailable, hostname resolution may fall back to `Network.getAllByName(...)` on the acquired cellular `Network`. Process-wide `bindProcessToNetwork` is not used.
+- Android 8.0+ (`minSdk 26`);
+- cellular data and an available cellular transport for the main checker;
+- for source builds: JDK 17 and Android SDK 35;
+- for personal Telegram: your own Telegram bot and user-owned Cloudflare Worker.
 
-Raw DNS traffic is currently unencrypted. Configure only trusted resolvers.
+## Installation
 
-## Personal Telegram notifications
+For a development/debug build:
 
-Telegram integration is user-owned and does not depend on WhiteListChecker infrastructure:
-
-```text
-Android app
-   -> user-owned Cloudflare Worker relay
-   -> user's Telegram bot
+```powershell
+.\gradlew.bat assembleDebug
+adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-The app stores the URL of the user's Worker, Relay Secret, and recipients. There is no project-owned central Telegram bot in the runtime.
+For the future stable release, use only an APK from the project's official GitHub Release. Do not uninstall the existing app before a compatible upgrade if you need to preserve local history and settings.
 
-Worker documentation: [docs/cloudflare-worker/README.md](docs/cloudflare-worker/README.md).
+## Usage
+
+1. Open the home screen and run a mobile-network check.
+2. Adjust site and DNS lists under check settings when needed.
+3. Use Statistics for state history and data export.
+4. Use Diagnostics for route, DNS, and site details.
+5. Configure local notifications, WorkManager, or active monitoring as needed.
+6. Enable personal Telegram only after configuring your own Worker and bot.
+
+## Configuration
+
+Users can configure:
+
+- enabled LOCAL/FOREIGN sites;
+- enabled DNS resolvers and custom DNS entries;
+- theme and language;
+- local notification policy;
+- background check interval/policy;
+- active monitoring options;
+- personal Telegram Worker URL, Relay Secret, and recipients.
+
+`BOT_TOKEN` belongs only in the user's Worker secrets and must not be stored in the Android application.
+
+## Network and proxy
+
+The main checker intentionally does not support proxy/VPN transport:
+
+> Proxy support: N/A by project-specific design — WhiteListChecker measures the direct cellular-network route; a proxy/VPN changes the measured transport and can make diagnostics unreliable.
+
+Therefore the checker path has no `System / Direct / Custom proxy` modes, HTTP proxy, or SOCKS5. This is a project-specific exception to the universal `NETWORK_PROXY_STANDARD.md`, not an unfinished checker feature.
+
+A VPN/tunnel is treated as a measurement limitation: when it changes the traffic path, results may no longer describe the mobile operator's direct access.
+
+Personal Telegram relay is a separate optional integration. It uses HTTPS to the Worker configured by the user and does not change the main checker transport.
 
 ## Architecture
 
 ```text
-Android UI
+Compose UI
    |
-   v
-ViewModel / use cases
+MainViewModel / use cases
    |
    +-- Cellular Network
-   |      +-- DNS probes / resolver
+   |      +-- DNS probes / cellular resolver
    |      +-- HTTPS target checks
+   |      +-- WhitelistStateClassifier
    +-- Room / DataStore
    +-- WorkManager / Foreground service
    +-- optional user-owned Telegram relay
 ```
 
-The central Cloudflare Worker and `pending_public_reports` queue have been removed. Upgrading from `0.10.4` runs Room migration schema `7 -> 8`, dropping only the obsolete public-report table while preserving history, statistics, and other local data.
+Room schema `8` removes the obsolete `pending_public_reports` table through migration `7 -> 8` without destructive migration. History, statistics, and other local data are preserved.
 
-See [docs/architecture/current-architecture.md](docs/architecture/current-architecture.md) and [docs/network-routing-notes.md](docs/network-routing-notes.md).
-
-## Privacy
-
-Checks, history, and statistics remain on the device. WhiteListChecker no longer has a runtime path for submitting results to a central service.
-
-When personal Telegram notifications are enabled, information explicitly sent to the user's bot passes through that user's Worker and Telegram. Bot tokens and Relay Secrets must not be committed to Git.
+See [current architecture](docs/architecture/current-architecture.md) and [technology stack](docs/architecture/tech-stack.md).
 
 ## Security
 
 - TLS certificate and hostname verification remain enabled for target checks;
-- the app contains no production URL for a central shared service;
-- the app no longer requests approximate-location permission for shared-service region detection;
-- personal Telegram Worker secrets are configured by the user;
-- never publish `local.properties`, release keystores, tokens, passwords, or logs containing secrets.
+- there is no production URL for a central shared service;
+- `BOT_TOKEN` is not stored in the APK;
+- release keystores, `local.properties`, passwords, and secrets are excluded from Git;
+- private governance and AI tool state are not published;
+- personal Telegram secrets are user-provided and must not appear in issues or logs.
 
 See [SECURITY.md](SECURITY.md).
 
-## Build and test
+## Privacy
+
+Checks, history, and statistics remain on the device. There is no runtime path that uploads results to a central project service.
+
+When personal Telegram is enabled, data explicitly sent to the user's bot passes through that user's Worker and Telegram. The exact content depends on the chosen action: test message, check report, or commands.
+
+## Troubleshooting
+
+If a result looks incorrect:
+
+1. open Diagnostics;
+2. compare the checked network with the active network;
+3. inspect LOCAL/FOREIGN site and DNS results separately;
+4. verify that one unavailable resolver is not interpreted as a global DNS failure;
+5. repeat the check with Wi‑Fi enabled and disabled;
+6. disable VPN/tunnel when measuring the direct cellular route.
+
+The full physical test flow is in [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+
+## Updating
+
+A compatibly signed APK can be installed over the existing version through the Android package installer or with:
+
+```powershell
+adb install -r path\to\WhiteListChecker.apk
+```
+
+The new APK certificate must match the installed version. `adb uninstall` removes local app data and must not be used to validate the migration path.
+
+In-app update checking is tracked separately in [Issue #9](https://github.com/Regstar2/white-list-checker/issues/9); until it is complete, this README does not claim auto-update as an implemented feature.
+
+## Build
+
+```powershell
+.\gradlew.bat assembleDebug
+.\gradlew.bat assembleRelease
+```
+
+Release signing is supplied only through local Gradle properties/environment/local properties using `WL_RELEASE_*`; the keystore and credentials are not stored in Git.
+
+## Testing
 
 ```powershell
 .\gradlew.bat testDebugUnitTest
@@ -117,25 +198,44 @@ See [SECURITY.md](SECURITY.md).
 .\gradlew.bat assembleRelease
 ```
 
-CI runs the same main checks for pull requests.
+Changes to cellular routing, DNS, and migrations require a physical Android device in addition to automated checks. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
 
 ## Documentation
 
+- [Version 1.0 scope](docs/product/mvp-scope.md)
 - [Current architecture](docs/architecture/current-architecture.md)
+- [Technology stack](docs/architecture/tech-stack.md)
 - [Network and DNS routing](docs/network-routing-notes.md)
 - [Personal Telegram Cloudflare Worker](docs/cloudflare-worker/README.md)
-- [SECURITY.md](SECURITY.md)
+- [Manual test plan](docs/testing/manual-test-plan.md)
+- [sheduler standards compliance](docs/release/standards-compliance.md)
+- [1.0.0 release checklist](docs/release/release-checklist.md)
+- [Security policy](SECURITY.md)
 - [Change history](CHANGELOG.md)
-- `docs/versions/` and release notes intentionally preserve historical descriptions of earlier versions, including the former public service.
+
+`docs/versions/`, `docs/releases/`, and `docs/archive/` preserve the factual history of earlier versions and may describe features that no longer exist.
+
+## Contributing
+
+Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. Private governance files and local AI/tool state must not be committed to the public repository.
+
+## Feedback
+
+Until the in-app feedback flow is available, bugs and feature proposals can be submitted through [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues). Do not attach tokens, Relay Secrets, `chat_id`, private logs, or other sensitive data.
+
+The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2/white-list-checker/issues/10).
 
 ## Limitations
 
-- classification is based on observed results and can be wrong;
-- VPN remains a separate Android networking limitation;
-- blocking both UDP/53 and TCP/53 may make a particular custom DNS resolver unavailable;
+- classification is based on observed results and may be wrong;
+- proxy/VPN transport is intentionally unsupported in the checker path;
+- an enabled VPN/tunnel can make results unrepresentative of the direct cellular network;
+- raw DNS/53 is unencrypted;
+- blocking both UDP/53 and TCP/53 may make a particular custom resolver unavailable;
 - WorkManager does not guarantee exact execution times;
 - Android may restrict foreground services;
-- personal Telegram functionality requires the user's own Worker and Telegram bot.
+- personal Telegram requires the user's own Worker and Telegram bot;
+- stable `1.0.0` has not been published yet.
 
 ## License
 
