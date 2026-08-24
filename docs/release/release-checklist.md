@@ -43,7 +43,7 @@
 - [x] Последний CI ветки удаления public service: unit tests прошли.
 - [x] Последний CI ветки удаления public service: Android lint прошёл.
 - [x] Последний CI ветки удаления public service: release build прошёл.
-- [ ] Повторить полный CI после изменений Issue #8.
+- [x] Issue #8 / PR #14 после retarget на `main`: GitHub Actions run #67 — debug build, unit tests, Android lint и release build прошли.
 - [ ] Выполнить финальный CI через стандартизированный flow Issue #11.
 
 ## Manual network checks
