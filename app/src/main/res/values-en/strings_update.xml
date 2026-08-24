@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_section_title">Updates</string>
+    <string name="update_check_button">Check for updates</string>
+    <string name="update_checking">Checking GitHub Releases…</string>
+    <string name="update_not_checked">Updates have not been checked yet.</string>
+    <string name="update_up_to_date">Version %1$s is up to date.</string>
+    <string name="update_available_title">Update available</string>
+    <string name="update_available_message">Version %1$s is available. You currently have %2$s installed.</string>
+    <string name="update_available_inline">Version %1$s is available.</string>
+    <string name="update_release_notes">What changed</string>
+    <string name="update_release_notes_empty">Full details are available on the release page.</string>
+    <string name="update_open_release">Open release</string>
+    <string name="update_later">Later</string>
+    <string name="update_source_hint">Update source: the project’s official GitHub Releases. The app does not install APKs automatically.</string>
+    <string name="update_open_release_error">Could not open the release page.</string>
+    <string name="update_error_network">Could not check for updates: GitHub is unreachable.</string>
+    <string name="update_error_http">GitHub returned an error while checking for updates.</string>
+    <string name="update_error_rate_limited">GitHub temporarily rate-limited update checks. Try again later.</string>
+    <string name="update_error_invalid_response">GitHub returned an invalid response.</string>
+    <string name="update_error_invalid_version">The installed app version could not be parsed.</string>
+</resources>
