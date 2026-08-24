@@ -1,5 +1,6 @@
 package com.whitelistchecker.ui.update
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -50,17 +51,29 @@ fun AppUpdateAvailableDialog(
 }
 
 fun openOfficialRelease(context: Context, url: String): Boolean {
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        if (context !is Activity) {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
     return try {
-        context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url)))
+        context.startActivity(intent)
         true
     } catch (_: ActivityNotFoundException) {
-        Toast.makeText(
-            context,
-            context.getString(R.string.update_open_release_error),
-            Toast.LENGTH_SHORT,
-        ).show()
+        showOpenReleaseError(context)
+        false
+    } catch (_: SecurityException) {
+        showOpenReleaseError(context)
         false
     }
+}
+
+private fun showOpenReleaseError(context: Context) {
+    Toast.makeText(
+        context,
+        context.getString(R.string.update_open_release_error),
+        Toast.LENGTH_SHORT,
+    ).show()
 }
 
 @StringRes
