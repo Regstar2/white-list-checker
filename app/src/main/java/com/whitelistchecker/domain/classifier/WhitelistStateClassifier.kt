@@ -10,8 +10,12 @@ class WhitelistStateClassifier {
         foreignSummary: TargetGroupSummary,
         localSummary: TargetGroupSummary,
         dnsSignal: DnsWhitelistSignal = DnsWhitelistSignal.UNKNOWN,
+        dnsFailureConfirmed: Boolean = false,
     ): WhitelistState {
         val siteState = classifySites(foreignSummary, localSummary)
+        if (dnsFailureConfirmed) {
+            return WhitelistState.MOBILE_DNS_FAILURE
+        }
         return combine(siteState, dnsSignal)
     }
 
@@ -35,9 +39,6 @@ class WhitelistStateClassifier {
         dnsSignal: DnsWhitelistSignal,
     ): WhitelistState {
         return when {
-            dnsSignal == DnsWhitelistSignal.NO_DNS_ACCESS -> {
-                WhitelistState.MOBILE_DNS_FAILURE
-            }
             siteState == WhitelistState.WHITELIST_ON && dnsSignal == DnsWhitelistSignal.NORMAL -> {
                 WhitelistState.PARTIAL_PROBLEM
             }
