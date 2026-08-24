@@ -24,15 +24,14 @@ WhiteListChecker проверяет локальные и внешние сай�
 
 ## Статус проекта
 
-`1.0.0` находится в релизной подготовке. Local-first refactor и миграция Room `7 -> 8` реализованы; физическое обновление debug `0.10.4 -> 1.0.0` без очистки данных подтвердило сохранение истории и удаление UI общего сервиса.
+`1.0.0` находится в релизной подготовке. Local-first refactor, миграция Room `7 -> 8` и Update Delivery через официальный GitHub Releases реализованы. Физическое обновление debug `0.10.4 -> 1.0.0` без очистки данных подтвердило сохранение истории и удаление UI общего сервиса.
 
 До stable release остаются отдельные release tasks:
 
-- [#9 — Update Delivery](https://github.com/Regstar2/white-list-checker/issues/9);
 - [#10 — встроенный Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
 - [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
 
-Текущий код `1.0.0` нельзя считать опубликованным stable release до завершения release checklist.
+Update Delivery из #9 дополнительно требует финального физического RU/EN smoke test перед tag. Текущий код `1.0.0` нельзя считать опубликованным stable release до завершения release checklist.
 
 ## Возможности
 
@@ -50,6 +49,8 @@ WhiteListChecker проверяет локальные и внешние сай�
 - фоновые проверки через WorkManager;
 - активный мониторинг через foreground service;
 - личные Telegram-уведомления и команды через user-owned Worker;
+- асинхронная и ручная проверка новых версий через официальный GitHub Releases;
+- stable/prerelease filtering для update check;
 - RU/EN интерфейс.
 
 ## Быстрый старт
@@ -91,6 +92,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 4. Используйте «Диагностика» для route/DNS/site details.
 5. Настройте локальные уведомления, WorkManager или active monitoring по необходимости.
 6. Личный Telegram включайте только после настройки собственного Worker и бота.
+7. Проверить наличие новой версии можно вручную в разделе «О приложении».
 
 ## Конфигурация
 
@@ -116,22 +118,25 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 VPN/tunnel рассматривается как ограничение достоверности: если он меняет путь трафика, результат может перестать описывать прямой доступ мобильного оператора.
 
-Личный Telegram relay — отдельная опциональная интеграция и использует HTTPS к Worker, указанному пользователем; он не меняет transport основного checker.
+Личный Telegram relay и updater — отдельные интеграции. Updater обращается к GitHub через обычную default network policy Android и не получает cellular `Network`, используемый checker'ом; поэтому update check не меняет измеряемый маршрут.
 
 ## Архитектура
 
 ```text
 Compose UI
    |
-MainViewModel / use cases
+   +-- MainViewModel / checker use cases
+   |      +-- Cellular Network
+   |      |      +-- DNS probes / cellular resolver
+   |      |      +-- HTTPS target checks
+   |      |      +-- WhitelistStateClassifier
+   |      +-- Room / DataStore
+   |      +-- WorkManager / Foreground service
+   |      +-- optional user-owned Telegram relay
    |
-   +-- Cellular Network
-   |      +-- DNS probes / cellular resolver
-   |      +-- HTTPS target checks
-   |      +-- WhitelistStateClassifier
-   +-- Room / DataStore
-   +-- WorkManager / Foreground service
-   +-- optional user-owned Telegram relay
+   +-- AppUpdateViewModel
+          +-- CheckForAppUpdateUseCase
+                 +-- public GitHub Releases API
 ```
 
 Room schema `8` удаляет устаревшую таблицу `pending_public_reports` миграцией `7 -> 8` без destructive migration. История, статистика и остальные локальные данные сохраняются.
@@ -143,6 +148,8 @@ Room schema `8` удаляет устаревшую таблицу `pending_publ
 - TLS certificate/hostname verification target checks не отключается;
 - production URL центрального сервиса отсутствует;
 - `BOT_TOKEN` не хранится в APK;
+- update check не содержит GitHub PAT/OAuth secret;
+- release page строится только на официальном repository prefix;
 - release keystore, `local.properties`, passwords и secrets исключены из Git;
 - private governance/AI tool state не публикуется;
 - personal Telegram secrets задаются пользователем и не должны попадать в issues/logs.
@@ -152,6 +159,8 @@ Room schema `8` удаляет устаревшую таблицу `pending_publ
 ## Приватность
 
 Проверки, история и статистика остаются на устройстве. Runtime-пути отправки результатов в центральный сервис больше нет.
+
+Update check выполняет публичный запрос к GitHub Releases без GitHub-аккаунта/PAT и не отправляет историю проверок, настройки или другие пользовательские данные.
 
 При включённом personal Telegram данные, которые пользователь явно отправляет своему боту, проходят через его собственный Worker и Telegram. Точный объём зависит от выбранного действия — test message, check report или commands.
 
@@ -170,7 +179,16 @@ Room schema `8` удаляет устаревшую таблицу `pending_publ
 
 ## Обновление
 
-Совместимый APK можно устанавливать поверх существующей версии через Android package installer или:
+WhiteListChecker использует `BuildConfig.VERSION_NAME` как установленную версию и проверяет публичные релизы только в официальном репозитории `Regstar2/white-list-checker`.
+
+Проверка выполняется:
+
+- асинхронно при запуске без блокировки основного UI;
+- вручную через **«О приложении» → «Проверить обновления»**.
+
+Для stable-сборки prerelease (`alpha`, `beta`, `rc` и GitHub `prerelease=true`) не предлагается как обычное stable-обновление. При обнаружении новой версии приложение показывает номер версии и краткие release notes. Пользователь может открыть официальный GitHub Release или выбрать **«Позже»**.
+
+Приложение не скачивает и не устанавливает APK автоматически. Установка остаётся под контролем пользователя и Android. Совместимо подписанный APK можно установить поверх существующей версии через Android package installer или:
 
 ```powershell
 adb install -r path\to\WhiteListChecker.apk
@@ -178,7 +196,7 @@ adb install -r path\to\WhiteListChecker.apk
 
 Подпись нового APK должна совпадать с подписью установленной версии. `adb uninstall` удалит локальные данные и не подходит для проверки migration path.
 
-Встроенная проверка новых версий реализуется отдельно в [Issue #9](https://github.com/Regstar2/white-list-checker/issues/9); до её завершения README не заявляет auto-update как реализованную функцию.
+Подробная политика: [docs/update-delivery.md](docs/update-delivery.md).
 
 ## Сборка
 
@@ -198,7 +216,7 @@ Release signing берётся только из локальных Gradle prope
 .\gradlew.bat assembleRelease
 ```
 
-Для изменений cellular routing, DNS и migration автоматических проверок недостаточно: требуется физическое Android-устройство. Текущий manual plan: [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+Update Delivery покрыт unit tests для SemVer, stable/prerelease selection, error mapping и GitHub response parsing. Для cellular routing, DNS, migration и финального update UI всё равно требуется физическое Android-устройство. Текущий manual plan: [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
 
 ## Документация
 
@@ -206,6 +224,7 @@ Release signing берётся только из локальных Gradle prope
 - [Текущая архитектура](docs/architecture/current-architecture.md)
 - [Технологический стек](docs/architecture/tech-stack.md)
 - [Маршрутизация сети и DNS](docs/network-routing-notes.md)
+- [Update Delivery](docs/update-delivery.md)
 - [Личный Cloudflare Worker для Telegram](docs/cloudflare-worker/README.md)
 - [Manual test plan](docs/testing/manual-test-plan.md)
 - [Соответствие стандартам sheduler](docs/release/standards-compliance.md)
@@ -232,6 +251,8 @@ Release signing берётся только из локальных Gradle prope
 - включённый VPN/tunnel может сделать результат нерепрезентативным для прямой cellular-сети;
 - raw DNS/53 не шифруется;
 - блокировка UDP/53 и TCP/53 может сделать конкретный custom resolver недоступным;
+- public GitHub API может временно ограничивать частоту update checks;
+- приложение не выполняет silent/background APK installation;
 - WorkManager не гарантирует точное время выполнения;
 - Android может ограничивать foreground service;
 - personal Telegram требует собственного Worker и Telegram-бота;
