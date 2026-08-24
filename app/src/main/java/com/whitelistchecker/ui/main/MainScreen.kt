@@ -174,7 +174,7 @@ fun MainScreen(
         )
         AppScreen.ABOUT -> AboutScreen(
             updateUiState = appUpdateUiState,
-            onCheckForUpdates = appUpdateViewModel::checkForUpdates,
+            onCheckForUpdates = { appUpdateViewModel.checkForUpdates() },
             onBack = viewModel::navigateBack,
         )
     }
