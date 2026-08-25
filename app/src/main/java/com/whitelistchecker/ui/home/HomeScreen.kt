@@ -44,7 +44,7 @@ fun HomeScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp, vertical = 16.dp)
                 .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(24.dp),
+            verticalArrangement = Arrangement.spacedBy(22.dp),
         ) {
             HomeHeader(onOpenAbout = { onOpenScreen(AppScreen.ABOUT) })
 
@@ -152,7 +152,7 @@ private fun CheckMobileNetworkButton(
         enabled = !isChecking,
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 72.dp),
+            .heightIn(min = 64.dp),
     ) {
         if (isChecking) {
             CircularProgressIndicator(
