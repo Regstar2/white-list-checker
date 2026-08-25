@@ -107,7 +107,7 @@ private fun ActionGridCell(
 ) {
     Card(
         modifier = modifier
-            .defaultMinSize(minHeight = 72.dp)
+            .defaultMinSize(minHeight = 88.dp)
             .clickable(
                 role = Role.Button,
                 onClick = item.onClick,
@@ -121,7 +121,7 @@ private fun ActionGridCell(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 14.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Icon(
