@@ -13,6 +13,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.data.update.AppUpdateCheckPreferences
 import com.whitelistchecker.domain.model.UserSettings
 import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
@@ -25,8 +26,15 @@ class MainActivity : ComponentActivity() {
     private val appContainer: AppContainer
         get() = (application as WhitelistCheckerApplication).appContainer
 
+    private val appUpdateCheckPreferences by lazy {
+        AppUpdateCheckPreferences(applicationContext)
+    }
+
     private val viewModelFactory by lazy {
-        AppViewModelFactory(appContainer)
+        AppViewModelFactory(
+            appContainer = appContainer,
+            appUpdateCheckPreferences = appUpdateCheckPreferences,
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
     private class AppViewModelFactory(
         private val appContainer: AppContainer,
+        private val appUpdateCheckPreferences: AppUpdateCheckPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -99,6 +108,7 @@ class MainActivity : ComponentActivity() {
             if (modelClass.isAssignableFrom(AppUpdateViewModel::class.java)) {
                 return AppUpdateViewModel(
                     checkForAppUpdateUseCase = appContainer.checkForAppUpdateUseCase,
+                    tryAcquireAutomaticCheck = appUpdateCheckPreferences::tryAcquireAutomaticCheck,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")
