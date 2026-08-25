@@ -1,5 +1,6 @@
 package com.whitelistchecker.ui.about
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -65,10 +66,17 @@ fun AboutScreen(
                 title = stringResource(R.string.about_source_code),
                 value = stringResource(R.string.about_github),
                 onClick = {
-                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL))
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(GITHUB_URL)).apply {
+                        addCategory(Intent.CATEGORY_BROWSABLE)
+                        if (context !is Activity) {
+                            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        }
+                    }
                     try {
                         context.startActivity(intent)
                     } catch (_: ActivityNotFoundException) {
+                        Unit
+                    } catch (_: SecurityException) {
                         Unit
                     }
                 },
