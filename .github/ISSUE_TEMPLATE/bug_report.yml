@@ -1,0 +1,93 @@
+name: Bug report
+description: Сообщить об ошибке / Report a bug
+title: "[Bug]: "
+labels:
+  - bug
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Спасибо за сообщение. Опишите только данные, необходимые для воспроизведения проблемы.
+        Do not include BOT_TOKEN, Relay Secret, chat_id, private Worker URLs, passwords, signing data, or other secrets.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: Что произошло? / What happened?
+      description: Опишите наблюдаемую проблему и где она возникла.
+      placeholder: Краткое и точное описание проблемы.
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Шаги воспроизведения / Steps to reproduce
+      description: Укажите минимальную последовательность действий.
+      placeholder: |
+        1. Открыть ...
+        2. Нажать ...
+        3. Наблюдать ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Ожидаемое поведение / Expected behavior
+      placeholder: Что должно было произойти?
+    validations:
+      required: true
+
+  - type: input
+    id: app_version
+    attributes:
+      label: Версия WhiteListChecker / App version
+      description: Версия отображается в разделе «О приложении».
+      placeholder: 1.0.0
+    validations:
+      required: true
+
+  - type: input
+    id: android_version
+    attributes:
+      label: Версия Android / Android version
+      placeholder: Android 14
+    validations:
+      required: true
+
+  - type: input
+    id: device_model
+    attributes:
+      label: Устройство / Device model
+      placeholder: Например, Xiaomi 11 Lite 5G NE
+
+  - type: dropdown
+    id: network_context
+    attributes:
+      label: Сетевой контекст / Network context
+      description: Выберите наиболее близкий сценарий, если проблема связана с сетью.
+      options:
+        - Не связано с сетью / Not network-related
+        - Mobile only
+        - Mobile check while Wi-Fi is enabled
+        - Android Private DNS enabled
+        - VPN/tunnel enabled
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Безопасная диагностика / Safe diagnostics
+      description: Добавляйте только несекретные фрагменты. Не вставляйте токены, Relay Secret, chat_id, private Worker URL, пароли или signing data.
+      placeholder: Несекретные детали, скриншот или минимальный фрагмент ошибки.
+
+  - type: checkboxes
+    id: sensitive_data
+    attributes:
+      label: Проверка чувствительных данных / Sensitive data check
+      options:
+        - label: Я проверил сообщение и не включил токены, секреты, пароли, chat_id или приватные URL. / I checked that the report contains no tokens, secrets, passwords, chat_id, or private URLs.
+          required: true

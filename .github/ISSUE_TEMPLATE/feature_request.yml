@@ -1,0 +1,64 @@
+name: Feature request
+description: Предложить улучшение / Suggest an improvement
+title: "[Feature]: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Опишите проблему и желаемый результат. Не публикуйте токены, Relay Secret, chat_id, private Worker URLs, passwords, signing data или другие секреты.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Какую проблему нужно решить? / What problem should be solved?
+      description: Опишите пользовательскую задачу или ограничение, а не только желаемую кнопку или экран.
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Предлагаемое улучшение / Proposed improvement
+      description: Опишите ожидаемое поведение.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Область / Area
+      options:
+        - Cellular checker / DNS
+        - Sites and DNS settings
+        - Statistics / Diagnostics
+        - Notifications / Background monitoring
+        - Personal Telegram integration
+        - Update Delivery
+        - UI / Localization
+        - Documentation / Release
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Альтернативы / Alternatives
+      description: Какие обходные варианты или другие решения уже рассматривались?
+
+  - type: input
+    id: app_version
+    attributes:
+      label: Версия WhiteListChecker / App version
+      description: Необязательно, но полезно для UI/behavior изменений.
+      placeholder: 1.0.0
+
+  - type: checkboxes
+    id: sensitive_data
+    attributes:
+      label: Проверка чувствительных данных / Sensitive data check
+      options:
+        - label: Я проверил сообщение и не включил токены, секреты, пароли, chat_id или приватные URL. / I checked that the request contains no tokens, secrets, passwords, chat_id, or private URLs.
+          required: true

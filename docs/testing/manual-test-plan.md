@@ -120,7 +120,7 @@
 
 ### Ошибка сети
 
-1. Отключить интернет или сделать `api.github.com` недоступным.
+1. Отключить интернет.
 2. Перезапустить приложение — startup update check не должен приводить к crash/dialog, блокирующему основной UI.
 3. Выполнить обычную проверку мобильной сети — checker должен продолжать работать независимо от updater failure.
 4. Открыть «О приложении» и нажать ручную проверку обновлений.
@@ -138,18 +138,38 @@
 3. На экране «О приложении» обновление остаётся видимым после «Позже».
 4. Повторная ручная проверка снова разрешает показать prompt.
 5. «Открыть релиз» ведёт только на `github.com/Regstar2/white-list-checker/releases/tag/...`.
-6. Краткие release notes отображаются в приложении; полные доступны на странице релиза.
 
 ### Stable/prerelease policy
 
-Автоматически покрывается unit tests. Перед release дополнительно проверить на controlled fixtures, что:
+Автоматически покрывается unit tests. Перед release дополнительно проверить на controlled fixtures, что stable installed version не предлагает `alpha/beta/rc` как stable update, а prerelease installed build может увидеть более новый prerelease/stable release.
 
-1. stable installed version не предлагает `alpha/beta/rc` как stable update;
-2. `prerelease=true` игнорируется stable-сборкой;
-3. SemVer prerelease suffix игнорируется stable-сборкой даже при ошибочном `prerelease=false`;
-4. prerelease installed build может увидеть более новый prerelease/stable release.
+## 12. Feedback via GitHub Issues
 
-## 12. Localization и UI
+### До merge PR с Issue Forms
+
+1. Открыть «О приложении».
+2. Убедиться, что виден раздел «Обратная связь» с двумя действиями: «Сообщить об ошибке» и «Предложить улучшение».
+3. Нажать каждую кнопку и убедиться, что открывается только `github.com/Regstar2/white-list-checker/issues/new`.
+4. Проверить, что в редактируемом заголовке предзаполнена текущая версия приложения.
+5. Убедиться, что приложение не показывает/не прикладывает автоматически логи, Worker URL, Relay Secret, `chat_id` или другие пользовательские данные.
+6. Вернуться в приложение и убедиться, что checker/UI продолжают работать.
+
+GitHub читает Issue Forms из default branch. Пока новые `.yml` ещё не находятся в `main`, URL может не отобразить финальную structured form. Это не заменяет post-merge check ниже.
+
+### После merge Issue Forms в main
+
+1. Повторно открыть bug report.
+2. Убедиться, что GitHub показывает `bug_report.yml`, а не blank issue/старый Markdown template.
+3. Проверить обязательные поля: problem, reproduction steps, expected behavior, app/Android version, network context и sensitive-data confirmation.
+4. Повторно открыть feature request.
+5. Убедиться, что GitHub показывает `feature_request.yml` с problem/proposal/area и sensitive-data confirmation.
+6. Не отправлять тестовый Issue, если это не требуется; достаточно проверить заполнение формы и закрыть страницу.
+
+### Browser failure
+
+На устройстве/эмуляторе без Activity для HTTPS либо в controlled test убедиться, что попытка открыть feedback не приводит к crash и показывает локализованное сообщение об ошибке.
+
+## 13. Localization и UI
 
 Повторить основные экраны на RU и EN:
 
@@ -160,7 +180,7 @@
 - Notifications;
 - Auto-check / active monitoring;
 - Settings;
-- About / Updates.
+- About / Updates / Feedback.
 
 Проверить:
 
@@ -169,19 +189,19 @@
 3. Нет clipping/overflow на стандартном и увеличенном системном font scale.
 4. Language selection сохраняется после перезапуска.
 5. Unsupported system locale использует предусмотренный fallback.
-6. Update dialog, status, errors, «Позже» и action перехода переведены на RU/EN.
+6. Update UI и обе Feedback-кнопки переведены на RU/EN.
 
-## 13. Crash/log sanity
+## 14. Crash/log sanity
 
 После полного smoke test:
 
 ```powershell
 adb logcat -b crash -d
-adb logcat -d | Select-String "FATAL EXCEPTION|Room|pending_public_reports|PublicService"
+adb logcat -d | Select-String "FATAL EXCEPTION|Room|pending_public_reports|PublicService|GitHubFeedback"
 ```
 
 Упоминание `pending_public_reports` допустимо только как SQL migration/drop context. Crash/error из-за отсутствующей таблицы недопустим.
 
-## 14. Release result
+## 15. Release result
 
 Результаты ручной проверки переносятся в `docs/release/release-checklist.md` и затем только фактически выполненные пункты попадают в `docs/releases/v1.0.0*.md`.
