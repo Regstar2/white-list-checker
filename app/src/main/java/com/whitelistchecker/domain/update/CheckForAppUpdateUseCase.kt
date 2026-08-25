@@ -9,7 +9,11 @@ class CheckForAppUpdateUseCase(
         val installedVersion = SemanticVersion.parse(installedVersionName)
             ?: return AppUpdateCheckResult.Failure(AppUpdateError.INVALID_INSTALLED_VERSION)
 
-        return when (val sourceResult = releaseSource.fetchReleases()) {
+        return when (
+            val sourceResult = releaseSource.fetchReleases(
+                includePreReleases = installedVersion.isPreRelease,
+            )
+        ) {
             is ReleaseSourceResult.Success -> selectRelease(
                 installedVersionName = installedVersionName,
                 installedVersion = installedVersion,
