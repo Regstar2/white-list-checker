@@ -2,8 +2,7 @@ package com.whitelistchecker.domain.update
 
 import kotlinx.coroutines.test.runTest
 import org.junit.Assert.assertEquals
-import org.junit.Assert.assertFalse
-import org.junit.Assert.assertTrue
+import org.junit.Assert.assertIs
 import org.junit.Test
 
 class CheckForAppUpdateUseCaseTest {
@@ -19,9 +18,8 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        val result = useCase.check()
-        assertTrue(result is AppUpdateCheckResult.UpdateAvailable)
-        assertEquals("v1.1.0", (result as AppUpdateCheckResult.UpdateAvailable).release.tagName)
+        val result = assertIs<AppUpdateCheckResult.UpdateAvailable>(useCase.check())
+        assertEquals("v1.1.0", result.release.tagName)
     }
 
     @Test
@@ -33,7 +31,7 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        assertTrue(useCase.check() is AppUpdateCheckResult.UpToDate)
+        assertIs<AppUpdateCheckResult.UpToDate>(useCase.check())
     }
 
     @Test
@@ -45,9 +43,40 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        val result = useCase.check()
-        assertTrue(result is AppUpdateCheckResult.UpdateAvailable)
-        assertEquals("v1.1.0", (result as AppUpdateCheckResult.UpdateAvailable).release.tagName)
+        val result = assertIs<AppUpdateCheckResult.UpdateAvailable>(useCase.check())
+        assertEquals("v1.1.0", result.release.tagName)
+    }
+
+    @Test
+    fun `stable build requests stable-only source`() = runTest {
+        var includePreReleases: Boolean? = null
+        val useCase = CheckForAppUpdateUseCase(
+            releaseSource = AppReleaseSource { include ->
+                includePreReleases = include
+                ReleaseSourceResult.Success(emptyList())
+            },
+            installedVersionProvider = { "1.0.0" },
+        )
+
+        useCase.check()
+
+        assertEquals(false, includePreReleases)
+    }
+
+    @Test
+    fun `prerelease build requests prerelease-capable source`() = runTest {
+        var includePreReleases: Boolean? = null
+        val useCase = CheckForAppUpdateUseCase(
+            releaseSource = AppReleaseSource { include ->
+                includePreReleases = include
+                ReleaseSourceResult.Success(emptyList())
+            },
+            installedVersionProvider = { "1.1.0-beta.1" },
+        )
+
+        useCase.check()
+
+        assertEquals(true, includePreReleases)
     }
 
     @Test
@@ -60,53 +89,47 @@ class CheckForAppUpdateUseCaseTest {
             ),
         )
 
-        assertTrue(useCase.check() is AppUpdateCheckResult.UpToDate)
+        assertIs<AppUpdateCheckResult.UpToDate>(useCase.check())
     }
 
     @Test
     fun `maps network failure without throwing`() = runTest {
         val useCase = CheckForAppUpdateUseCase(
-            releaseSource = AppReleaseSource { ReleaseSourceResult.NetworkFailure },
+            releaseSource = AppReleaseSource { _ -> ReleaseSourceResult.NetworkFailure },
             installedVersionProvider = { "1.0.0" },
         )
 
-        val result = useCase.check()
-        assertTrue(result is AppUpdateCheckResult.Failure)
-        assertEquals(AppUpdateError.NETWORK, (result as AppUpdateCheckResult.Failure).error)
+        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
+        assertEquals(AppUpdateError.NETWORK, result.error)
     }
 
     @Test
     fun `maps rate limit separately`() = runTest {
         val useCase = CheckForAppUpdateUseCase(
-            releaseSource = AppReleaseSource {
+            releaseSource = AppReleaseSource { _ ->
                 ReleaseSourceResult.HttpFailure(statusCode = 403, rateLimited = true)
             },
             installedVersionProvider = { "1.0.0" },
         )
 
-        val result = useCase.check()
-        assertTrue(result is AppUpdateCheckResult.Failure)
-        assertEquals(AppUpdateError.RATE_LIMITED, (result as AppUpdateCheckResult.Failure).error)
+        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
+        assertEquals(AppUpdateError.RATE_LIMITED, result.error)
     }
 
     @Test
     fun `invalid installed version is reported before network access`() = runTest {
         var sourceCalled = false
         val useCase = CheckForAppUpdateUseCase(
-            releaseSource = AppReleaseSource {
+            releaseSource = AppReleaseSource { _ ->
                 sourceCalled = true
                 ReleaseSourceResult.Success(emptyList())
             },
             installedVersionProvider = { "dev" },
         )
 
-        val result = useCase.check()
-        assertTrue(result is AppUpdateCheckResult.Failure)
-        assertEquals(
-            AppUpdateError.INVALID_INSTALLED_VERSION,
-            (result as AppUpdateCheckResult.Failure).error,
-        )
-        assertFalse(sourceCalled)
+        val result = assertIs<AppUpdateCheckResult.Failure>(useCase.check())
+        assertEquals(AppUpdateError.INVALID_INSTALLED_VERSION, result.error)
+        assertEquals(false, sourceCalled)
     }
 
     private fun useCase(
@@ -114,7 +137,7 @@ class CheckForAppUpdateUseCaseTest {
         releases: List<AppRelease>,
     ): CheckForAppUpdateUseCase {
         return CheckForAppUpdateUseCase(
-            releaseSource = AppReleaseSource { ReleaseSourceResult.Success(releases) },
+            releaseSource = AppReleaseSource { _ -> ReleaseSourceResult.Success(releases) },
             installedVersionProvider = { installed },
         )
     }
