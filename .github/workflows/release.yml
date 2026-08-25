@@ -27,7 +27,6 @@ jobs:
     timeout-minutes: 120
 
     env:
-      GH_TOKEN: ${{ github.token }}
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
 
     steps:
@@ -106,6 +105,8 @@ jobs:
 
       - name: Publish GitHub Release
         shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if (-not (Get-Command gh -ErrorAction SilentlyContinue)) {
               throw 'GitHub CLI (gh) is required on the trusted release runner.'
