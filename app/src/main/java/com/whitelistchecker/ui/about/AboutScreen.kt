@@ -27,6 +27,8 @@ import com.whitelistchecker.R
 import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.CompactDetailRow
 import com.whitelistchecker.ui.components.ScreenScaffold
+import com.whitelistchecker.ui.feedback.FeedbackDestination
+import com.whitelistchecker.ui.feedback.openFeedbackForm
 import com.whitelistchecker.ui.update.AppUpdateUiState
 import com.whitelistchecker.ui.update.messageRes
 import com.whitelistchecker.ui.update.openOfficialRelease
@@ -74,6 +76,40 @@ fun AboutScreen(
             CompactDetailRow(
                 label = stringResource(R.string.about_license),
                 value = stringResource(R.string.about_license_mit),
+            )
+        }
+
+        AppCard(title = stringResource(R.string.feedback_section_title)) {
+            OutlinedButton(
+                onClick = {
+                    openFeedbackForm(
+                        context = context,
+                        destination = FeedbackDestination.BUG_REPORT,
+                        appVersion = BuildConfig.VERSION_NAME,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.feedback_report_bug))
+            }
+
+            OutlinedButton(
+                onClick = {
+                    openFeedbackForm(
+                        context = context,
+                        destination = FeedbackDestination.FEATURE_REQUEST,
+                        appVersion = BuildConfig.VERSION_NAME,
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.feedback_request_feature))
+            }
+
+            Text(
+                text = stringResource(R.string.feedback_section_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
 
