@@ -63,7 +63,7 @@ fun LastCheckResultCard(
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 264.dp),
+            .heightIn(min = 244.dp),
         shape = RoundedCornerShape(8.dp),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
@@ -73,8 +73,8 @@ fun LastCheckResultCard(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(horizontal = 22.dp, vertical = 22.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+                .padding(horizontal = 20.dp, vertical = 20.dp),
+            verticalArrangement = Arrangement.spacedBy(13.dp),
         ) {
             ResultHeader(
                 model = model,
@@ -84,7 +84,7 @@ fun LastCheckResultCard(
             )
 
             if (model.localCount != null && model.foreignCount != null) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     GroupCountRow(
                         label = stringResource(R.string.home_result_local_checks),
                         count = model.localCount,
@@ -205,7 +205,7 @@ private fun ResultMeta(
         }
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
         if (checkedAtMillis != null) {
             val ageLabel = LastCheckAgeFormatter.formatAge(
                 resources = resources,
