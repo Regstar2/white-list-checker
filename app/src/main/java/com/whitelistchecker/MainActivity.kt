@@ -13,19 +13,28 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.whitelistchecker.data.update.AppUpdateCheckPreferences
 import com.whitelistchecker.domain.model.UserSettings
 import com.whitelistchecker.ui.main.MainScreen
 import com.whitelistchecker.ui.main.MainViewModel
 import com.whitelistchecker.ui.settings.AppLocaleController
 import com.whitelistchecker.ui.theme.WhiteListCheckerTheme
+import com.whitelistchecker.ui.update.AppUpdateViewModel
 
 class MainActivity : ComponentActivity() {
 
     private val appContainer: AppContainer
         get() = (application as WhitelistCheckerApplication).appContainer
 
+    private val appUpdateCheckPreferences by lazy {
+        AppUpdateCheckPreferences(applicationContext)
+    }
+
     private val viewModelFactory by lazy {
-        MainViewModelFactory(appContainer)
+        AppViewModelFactory(
+            appContainer = appContainer,
+            appUpdateCheckPreferences = appUpdateCheckPreferences,
+        )
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -50,15 +59,20 @@ class MainActivity : ComponentActivity() {
                 LocalActivityResultRegistryOwner provides this,
             ) {
                 WhiteListCheckerTheme(themeMode = userSettings.themeMode) {
-                    val viewModel: MainViewModel = viewModel(factory = viewModelFactory)
-                    MainScreen(viewModel = viewModel)
+                    val mainViewModel: MainViewModel = viewModel(factory = viewModelFactory)
+                    val appUpdateViewModel: AppUpdateViewModel = viewModel(factory = viewModelFactory)
+                    MainScreen(
+                        viewModel = mainViewModel,
+                        appUpdateViewModel = appUpdateViewModel,
+                    )
                 }
             }
         }
     }
 
-    private class MainViewModelFactory(
+    private class AppViewModelFactory(
         private val appContainer: AppContainer,
+        private val appUpdateCheckPreferences: AppUpdateCheckPreferences,
     ) : ViewModelProvider.Factory {
         @Suppress("UNCHECKED_CAST")
         override fun <T : ViewModel> create(modelClass: Class<T>): T {
@@ -89,6 +103,12 @@ class MainActivity : ComponentActivity() {
                     loadWhitelistTimelineDashboardUseCase = appContainer.loadWhitelistTimelineDashboardUseCase,
                     statisticsDiagnosticsMetaRepository = appContainer.statisticsDiagnosticsMetaRepository,
                     userSettingsRepository = appContainer.userSettingsRepository,
+                ) as T
+            }
+            if (modelClass.isAssignableFrom(AppUpdateViewModel::class.java)) {
+                return AppUpdateViewModel(
+                    checkForAppUpdateUseCase = appContainer.checkForAppUpdateUseCase,
+                    tryAcquireAutomaticCheck = appUpdateCheckPreferences::tryAcquireAutomaticCheck,
                 ) as T
             }
             throw IllegalArgumentException("Unknown ViewModel class: ${modelClass.name}")

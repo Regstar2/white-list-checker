@@ -24,15 +24,14 @@ Starting with `1.0.0`, the central/public service is removed. Core functionality
 
 ## Project status
 
-`1.0.0` is in release preparation. The local-first refactor and Room migration `7 -> 8` are implemented; a physical debug upgrade from `0.10.4` to `1.0.0` without clearing app data preserved history and removed the shared-service UI.
+`1.0.0` is in release preparation. The local-first refactor, Room migration `7 -> 8`, and Update Delivery through the official GitHub Releases source are implemented. A physical debug upgrade from `0.10.4` to `1.0.0` without clearing app data preserved history and removed the shared-service UI.
 
 Separate release tasks still remain:
 
-- [#9 — Update Delivery](https://github.com/Regstar2/white-list-checker/issues/9);
 - [#10 — in-app Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
 - [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
 
-The current `1.0.0` code is not an already published stable release until the release checklist is completed.
+Update Delivery from #9 still requires the final physical RU/EN smoke test before tagging. The current `1.0.0` code is not an already published stable release until the release checklist is completed.
 
 ## Features
 
@@ -50,6 +49,8 @@ The current `1.0.0` code is not an already published stable release until the re
 - background checks through WorkManager;
 - active monitoring through a foreground service;
 - personal Telegram notifications and commands through a user-owned Worker;
+- asynchronous and manual update checks through the official GitHub Releases source;
+- stable/prerelease filtering for update checks;
 - Russian and English UI.
 
 ## Quick start
@@ -91,6 +92,7 @@ For the future stable release, use only an APK from the project's official GitHu
 4. Use Diagnostics for route, DNS, and site details.
 5. Configure local notifications, WorkManager, or active monitoring as needed.
 6. Enable personal Telegram only after configuring your own Worker and bot.
+7. Check for a new app version manually from the About screen when needed.
 
 ## Configuration
 
@@ -116,22 +118,25 @@ Therefore the checker path has no `System / Direct / Custom proxy` modes, HTTP p
 
 A VPN/tunnel is treated as a measurement limitation: when it changes the traffic path, results may no longer describe the mobile operator's direct access.
 
-Personal Telegram relay is a separate optional integration. It uses HTTPS to the Worker configured by the user and does not change the main checker transport.
+Personal Telegram relay and the updater are separate integrations. The updater accesses GitHub through Android's normal default network policy and never receives the cellular `Network` used by the checker, so update checking does not change the measured route.
 
 ## Architecture
 
 ```text
 Compose UI
    |
-MainViewModel / use cases
+   +-- MainViewModel / checker use cases
+   |      +-- Cellular Network
+   |      |      +-- DNS probes / cellular resolver
+   |      |      +-- HTTPS target checks
+   |      |      +-- WhitelistStateClassifier
+   |      +-- Room / DataStore
+   |      +-- WorkManager / Foreground service
+   |      +-- optional user-owned Telegram relay
    |
-   +-- Cellular Network
-   |      +-- DNS probes / cellular resolver
-   |      +-- HTTPS target checks
-   |      +-- WhitelistStateClassifier
-   +-- Room / DataStore
-   +-- WorkManager / Foreground service
-   +-- optional user-owned Telegram relay
+   +-- AppUpdateViewModel
+          +-- CheckForAppUpdateUseCase
+                 +-- public GitHub Releases API
 ```
 
 Room schema `8` removes the obsolete `pending_public_reports` table through migration `7 -> 8` without destructive migration. History, statistics, and other local data are preserved.
@@ -143,6 +148,8 @@ See [current architecture](docs/architecture/current-architecture.md) and [techn
 - TLS certificate and hostname verification remain enabled for target checks;
 - there is no production URL for a central shared service;
 - `BOT_TOKEN` is not stored in the APK;
+- update checks contain no GitHub PAT/OAuth secret;
+- release pages are constructed only from the official repository prefix;
 - release keystores, `local.properties`, passwords, and secrets are excluded from Git;
 - private governance and AI tool state are not published;
 - personal Telegram secrets are user-provided and must not appear in issues or logs.
@@ -152,6 +159,8 @@ See [SECURITY.md](SECURITY.md).
 ## Privacy
 
 Checks, history, and statistics remain on the device. There is no runtime path that uploads results to a central project service.
+
+Update checks make a public request to GitHub Releases without a GitHub account/PAT and do not send check history, app settings, or other user data.
 
 When personal Telegram is enabled, data explicitly sent to the user's bot passes through that user's Worker and Telegram. The exact content depends on the chosen action: test message, check report, or commands.
 
@@ -170,7 +179,16 @@ The full physical test flow is in [docs/testing/manual-test-plan.md](docs/testin
 
 ## Updating
 
-A compatibly signed APK can be installed over the existing version through the Android package installer or with:
+WhiteListChecker uses `BuildConfig.VERSION_NAME` as the installed version and checks public releases only in the official `Regstar2/white-list-checker` repository.
+
+Checks run:
+
+- asynchronously at startup without blocking the main UI;
+- manually through **About → Check for updates**.
+
+For a stable build, prereleases (`alpha`, `beta`, `rc`, and GitHub `prerelease=true`) are not offered as normal stable updates. When a newer version is found, the app displays the version number and short release notes. The user can open the official GitHub Release or select **Later**.
+
+The app does not download or install APKs automatically. Installation remains under Android and user control. A compatibly signed APK can be installed over the existing version through the Android package installer or with:
 
 ```powershell
 adb install -r path\to\WhiteListChecker.apk
@@ -178,7 +196,7 @@ adb install -r path\to\WhiteListChecker.apk
 
 The new APK certificate must match the installed version. `adb uninstall` removes local app data and must not be used to validate the migration path.
 
-In-app update checking is tracked separately in [Issue #9](https://github.com/Regstar2/white-list-checker/issues/9); until it is complete, this README does not claim auto-update as an implemented feature.
+See [docs/update-delivery.md](docs/update-delivery.md) for the complete policy.
 
 ## Build
 
@@ -198,7 +216,7 @@ Release signing is supplied only through local Gradle properties/environment/loc
 .\gradlew.bat assembleRelease
 ```
 
-Changes to cellular routing, DNS, and migrations require a physical Android device in addition to automated checks. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+Update Delivery has unit tests for SemVer, stable/prerelease selection, error mapping, and GitHub response parsing. Cellular routing, DNS, migration, and the final update UI still require a physical Android device. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
 
 ## Documentation
 
@@ -206,6 +224,7 @@ Changes to cellular routing, DNS, and migrations require a physical Android devi
 - [Current architecture](docs/architecture/current-architecture.md)
 - [Technology stack](docs/architecture/tech-stack.md)
 - [Network and DNS routing](docs/network-routing-notes.md)
+- [Update Delivery](docs/update-delivery.md)
 - [Personal Telegram Cloudflare Worker](docs/cloudflare-worker/README.md)
 - [Manual test plan](docs/testing/manual-test-plan.md)
 - [sheduler standards compliance](docs/release/standards-compliance.md)
@@ -232,6 +251,8 @@ The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2
 - an enabled VPN/tunnel can make results unrepresentative of the direct cellular network;
 - raw DNS/53 is unencrypted;
 - blocking both UDP/53 and TCP/53 may make a particular custom resolver unavailable;
+- the public GitHub API may temporarily rate-limit update checks;
+- the app does not perform silent/background APK installation;
 - WorkManager does not guarantee exact execution times;
 - Android may restrict foreground services;
 - personal Telegram requires the user's own Worker and Telegram bot;

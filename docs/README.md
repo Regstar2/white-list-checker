@@ -16,6 +16,7 @@
 
 ### Integrations
 
+- [Update Delivery через GitHub Releases](update-delivery.md)
 - [Личный Cloudflare Worker для Telegram](cloudflare-worker/README.md)
 
 ### Testing

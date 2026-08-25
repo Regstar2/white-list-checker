@@ -10,9 +10,9 @@
 | `ENGINEERING_PRINCIPLES.md` | Применяется | Сохраняются границы `ui` / `domain` / `data`, manual composition root `AppContainer`, явный cellular `Network`, локальное persistence и минимальные зависимости. |
 | `README_STANDARD.md` | Применяется | `README.md` и `README_EN.md` синхронизированы, используют одинаковые разделы и описывают только фактический local-first продукт. |
 | `RELEASE_STANDARD.md` | Применяется | Для опубликованного `1.0.0` обязательны синхронные RU/EN release notes, точные installation/update steps, verification, known issues, assets и checksums. Финальные notes создаются после завершения release blockers. |
-| `LOCALIZATION_STANDARD.md` | Применяется | Пользовательский Android UI поддерживает `ru` + `en`; новые UI-строки должны идти через Android resources. Неиспользуемые hardcoded navigation/notification helper labels удалены в рамках аудита #8. |
+| `LOCALIZATION_STANDARD.md` | Применяется | Пользовательский Android UI поддерживает `ru` + `en`; новые UI-строки идут через Android resources. Update Delivery имеет синхронные RU/EN строки. |
 | `NETWORK_PROXY_STANDARD.md` | `N/A` для checker path | См. отдельное обоснование ниже. Proxy/VPN transport нельзя добавлять в измеряемый cellular path. |
-| `AUTO_UPDATE_STANDARD.md` | Обязателен, отдельно | Реализуется в Issue #9. До его завершения update delivery остаётся release blocker для `1.0.0`. |
+| `AUTO_UPDATE_STANDARD.md` | Применяется | Issue #9 реализует async/manual version check через public GitHub Releases, SemVer channel policy, dismissible update prompt и переход только на официальный release page. Silent/self APK install не используется. |
 | `FEEDBACK_STANDARD.md` | Обязателен, отдельно | Реализуется в Issue #10. Здесь не дублируется. |
 | `GITHUB_AUTOMATION_STANDARD.md` | Обязателен, отдельно | Реализуется в Issue #11. Здесь не дублируются trusted CI, Project Sync и release workflow. |
 | `AI_TEXT_GUARDRAILS.md` | Применяется к публичным текстам | README, release notes и пользовательская документация должны отделять проверенные факты от предположений и не обещать неподтверждённые возможности. |
@@ -33,7 +33,24 @@
 - silent fallback через proxy/VPN запрещён;
 - VPN/tunnel документируется как ограничение достоверности результата;
 - personal Telegram relay является отдельной опциональной интеграцией и не определяет transport checker;
-- будущий updater из Issue #9 должен документировать свою сетевую политику отдельно и не менять checker path.
+- updater использует обычную default network policy Android, не получает cellular `Network` checker'а и не влияет на измеряемый route.
+
+## Update Delivery
+
+Issue #9 использует следующий fallback вместо silent self-update:
+
+```text
+BuildConfig.VERSION_NAME
+    -> public GitHub Releases API
+    -> SemVer/channel selection
+    -> update prompt / manual check
+    -> official GitHub Release page
+    -> user-controlled APK installation
+```
+
+В APK нет GitHub PAT/OAuth secret. Stable installed build не получает GitHub prerelease или SemVer prerelease tag как обычное stable-обновление. Ошибки update check не блокируют запуск и сетевую диагностику.
+
+Подробно: [../update-delivery.md](../update-delivery.md).
 
 ## Публичный vs приватный repository state
 
@@ -63,6 +80,7 @@
 - `docs/architecture/current-architecture.md` — runtime architecture;
 - `docs/architecture/tech-stack.md` — стек и platform versions;
 - `docs/network-routing-notes.md` — детали routing/DNS;
+- `docs/update-delivery.md` — update source, channel policy и self-update boundary;
 - `docs/testing/manual-test-plan.md` — текущий физический test plan;
 - `docs/release/release-checklist.md` — release gate;
 - `SECURITY.md` — secrets, trust boundaries и vulnerability reporting;
@@ -81,10 +99,9 @@ Android lint и unit tests остаются обязательным release gat
 
 ## Release blockers, вынесенные в отдельные Issues
 
-`1.0.0` не следует публиковать как stable до завершения применимых отдельных задач:
+После реализации #9 до stable `1.0.0` остаются отдельные обязательные задачи:
 
-- #9 — Update Delivery;
 - #10 — Feedback / GitHub Issues;
 - #11 — GitHub Automation / release orchestration.
 
-Issue #8 не реализует эти функции повторно; его задача — привести публичный repository/documentation boundary к стандарту и явно зафиксировать исключения.
+Update Delivery также должен пройти физический RU/EN smoke test и финальную release-проверку перед tag.

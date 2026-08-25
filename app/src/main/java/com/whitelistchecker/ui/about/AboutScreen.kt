@@ -9,8 +9,11 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
+import androidx.compose.material3.Button
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -24,11 +27,16 @@ import com.whitelistchecker.R
 import com.whitelistchecker.ui.components.AppCard
 import com.whitelistchecker.ui.components.CompactDetailRow
 import com.whitelistchecker.ui.components.ScreenScaffold
+import com.whitelistchecker.ui.update.AppUpdateUiState
+import com.whitelistchecker.ui.update.messageRes
+import com.whitelistchecker.ui.update.openOfficialRelease
 
 private const val GITHUB_URL = "https://github.com/Regstar2/white-list-checker"
 
 @Composable
 fun AboutScreen(
+    updateUiState: AppUpdateUiState,
+    onCheckForUpdates: () -> Unit,
     onBack: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -66,6 +74,97 @@ fun AboutScreen(
             CompactDetailRow(
                 label = stringResource(R.string.about_license),
                 value = stringResource(R.string.about_license_mit),
+            )
+        }
+
+        AppCard(title = stringResource(R.string.update_section_title)) {
+            when (updateUiState) {
+                AppUpdateUiState.Idle -> {
+                    Text(
+                        text = stringResource(R.string.update_not_checked),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                AppUpdateUiState.Checking -> {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator()
+                        Text(
+                            text = stringResource(R.string.update_checking),
+                            style = MaterialTheme.typography.bodyMedium,
+                        )
+                    }
+                }
+                is AppUpdateUiState.UpToDate -> {
+                    Text(
+                        text = stringResource(
+                            R.string.update_up_to_date,
+                            updateUiState.installedVersion,
+                        ),
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                }
+                is AppUpdateUiState.Available -> {
+                    val releaseNotes = if (updateUiState.release.notes.isBlank()) {
+                        stringResource(R.string.update_release_notes_empty)
+                    } else {
+                        updateUiState.release.notes
+                    }
+                    Text(
+                        text = stringResource(
+                            R.string.update_available_inline,
+                            updateUiState.release.tagName,
+                        ),
+                        style = MaterialTheme.typography.titleMedium,
+                    )
+                    Text(
+                        text = updateUiState.release.title,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                    Text(
+                        text = stringResource(R.string.update_release_notes),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                    Text(
+                        text = releaseNotes,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 8,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    OutlinedButton(
+                        onClick = {
+                            openOfficialRelease(context, updateUiState.release.pageUrl)
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                    ) {
+                        Text(stringResource(R.string.update_open_release))
+                    }
+                }
+                is AppUpdateUiState.Error -> {
+                    Text(
+                        text = stringResource(updateUiState.error.messageRes()),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.error,
+                    )
+                }
+            }
+
+            Button(
+                onClick = onCheckForUpdates,
+                enabled = updateUiState != AppUpdateUiState.Checking,
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.update_check_button))
+            }
+
+            Text(
+                text = stringResource(R.string.update_source_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
     }

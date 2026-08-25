@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="update_section_title">Обновления</string>
+    <string name="update_check_button">Проверить обновления</string>
+    <string name="update_checking">Проверяем GitHub Releases…</string>
+    <string name="update_not_checked">Проверка обновлений ещё не выполнялась.</string>
+    <string name="update_up_to_date">Установлена актуальная версия %1$s.</string>
+    <string name="update_available_title">Доступно обновление</string>
+    <string name="update_available_message">Доступна версия %1$s. Сейчас установлена %2$s.</string>
+    <string name="update_available_inline">Доступна версия %1$s.</string>
+    <string name="update_release_notes">Что изменилось</string>
+    <string name="update_release_notes_empty">Полное описание доступно на странице релиза.</string>
+    <string name="update_open_release">Открыть релиз</string>
+    <string name="update_later">Позже</string>
+    <string name="update_source_hint">Источник обновлений: официальный GitHub Releases проекта. APK автоматически не устанавливается.</string>
+    <string name="update_open_release_error">Не удалось открыть страницу релиза.</string>
+    <string name="update_error_network">Не удалось проверить обновления: нет доступа к GitHub.</string>
+    <string name="update_error_http">GitHub вернул ошибку при проверке обновлений.</string>
+    <string name="update_error_rate_limited">GitHub временно ограничил частоту запросов. Повторите позже.</string>
+    <string name="update_error_invalid_response">GitHub вернул некорректный ответ.</string>
+    <string name="update_error_invalid_version">Текущую версию приложения не удалось распознать.</string>
+</resources>

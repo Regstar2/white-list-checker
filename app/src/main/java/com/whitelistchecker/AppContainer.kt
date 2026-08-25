@@ -21,6 +21,7 @@ import com.whitelistchecker.data.history.RoomCheckHistoryRepository
 import com.whitelistchecker.data.statistics.RoomCheckStatisticsRepository
 import com.whitelistchecker.data.statistics.StatisticsDiagnosticsMetaDataStore
 import com.whitelistchecker.data.system.PackageAppVersionProvider
+import com.whitelistchecker.data.update.GitHubReleaseSource
 import com.whitelistchecker.domain.active.ActiveMonitoringController
 import com.whitelistchecker.domain.checker.CellularDnsProbe
 import com.whitelistchecker.domain.checker.CellularDnsResolverFactory
@@ -63,6 +64,7 @@ import com.whitelistchecker.domain.telegram.TelegramQueueProcessor
 import com.whitelistchecker.domain.telegram.TelegramReportFormatter
 import com.whitelistchecker.domain.telegram.TelegramWorkerClient
 import com.whitelistchecker.domain.telegram.WorkerUrlBuilder
+import com.whitelistchecker.domain.update.CheckForAppUpdateUseCase
 import com.whitelistchecker.worker.BackgroundCheckScheduler
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -144,6 +146,18 @@ class AppContainer(context: Context) {
     val channelManager = LocalNotificationChannelManager(appContext)
     val permissionChecker = LocalNotificationPermissionChecker(appContext)
     val appSettingsNavigator = AppSettingsNavigator(appContext)
+
+    val checkForAppUpdateUseCase = CheckForAppUpdateUseCase(
+        releaseSource = GitHubReleaseSource(
+            httpClient = OkHttpClient.Builder()
+                .connectTimeout(5, TimeUnit.SECONDS)
+                .readTimeout(10, TimeUnit.SECONDS)
+                .callTimeout(15, TimeUnit.SECONDS)
+                .retryOnConnectionFailure(true)
+                .build(),
+        ),
+        installedVersionProvider = { BuildConfig.VERSION_NAME },
+    )
 
     private val telegramWorkerClient = TelegramWorkerClient(
         httpClient = OkHttpClient.Builder()

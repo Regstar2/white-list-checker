@@ -27,6 +27,7 @@
 - [x] Обязательные Android locale: default/RU и `values-en`.
 - [x] Language switch существует в приложении.
 - [x] Неиспользуемые hardcoded RU screen/notification helper labels удалены из UI/navigation source.
+- [x] Update Delivery UI strings существуют в RU/EN resources.
 - [ ] Финальный smoke test основных экранов на RU.
 - [ ] Финальный smoke test основных экранов на EN.
 - [ ] Проверить отсутствие критического clipping/overflow на RU/EN с увеличенным системным шрифтом.
@@ -45,6 +46,28 @@
 - [x] Последний CI ветки удаления public service: release build прошёл.
 - [x] Issue #8 / PR #14 после retarget на `main`: GitHub Actions run #67 — debug build, unit tests, Android lint и release build прошли.
 - [ ] Выполнить финальный CI через стандартизированный flow Issue #11.
+
+## Update Delivery
+
+Реализация Issue #9:
+
+- [x] Installed version берётся из `BuildConfig.VERSION_NAME`.
+- [x] Trusted source — public GitHub Releases API `Regstar2/white-list-checker`.
+- [x] GitHub PAT/OAuth secret не требуется и не хранится в APK.
+- [x] Startup check выполняется асинхронно и его failure не блокирует основной UI/checker.
+- [x] Экран «О приложении» содержит ручное действие проверки обновлений.
+- [x] Stable installed build отфильтровывает GitHub prerelease и SemVer prerelease tags.
+- [x] Draft releases игнорируются.
+- [x] При update available показываются installed/new version и краткие release notes.
+- [x] Пользователь может выбрать «Позже».
+- [x] Release URL строится только на официальном repository prefix.
+- [x] Silent/background APK installation отсутствует; установка остаётся под контролем Android/пользователя.
+- [x] Unit tests добавлены для SemVer, channel selection, errors и GitHub response parsing.
+- [ ] На физическом устройстве проверить, что startup update check не задерживает запуск.
+- [ ] На физическом устройстве выполнить ручную проверку в «О приложении» при доступном GitHub.
+- [ ] Проверить manual error state при недоступном `api.github.com`.
+- [ ] Проверить update-available prompt, «Позже» и переход на официальный release page на controlled test version/fixture.
+- [ ] Повторить update UI smoke test на RU и EN.
 
 ## Manual network checks
 
@@ -69,13 +92,15 @@
 - [x] Центральный project-owned service не требуется для core functionality.
 - [x] Checker history/statistics остаются локальными.
 - [x] `BOT_TOKEN` не хранится в Android app.
+- [x] GitHub update check не содержит PAT/OAuth write credential.
 - [x] Release keystore/credentials исключены из Git.
 - [x] TLS certificate/hostname verification не отключается для target checks.
 - [ ] Проверить final diff/history на случайно добавленные secrets перед tag.
 
 ## Обязательные отдельные задачи до stable 1.0.0
 
-- [ ] #9 — Update Delivery / check for updates.
+- [x] #9 — Update Delivery implementation.
+- [ ] #9 — physical update-flow smoke test по разделу выше.
 - [ ] #10 — Feedback / GitHub Issues path.
 - [ ] #11 — trusted CI, Project Sync и release orchestration.
 

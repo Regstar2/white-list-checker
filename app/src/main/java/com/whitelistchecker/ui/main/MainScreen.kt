@@ -8,6 +8,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -26,13 +27,20 @@ import com.whitelistchecker.ui.notifications.TelegramRecipientDiscoveryScreen
 import com.whitelistchecker.ui.notifications.TelegramWorkerSetupScreen
 import com.whitelistchecker.ui.settings.SettingsScreen
 import com.whitelistchecker.ui.statistics.StatisticsScreen
+import com.whitelistchecker.ui.update.AppUpdateAvailableDialog
+import com.whitelistchecker.ui.update.AppUpdateUiState
+import com.whitelistchecker.ui.update.AppUpdateViewModel
+import com.whitelistchecker.ui.update.openOfficialRelease
 
 @Composable
 fun MainScreen(
     viewModel: MainViewModel,
+    appUpdateViewModel: AppUpdateViewModel,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val appUpdateUiState by appUpdateViewModel.uiState.collectAsStateWithLifecycle()
     val lifecycleOwner = LocalLifecycleOwner.current
+    val context = LocalContext.current
 
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission(),
@@ -165,7 +173,22 @@ fun MainScreen(
             onLanguageChange = viewModel::updateLanguage,
         )
         AppScreen.ABOUT -> AboutScreen(
+            updateUiState = appUpdateUiState,
+            onCheckForUpdates = { appUpdateViewModel.checkForUpdates() },
             onBack = viewModel::navigateBack,
+        )
+    }
+
+    val availableUpdate = appUpdateUiState as? AppUpdateUiState.Available
+    if (availableUpdate != null && !availableUpdate.promptDismissed) {
+        AppUpdateAvailableDialog(
+            state = availableUpdate,
+            onDismiss = appUpdateViewModel::dismissAvailablePrompt,
+            onOpenRelease = {
+                if (openOfficialRelease(context, availableUpdate.release.pageUrl)) {
+                    appUpdateViewModel.dismissAvailablePrompt()
+                }
+            },
         )
     }
 }

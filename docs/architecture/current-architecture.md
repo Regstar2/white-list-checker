@@ -13,21 +13,24 @@ WhiteListChecker — local-first Android-приложение для диагн�
 ```text
 Compose UI
    |
-MainViewModel
+   +-- MainViewModel
+   |      +-- WhitelistCheckUseCase
+   |      |      +-- CellularNetworkProvider
+   |      |      +-- DNS probes / CellularDnsResolver
+   |      |      +-- MobileSiteChecker
+   |      |      +-- WhitelistStateClassifier
+   |      |
+   |      +-- CheckAndNotifyUseCase
+   |      |      +-- local history / statistics / timeline
+   |      |      +-- local Android notifications
+   |      |      +-- optional personal Telegram relay
+   |      |
+   |      +-- WorkManager background checks
+   |      +-- ActiveMonitoringService
    |
-   +-- WhitelistCheckUseCase
-   |      +-- CellularNetworkProvider
-   |      +-- DNS probes / CellularDnsResolver
-   |      +-- MobileSiteChecker
-   |      +-- WhitelistStateClassifier
-   |
-   +-- CheckAndNotifyUseCase
-   |      +-- local history / statistics / timeline
-   |      +-- local Android notifications
-   |      +-- optional personal Telegram relay
-   |
-   +-- WorkManager background checks
-   +-- ActiveMonitoringService
+   +-- AppUpdateViewModel
+          +-- CheckForAppUpdateUseCase
+                 +-- GitHubReleaseSource
 ```
 
 `AppContainer` является composition root и явно соединяет platform/data implementations с domain use cases. UI отображает state и передаёт действия; checker/classification/persistence не реализуются внутри Compose components.
@@ -52,9 +55,28 @@ Site checks являются основным классификационным
 - HTTP proxy, SOCKS5 и VPN/tunnel не являются checker transports;
 - скрытый fallback через proxy/VPN запрещён;
 - включённый VPN/tunnel рассматривается как ограничение достоверности прямого cellular measurement;
-- optional personal Telegram relay и будущий updater являются отдельными network integrations и должны документировать свой transport отдельно, не меняя checker path.
+- optional personal Telegram relay и updater являются отдельными network integrations и не меняют checker path.
+
+Updater использует обычный OkHttp client через default network policy Android и никогда не получает cellular `Network`, выделенный для диагностики. Подробно: [../update-delivery.md](../update-delivery.md).
 
 Полная фиксация применимости стандартов: [../release/standards-compliance.md](../release/standards-compliance.md).
+
+## Update Delivery
+
+Установленная версия берётся из `BuildConfig.VERSION_NAME`. `AppUpdateViewModel` асинхронно запускает `CheckForAppUpdateUseCase`, который читает публичный GitHub Releases API репозитория проекта через `GitHubReleaseSource`.
+
+Основные правила:
+
+- GitHub PAT/OAuth token в APK отсутствует;
+- draft releases игнорируются;
+- stable installed build не получает prerelease как обычное обновление;
+- SemVer prerelease tag дополнительно считается prerelease независимо от GitHub metadata;
+- при наличии новой версии приложение показывает номер версии и предлагает открыть официальный release page;
+- пользователь может выбрать «Позже»;
+- background/startup failure не блокирует запуск и основной checker;
+- приложение не скачивает и не устанавливает APK автоматически.
+
+URL release page строится приложением на фиксированном repository prefix, а не доверяется произвольному URL из API response.
 
 ## Local persistence
 
