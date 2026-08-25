@@ -18,6 +18,7 @@
 
 - [Update Delivery через GitHub Releases](update-delivery.md)
 - [Встроенный Feedback через GitHub Issues](feedback.md)
+- [GitHub automation: Trusted CI, Project Sync и Release](github-automation.md)
 - [Личный Cloudflare Worker для Telegram](cloudflare-worker/README.md)
 
 ### Testing
