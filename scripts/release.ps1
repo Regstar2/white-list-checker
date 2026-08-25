@@ -24,14 +24,18 @@ function Invoke-CheckedCommand {
 }
 
 function Find-ApkSigner {
-    $fromPath = Get-Command 'apksigner.bat' -ErrorAction SilentlyContinue
-    if ($fromPath) {
-        return $fromPath.Source
+    foreach ($commandName in @('apksigner.bat', 'apksigner')) {
+        $fromPath = Get-Command $commandName -ErrorAction SilentlyContinue
+        if ($fromPath) {
+            return $fromPath.Source
+        }
     }
 
+    $androidSdkRoot = [Environment]::GetEnvironmentVariable('ANDROID_SDK_ROOT')
+    $androidHome = [Environment]::GetEnvironmentVariable('ANDROID_HOME')
     $sdkRoots = @(
-        $env:ANDROID_SDK_ROOT,
-        $env:ANDROID_HOME
+        $androidSdkRoot,
+        $androidHome
     ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) -and (Test-Path $_) } | Select-Object -Unique
 
     foreach ($sdkRoot in $sdkRoots) {
@@ -42,9 +46,11 @@ function Find-ApkSigner {
 
         $versions = Get-ChildItem $buildToolsRoot -Directory | Sort-Object Name -Descending
         foreach ($version in $versions) {
-            $candidate = Join-Path $version.FullName 'apksigner.bat'
-            if (Test-Path $candidate) {
-                return $candidate
+            foreach ($fileName in @('apksigner.bat', 'apksigner')) {
+                $candidate = Join-Path $version.FullName $fileName
+                if (Test-Path $candidate) {
+                    return $candidate
+                }
             }
         }
     }
