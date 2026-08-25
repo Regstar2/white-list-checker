@@ -16,7 +16,7 @@ function Invoke-CheckedCommand {
     Write-Host ">> $FilePath $($Arguments -join ' ')"
     & $FilePath @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "Command failed with exit code $LASTEXITCODE: $FilePath $($Arguments -join ' ')"
+        throw "Command failed with exit code ${LASTEXITCODE}: $FilePath $($Arguments -join ' ')"
     }
 }
 
@@ -54,6 +54,11 @@ if (-not (Test-Path $gradle)) {
     throw 'gradlew.bat was not found in the repository root.'
 }
 
+$releaseDir = Join-Path $root 'app\build\outputs\apk\release'
+if (Test-Path $releaseDir) {
+    Remove-Item $releaseDir -Recurse -Force
+}
+
 Write-Host 'WhiteListChecker CI'
 Write-Host "Repository: $root"
 
@@ -69,7 +74,6 @@ if (-not (Test-Path $debugApk)) {
     throw "Debug APK was not produced: $debugApk"
 }
 
-$releaseDir = Join-Path $root 'app\build\outputs\apk\release'
 if (-not (Test-Path $releaseDir)) {
     throw "Release output directory was not produced: $releaseDir"
 }
