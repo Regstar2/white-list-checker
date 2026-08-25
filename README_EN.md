@@ -24,14 +24,13 @@ Starting with `1.0.0`, the central/public service is removed. Core functionality
 
 ## Project status
 
-`1.0.0` is in release preparation. The local-first refactor, Room migration `7 -> 8`, and Update Delivery through the official GitHub Releases source are implemented. A physical debug upgrade from `0.10.4` to `1.0.0` without clearing app data preserved history and removed the shared-service UI.
+`v1.0.0` is the first stable WhiteListChecker release. It was published on **August 25, 2026** and is available from [GitHub Releases](https://github.com/Regstar2/white-list-checker/releases/tag/v1.0.0).
 
-Separate release tasks still remain:
+The stable release includes the local-first refactor, Room migration `7 -> 8` without clearing user data, the fix for the false “DNS problem on mobile network” status, Update Delivery through the official GitHub Releases source, in-app Feedback through GitHub Issues, and the current GitHub/release automation.
 
-- [#10 — in-app Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
-- [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
+The home screen also reflects the current UI: six primary quick actions form a balanced grid, while About is opened through the compact information icon in the header.
 
-Update Delivery from #9 still requires the final physical RU/EN smoke test before tagging. The current `1.0.0` code is not an already published stable release until the release checklist is completed.
+Current stable APK: `WhiteListChecker-v1.0.0-release.apk`. Its checksum is published next to the APK in `SHA256SUMS.txt`.
 
 ## Features
 
@@ -51,20 +50,23 @@ Update Delivery from #9 still requires the final physical RU/EN smoke test befor
 - personal Telegram notifications and commands through a user-owned Worker;
 - asynchronous and manual update checks through the official GitHub Releases source;
 - stable/prerelease filtering for update checks;
+- in-app links to bug-report and feature-request GitHub Issue forms without a GitHub PAT in the APK;
 - Russian and English UI.
 
 ## Quick start
 
-For the current source branch:
+### Stable build
+
+Download `WhiteListChecker-v1.0.0-release.apk` from [release v1.0.0](https://github.com/Regstar2/white-list-checker/releases/tag/v1.0.0) and install it using Android.
+
+After launch, select **Check mobile network**. Cellular data must be available; Wi‑Fi may remain enabled.
+
+### Build from source
 
 ```powershell
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
-
-After launch, select **Check mobile network**. Cellular data must be available; Wi‑Fi may remain enabled.
-
-The public stable `1.0.0` APK will be distributed through GitHub Releases after the release checklist is complete.
 
 ## Requirements
 
@@ -75,6 +77,14 @@ The public stable `1.0.0` APK will be distributed through GitHub Releases after 
 
 ## Installation
 
+For normal installation, use APKs only from the project's [official GitHub Releases](https://github.com/Regstar2/white-list-checker/releases). For `v1.0.0`, the file is:
+
+```text
+WhiteListChecker-v1.0.0-release.apk
+```
+
+The checksum is provided in `SHA256SUMS.txt` in the same release.
+
 For a development/debug build:
 
 ```powershell
@@ -82,7 +92,7 @@ For a development/debug build:
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-For the future stable release, use only an APK from the project's official GitHub Release. Do not uninstall the existing app before a compatible upgrade if you need to preserve local history and settings.
+Do not uninstall the existing app before a compatible upgrade if you need to preserve local history and settings. With a compatible signature, a new APK can be installed over the previous version.
 
 ## Usage
 
@@ -92,7 +102,8 @@ For the future stable release, use only an APK from the project's official GitHu
 4. Use Diagnostics for route, DNS, and site details.
 5. Configure local notifications, WorkManager, or active monitoring as needed.
 6. Enable personal Telegram only after configuring your own Worker and bot.
-7. Check for a new app version manually from the About screen when needed.
+7. Open About through the information icon in the top-right area of the home screen to check for updates or view project information.
+8. Use the built-in Feedback actions to report a bug or propose an improvement through GitHub Issues.
 
 ## Configuration
 
@@ -149,6 +160,7 @@ See [current architecture](docs/architecture/current-architecture.md) and [techn
 - there is no production URL for a central shared service;
 - `BOT_TOKEN` is not stored in the APK;
 - update checks contain no GitHub PAT/OAuth secret;
+- built-in Feedback does not require a GitHub write credential in the APK;
 - release pages are constructed only from the official repository prefix;
 - release keystores, `local.properties`, passwords, and secrets are excluded from Git;
 - private governance and AI tool state are not published;
@@ -161,6 +173,8 @@ See [SECURITY.md](SECURITY.md).
 Checks, history, and statistics remain on the device. There is no runtime path that uploads results to a central project service.
 
 Update checks make a public request to GitHub Releases without a GitHub account/PAT and do not send check history, app settings, or other user data.
+
+Feedback opens public GitHub Issue forms. The app must not automatically attach tokens, Relay Secrets, `chat_id`, private logs, or other sensitive data.
 
 When personal Telegram is enabled, data explicitly sent to the user's bot passes through that user's Worker and Telegram. The exact content depends on the chosen action: test message, check report, or commands.
 
@@ -216,7 +230,9 @@ Release signing is supplied only through local Gradle properties/environment/loc
 .\gradlew.bat assembleRelease
 ```
 
-Update Delivery has unit tests for SemVer, stable/prerelease selection, error mapping, and GitHub response parsing. Cellular routing, DNS, migration, and the final update UI still require a physical Android device. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+Update Delivery has unit tests for SemVer, stable/prerelease selection, error mapping, and GitHub response parsing. Cellular routing, DNS, migration, and update UI still require a physical Android device. See [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+
+Before `v1.0.0` was published, the release was checked with unit tests, Android lint, debug/release builds, release APK signature verification, physical UI smoke testing, Update Delivery, GitHub Feedback, local database migration, and the automated release workflow.
 
 ## Documentation
 
@@ -240,9 +256,11 @@ Read [CONTRIBUTING.md](CONTRIBUTING.md) before opening a PR. Private governance 
 
 ## Feedback
 
-Until the in-app feedback flow is available, bugs and feature proposals can be submitted through [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues). Do not attach tokens, Relay Secrets, `chat_id`, private logs, or other sensitive data.
+The app includes actions for reporting bugs and proposing improvements. They open the project's public GitHub Issue forms without storing a GitHub PAT/OAuth write credential in the APK.
 
-The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2/white-list-checker/issues/10).
+Issues can also be created directly in [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues).
+
+Do not attach tokens, Relay Secrets, `chat_id`, private logs, or other sensitive data.
 
 ## Limitations
 
@@ -255,8 +273,7 @@ The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2
 - the app does not perform silent/background APK installation;
 - WorkManager does not guarantee exact execution times;
 - Android may restrict foreground services;
-- personal Telegram requires the user's own Worker and Telegram bot;
-- stable `1.0.0` has not been published yet.
+- personal Telegram requires the user's own Worker and Telegram bot.
 
 ## License
 
