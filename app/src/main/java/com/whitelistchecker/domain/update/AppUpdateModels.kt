@@ -19,7 +19,7 @@ sealed interface ReleaseSourceResult {
 }
 
 fun interface AppReleaseSource {
-    suspend fun fetchReleases(): ReleaseSourceResult
+    suspend fun fetchReleases(includePreReleases: Boolean): ReleaseSourceResult
 }
 
 enum class AppUpdateError {
