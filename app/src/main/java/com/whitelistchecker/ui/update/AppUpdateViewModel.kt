@@ -6,6 +6,7 @@ import com.whitelistchecker.domain.update.AppRelease
 import com.whitelistchecker.domain.update.AppUpdateCheckResult
 import com.whitelistchecker.domain.update.AppUpdateError
 import com.whitelistchecker.domain.update.CheckForAppUpdateUseCase
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -33,22 +34,24 @@ sealed interface AppUpdateUiState {
 
 class AppUpdateViewModel(
     private val checkForAppUpdateUseCase: CheckForAppUpdateUseCase,
+    private val tryAcquireAutomaticCheck: () -> Boolean,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<AppUpdateUiState>(AppUpdateUiState.Idle)
     val uiState: StateFlow<AppUpdateUiState> = _uiState.asStateFlow()
+    private var checkJob: Job? = null
 
     init {
-        checkForUpdates(manual = false)
+        if (tryAcquireAutomaticCheck()) {
+            checkForUpdates(manual = false)
+        }
     }
 
     fun checkForUpdates(manual: Boolean = true) {
-        if (_uiState.value == AppUpdateUiState.Checking) return
+        if (checkJob?.isActive == true) return
 
-        viewModelScope.launch {
-            if (manual) {
-                _uiState.value = AppUpdateUiState.Checking
-            }
+        checkJob = viewModelScope.launch {
+            _uiState.value = AppUpdateUiState.Checking
 
             when (val result = checkForAppUpdateUseCase.check()) {
                 is AppUpdateCheckResult.UpdateAvailable -> {
