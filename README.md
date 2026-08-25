@@ -257,3 +257,7 @@ Update Delivery покрыт unit tests для SemVer, stable/prerelease selecti
 - Android может ограничивать foreground service;
 - personal Telegram требует собственного Worker и Telegram-бота;
 - stable `1.0.0` ещё не опубликован.
+
+## Лицензия
+
+Проект распространяется по лицензии [MIT](LICENSE).
