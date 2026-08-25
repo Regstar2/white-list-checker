@@ -1,5 +1,6 @@
 package com.whitelistchecker.ui.feedback
 
+import android.app.Activity
 import android.content.ActivityNotFoundException
 import android.content.Context
 import android.content.Intent
@@ -59,12 +60,15 @@ fun openFeedbackForm(
         return false
     }
 
+    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
+        addCategory(Intent.CATEGORY_BROWSABLE)
+        if (context !is Activity) {
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+    }
+
     return try {
-        context.startActivity(
-            Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
-                addCategory(Intent.CATEGORY_BROWSABLE)
-            },
-        )
+        context.startActivity(intent)
         true
     } catch (_: ActivityNotFoundException) {
         showOpenError(context)
