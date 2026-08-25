@@ -24,14 +24,13 @@ WhiteListChecker проверяет локальные и внешние сай�
 
 ## Статус проекта
 
-`1.0.0` находится в релизной подготовке. Local-first refactor, миграция Room `7 -> 8` и Update Delivery через официальный GitHub Releases реализованы. Физическое обновление debug `0.10.4 -> 1.0.0` без очистки данных подтвердило сохранение истории и удаление UI общего сервиса.
+`v1.0.0` — первый стабильный релиз WhiteListChecker. Он опубликован **25 августа 2026 года** и доступен в [GitHub Releases](https://github.com/Regstar2/white-list-checker/releases/tag/v1.0.0).
 
-До stable release остаются отдельные release tasks:
+В стабильную версию вошли local-first refactor, миграция Room `7 -> 8` без очистки пользовательских данных, исправление ложного статуса «Проблема DNS в мобильной сети», Update Delivery через официальный GitHub Releases, встроенный Feedback через GitHub Issues и актуальная GitHub/release automation.
 
-- [#10 — встроенный Feedback](https://github.com/Regstar2/white-list-checker/issues/10);
-- [#11 — GitHub/release automation](https://github.com/Regstar2/white-list-checker/issues/11).
+Главный экран также приведён к текущему UI: шесть основных быстрых действий образуют симметричную сетку, а переход в «О приложении» находится в компактной иконке в правой части шапки.
 
-Update Delivery из #9 дополнительно требует финального физического RU/EN smoke test перед tag. Текущий код `1.0.0` нельзя считать опубликованным stable release до завершения release checklist.
+Актуальный стабильный APK: `WhiteListChecker-v1.0.0-release.apk`. Контрольная сумма публикуется рядом с APK в `SHA256SUMS.txt`.
 
 ## Возможности
 
@@ -51,20 +50,23 @@ Update Delivery из #9 дополнительно требует финальн
 - личные Telegram-уведомления и команды через user-owned Worker;
 - асинхронная и ручная проверка новых версий через официальный GitHub Releases;
 - stable/prerelease filtering для update check;
+- встроенный переход к формам bug report и feature request в GitHub Issues без GitHub PAT в APK;
 - RU/EN интерфейс.
 
 ## Быстрый старт
 
-Для текущей исходной ветки:
+### Готовая стабильная версия
+
+Скачайте `WhiteListChecker-v1.0.0-release.apk` из [релиза v1.0.0](https://github.com/Regstar2/white-list-checker/releases/tag/v1.0.0) и установите его средствами Android.
+
+После запуска нажмите **«Проверить мобильную сеть»**. Мобильные данные должны быть доступны; Wi‑Fi можно оставить включённым.
+
+### Сборка из исходников
 
 ```powershell
 .\gradlew.bat testDebugUnitTest lintDebug assembleDebug
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
-
-После запуска нажмите **«Проверить мобильную сеть»**. Мобильные данные должны быть доступны; Wi‑Fi можно оставить включённым.
-
-Публичный stable APK `1.0.0` будет распространяться через GitHub Releases после прохождения release checklist.
 
 ## Требования
 
@@ -75,6 +77,14 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 
 ## Установка
 
+Для обычной установки используйте APK только из [официальных GitHub Releases](https://github.com/Regstar2/white-list-checker/releases). Для `v1.0.0` это файл:
+
+```text
+WhiteListChecker-v1.0.0-release.apk
+```
+
+Контрольная сумма находится в `SHA256SUMS.txt` того же релиза.
+
 Для development/debug сборки:
 
 ```powershell
@@ -82,7 +92,7 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 adb install -r app\build\outputs\apk\debug\app-debug.apk
 ```
 
-Для будущего stable release используйте только APK из официального GitHub Release проекта. Не удаляйте установленное приложение перед совместимым обновлением, если нужно сохранить локальную историю и настройки.
+Не удаляйте установленное приложение перед совместимым обновлением, если нужно сохранить локальную историю и настройки. При совместимой подписи новый APK устанавливается поверх предыдущей версии.
 
 ## Использование
 
@@ -92,7 +102,8 @@ adb install -r app\build\outputs\apk\debug\app-debug.apk
 4. Используйте «Диагностика» для route/DNS/site details.
 5. Настройте локальные уведомления, WorkManager или active monitoring по необходимости.
 6. Личный Telegram включайте только после настройки собственного Worker и бота.
-7. Проверить наличие новой версии можно вручную в разделе «О приложении».
+7. Откройте «О приложении» через иконку информации в правом верхнем углу главного экрана, чтобы проверить обновления или перейти к информации о проекте.
+8. Для сообщения об ошибке или предложения используйте встроенный Feedback, открывающий формы GitHub Issues.
 
 ## Конфигурация
 
@@ -149,6 +160,7 @@ Room schema `8` удаляет устаревшую таблицу `pending_publ
 - production URL центрального сервиса отсутствует;
 - `BOT_TOKEN` не хранится в APK;
 - update check не содержит GitHub PAT/OAuth secret;
+- встроенный Feedback не требует GitHub write credential в APK;
 - release page строится только на официальном repository prefix;
 - release keystore, `local.properties`, passwords и secrets исключены из Git;
 - private governance/AI tool state не публикуется;
@@ -161,6 +173,8 @@ Room schema `8` удаляет устаревшую таблицу `pending_publ
 Проверки, история и статистика остаются на устройстве. Runtime-пути отправки результатов в центральный сервис больше нет.
 
 Update check выполняет публичный запрос к GitHub Releases без GitHub-аккаунта/PAT и не отправляет историю проверок, настройки или другие пользовательские данные.
+
+Feedback открывает публичные формы GitHub Issues. Приложение не должно автоматически прикладывать токены, Relay Secret, `chat_id`, приватные логи или другие чувствительные данные.
 
 При включённом personal Telegram данные, которые пользователь явно отправляет своему боту, проходят через его собственный Worker и Telegram. Точный объём зависит от выбранного действия — test message, check report или commands.
 
@@ -216,7 +230,9 @@ Release signing берётся только из локальных Gradle prope
 .\gradlew.bat assembleRelease
 ```
 
-Update Delivery покрыт unit tests для SemVer, stable/prerelease selection, error mapping и GitHub response parsing. Для cellular routing, DNS, migration и финального update UI всё равно требуется физическое Android-устройство. Текущий manual plan: [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+Update Delivery покрыт unit tests для SemVer, stable/prerelease selection, error mapping и GitHub response parsing. Для cellular routing, DNS, migration и update UI всё равно требуется физическое Android-устройство. Текущий manual plan: [docs/testing/manual-test-plan.md](docs/testing/manual-test-plan.md).
+
+Перед выпуском `v1.0.0` были выполнены unit tests, Android lint, debug/release build, проверка подписи APK, физический UI smoke test, проверка Update Delivery, GitHub Feedback, миграции локальной базы и автоматизированного release workflow.
 
 ## Документация
 
@@ -240,9 +256,11 @@ Update Delivery покрыт unit tests для SemVer, stable/prerelease selecti
 
 ## Обратная связь
 
-До появления встроенного feedback flow сообщения об ошибках и предложения можно создавать в [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues). Не прикладывайте токены, Relay Secret, `chat_id`, private logs или другие чувствительные данные.
+В приложении доступны действия для сообщения об ошибке и предложения улучшения. Они открывают публичные формы GitHub Issues проекта без хранения GitHub PAT/OAuth write credential в APK.
 
-Встроенный путь из приложения ведётся отдельно в [Issue #10](https://github.com/Regstar2/white-list-checker/issues/10).
+Также issue можно создать напрямую в [GitHub Issues](https://github.com/Regstar2/white-list-checker/issues).
+
+Не прикладывайте токены, Relay Secret, `chat_id`, private logs или другие чувствительные данные.
 
 ## Ограничения
 
@@ -255,8 +273,7 @@ Update Delivery покрыт unit tests для SemVer, stable/prerelease selecti
 - приложение не выполняет silent/background APK installation;
 - WorkManager не гарантирует точное время выполнения;
 - Android может ограничивать foreground service;
-- personal Telegram требует собственного Worker и Telegram-бота;
-- stable `1.0.0` ещё не опубликован.
+- personal Telegram требует собственного Worker и Telegram-бота.
 
 ## Лицензия
 
