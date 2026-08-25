@@ -47,7 +47,7 @@
 - [x] Последний CI ветки удаления public service: release build прошёл.
 - [x] Issue #8 / PR #14: GitHub Actions debug build, unit tests, Android lint и release build прошли.
 - [x] Issue #9 / PR #15: финальный GitHub Actions run прошёл debug build, unit tests, Android lint и release build.
-- [ ] Issue #10 / PR #16: дождаться финального CI на актуальном head.
+- [x] Issue #10 / PR #16: GitHub Actions run #89 — debug build, unit tests, Android lint и release build прошли.
 - [ ] Выполнить финальный CI через стандартизированный flow Issue #11.
 
 ## Update Delivery
