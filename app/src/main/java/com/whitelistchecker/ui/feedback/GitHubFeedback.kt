@@ -6,6 +6,9 @@ import android.content.Intent
 import android.net.Uri
 import android.widget.Toast
 import com.whitelistchecker.R
+import java.net.URI
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 enum class FeedbackDestination(
     val templateName: String,
@@ -22,23 +25,27 @@ enum class FeedbackDestination(
 }
 
 private const val GITHUB_HOST = "github.com"
-private const val REPOSITORY_PATH = "Regstar2/white-list-checker"
+private const val FEEDBACK_PATH = "/Regstar2/white-list-checker/issues/new"
 
 fun buildFeedbackUrl(
     destination: FeedbackDestination,
     appVersion: String,
-): Uri {
+): String {
     val safeVersion = appVersion.trim().ifBlank { "unknown" }
-    return Uri.Builder()
-        .scheme("https")
-        .authority(GITHUB_HOST)
-        .appendPath("Regstar2")
-        .appendPath("white-list-checker")
-        .appendPath("issues")
-        .appendPath("new")
-        .appendQueryParameter("template", destination.templateName)
-        .appendQueryParameter("title", "${destination.titlePrefix} [$safeVersion] ")
-        .build()
+    val encodedTemplate = encodeQueryValue(destination.templateName)
+    val encodedTitle = encodeQueryValue("${destination.titlePrefix} [$safeVersion] ")
+    return "https://$GITHUB_HOST$FEEDBACK_PATH?template=$encodedTemplate&title=$encodedTitle"
+}
+
+internal fun isOfficialFeedbackUrl(url: String): Boolean {
+    return try {
+        val uri = URI(url)
+        uri.scheme == "https" &&
+            uri.host == GITHUB_HOST &&
+            uri.path == FEEDBACK_PATH
+    } catch (_: IllegalArgumentException) {
+        false
+    }
 }
 
 fun openFeedbackForm(
@@ -46,15 +53,15 @@ fun openFeedbackForm(
     destination: FeedbackDestination,
     appVersion: String,
 ): Boolean {
-    val uri = buildFeedbackUrl(destination, appVersion)
-    if (uri.scheme != "https" || uri.host != GITHUB_HOST || !uri.path.orEmpty().startsWith("/$REPOSITORY_PATH/issues/new")) {
+    val url = buildFeedbackUrl(destination, appVersion)
+    if (!isOfficialFeedbackUrl(url)) {
         showOpenError(context)
         return false
     }
 
     return try {
         context.startActivity(
-            Intent(Intent.ACTION_VIEW, uri).apply {
+            Intent(Intent.ACTION_VIEW, Uri.parse(url)).apply {
                 addCategory(Intent.CATEGORY_BROWSABLE)
             },
         )
@@ -66,6 +73,13 @@ fun openFeedbackForm(
         showOpenError(context)
         false
     }
+}
+
+private fun encodeQueryValue(value: String): String {
+    return URLEncoder.encode(
+        value,
+        StandardCharsets.UTF_8.toString(),
+    ).replace("+", "%20")
 }
 
 private fun showOpenError(context: Context) {
