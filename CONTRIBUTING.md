@@ -21,11 +21,13 @@ WhiteListChecker — Android-приложение для диагностики 
 
 ## Сборка и проверки
 
-Минимальная локальная проверка:
+Канонический локальный CI entry point совпадает с GitHub Trusted CI:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease
+.\scripts\ci.ps1
 ```
+
+Он fail-closed запускает обязательные unit tests, Android lint, debug build и release build. Если в текущем окружении настроен release signing, signed APK дополнительно проверяется через `apksigner`.
 
 Если изменение затрагивает сетевой checker, дополнительно требуется физическое Android-устройство и ручная проверка cellular-маршрута.
 
@@ -33,12 +35,27 @@ WhiteListChecker — Android-приложение для диагностики 
 
 Проверьте:
 
-1. `testDebugUnitTest`, `lintDebug`, `assembleDebug` и `assembleRelease` проходят.
+1. `.\scripts\ci.ps1` проходит полностью.
 2. В diff нет секретов, локальных governance-файлов и AI/tool state.
 3. Новые пользовательские строки существуют в `values/` и `values-en/`.
 4. Изменение не добавляет скрытый proxy/VPN fallback в checker path.
 5. Для изменения сетевой логики описан и выполнен релевантный ручной сценарий.
 6. README/документация обновлены, если изменилось пользовательское поведение или архитектурное ограничение.
+
+## GitHub automation
+
+Persistent self-hosted runner используется только для trusted owner PR из того же repository. External/fork PR не должен исполнять свой код на trusted runner.
+
+Project-specific entry points:
+
+```powershell
+.\scripts\ci.ps1
+.\scripts\release.ps1 -Version v1.0.0
+```
+
+Release script требует подписанный release APK и создаёт publishable artifacts только в `dist/`. Signing credentials и `ADD_TO_PROJECT_PAT` хранятся вне repository.
+
+Подробно: [docs/github-automation.md](docs/github-automation.md).
 
 ## Документация
 
@@ -48,6 +65,7 @@ WhiteListChecker — Android-приложение для диагностики 
 - [текущая архитектура](docs/architecture/current-architecture.md)
 - [технологический стек](docs/architecture/tech-stack.md)
 - [scope v1.0](docs/product/mvp-scope.md)
+- [GitHub automation](docs/github-automation.md)
 - [ручной test plan](docs/testing/manual-test-plan.md)
 - [соответствие стандартам](docs/release/standards-compliance.md)
 - [release checklist](docs/release/release-checklist.md)

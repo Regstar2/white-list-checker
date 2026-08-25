@@ -1,0 +1,31 @@
+name: Project Sync
+
+on:
+  issues:
+    types:
+      - opened
+      - reopened
+      - transferred
+
+permissions:
+  contents: read
+  issues: read
+
+jobs:
+  add-to-project:
+    name: Add issue to Development project
+    if: >
+      github.actor == 'Regstar2' &&
+      github.triggering_actor == 'Regstar2'
+    runs-on:
+      - self-hosted
+      - Windows
+      - X64
+    timeout-minutes: 5
+
+    steps:
+      - name: Add issue to project
+        uses: actions/add-to-project@v2.0.0
+        with:
+          project-url: https://github.com/users/Regstar2/projects/2
+          github-token: ${{ secrets.ADD_TO_PROJECT_PAT }}
