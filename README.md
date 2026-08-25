@@ -6,7 +6,7 @@ Android-приложение для проверки доступности мо
 
 **Русский** · [English](README_EN.md)
 
-[![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml)
+[![Trusted CI](https://github.com/Regstar2/white-list-checker/actions/workflows/trusted-ci.yml/badge.svg)](https://github.com/Regstar2/white-list-checker/actions/workflows/trusted-ci.yml)
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 

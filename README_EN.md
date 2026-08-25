@@ -6,7 +6,7 @@ Android application for checking cellular-network availability and detecting obs
 
 [Русский](README.md) · **English**
 
-[![Android CI](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml/badge.svg)](https://github.com/Regstar2/WhiteListChecker/actions/workflows/android.yml)
+[![Trusted CI](https://github.com/Regstar2/white-list-checker/actions/workflows/trusted-ci.yml/badge.svg)](https://github.com/Regstar2/white-list-checker/actions/workflows/trusted-ci.yml)
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
