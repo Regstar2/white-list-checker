@@ -45,7 +45,7 @@ fun ActionGrid(
     BoxWithConstraints(modifier = modifier.fillMaxWidth()) {
         val singleColumn = maxWidth < 360.dp
         if (singleColumn) {
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 items.forEach { item ->
                     ActionGridCell(item = item, modifier = Modifier.fillMaxWidth())
                 }
@@ -58,7 +58,7 @@ fun ActionGrid(
 
 @Composable
 private fun TwoColumnActionGrid(items: List<ActionGridItem>) {
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
         var index = 0
         while (index < items.size) {
             val item = items[index]
@@ -107,7 +107,7 @@ private fun ActionGridCell(
 ) {
     Card(
         modifier = modifier
-            .defaultMinSize(minHeight = 72.dp)
+            .defaultMinSize(minHeight = 104.dp)
             .clickable(
                 role = Role.Button,
                 onClick = item.onClick,
@@ -121,7 +121,7 @@ private fun ActionGridCell(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(12.dp),
+                .padding(horizontal = 12.dp, vertical = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Icon(
