@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="feedback_section_title">Feedback</string>
+    <string name="feedback_section_hint">Forms open in the official GitHub repository. The app does not attach logs or secrets automatically.</string>
+    <string name="feedback_report_bug">Report a bug</string>
+    <string name="feedback_request_feature">Suggest an improvement</string>
+    <string name="feedback_open_error">Could not open GitHub. Make sure a browser is available on the device.</string>
+</resources>
