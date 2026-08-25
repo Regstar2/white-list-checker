@@ -257,3 +257,7 @@ The in-app path is tracked separately in [Issue #10](https://github.com/Regstar2
 - Android may restrict foreground services;
 - personal Telegram requires the user's own Worker and Telegram bot;
 - stable `1.0.0` has not been published yet.
+
+## License
+
+Distributed under the [MIT](LICENSE) license.
