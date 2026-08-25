@@ -35,20 +35,44 @@
 
 ## Build и автоматические проверки
 
-Минимальный набор:
+Канонический project-specific entry point:
 
 ```powershell
-.\gradlew.bat testDebugUnitTest lintDebug assembleDebug assembleRelease
+.\scripts\ci.ps1
 ```
 
-- [x] Последний CI ветки удаления public service: debug build прошёл.
-- [x] Последний CI ветки удаления public service: unit tests прошли.
-- [x] Последний CI ветки удаления public service: Android lint прошёл.
-- [x] Последний CI ветки удаления public service: release build прошёл.
+Он должен fail-closed выполнить unit tests, Android lint, debug build и release build. При доступном release signing signed APK дополнительно валидируется через `apksigner`.
+
 - [x] Issue #8 / PR #14: GitHub Actions debug build, unit tests, Android lint и release build прошли.
 - [x] Issue #9 / PR #15: финальный GitHub Actions run прошёл debug build, unit tests, Android lint и release build.
-- [x] Issue #10 / PR #16: GitHub Actions run #89 — debug build, unit tests, Android lint и release build прошли.
-- [ ] Выполнить финальный CI через стандартизированный flow Issue #11.
+- [x] Issue #10 / PR #16: GitHub Actions debug build, unit tests, Android lint и release build прошли.
+- [x] Issue #11: добавлены `scripts/ci.ps1` и `scripts/release.ps1` как единые project-specific entry points.
+- [ ] После merge Issue #11 выполнить `Trusted CI` на owner same-repository PR/self-hosted runner.
+- [ ] Выполнить финальный `scripts/ci.ps1` на release source перед tag.
+
+## GitHub automation
+
+Реализация Issue #11:
+
+- [x] Legacy unrestricted `.github/workflows/android.yml` удалён.
+- [x] `.github/workflows/trusted-ci.yml` использует `pull_request_target` + owner/same-repository gate до выделения self-hosted runner.
+- [x] Trusted checkout использует exact PR head SHA и `persist-credentials: false`.
+- [x] Self-hosted labels: `self-hosted`, `Windows`, `X64`.
+- [x] Trusted CI имеет только `contents: read`.
+- [x] `.github/workflows/project-sync.yml` добавляет owner Issues в Development Project через `ADD_TO_PROJECT_PAT`.
+- [x] Project PAT не передаётся в PR CI и не хранится в repository.
+- [x] `.github/workflows/release.yml` работает с exact existing tag и вызывает только `scripts/ci.ps1` + `scripts/release.ps1` как project-specific build entry points.
+- [x] Release workflow использует минимальный `GITHUB_TOKEN` с `contents: write`.
+- [x] Release workflow отказывается молча перезаписывать существующий GitHub Release.
+- [x] `scripts/release.ps1` требует signed non-debug APK, проверяет `versionName`, `apksigner`, формирует versioned APK и `SHA256SUMS.txt` в `dist/`.
+- [x] Public-service/Worker workflow отсутствует в основной release chain.
+- [ ] После merge подтвердить, что owner same-repository PR реально запускает self-hosted Trusted CI.
+- [ ] Подтвердить, что внешний/fork PR не получает выполнение на trusted self-hosted runner.
+- [ ] Проверить наличие repository secret `ADD_TO_PROJECT_PAT`.
+- [ ] При настроенном PAT создать owner test Issue и подтвердить появление в `https://github.com/users/Regstar2/projects/2`.
+- [ ] На trusted release environment настроить `WL_RELEASE_*` вне repository.
+- [ ] Запустить `.\scripts\release.ps1 -Version v1.0.0` после подготовки final release source и проверить `dist/`.
+- [ ] Проверить финальный release workflow на точном tag после выполнения остальных release gates.
 
 ## Update Delivery
 
@@ -82,10 +106,9 @@
 - [x] Legacy Markdown templates заменены structured `bug_report.yml` и `feature_request.yml`.
 - [x] Issue Forms требуют useful reproduction/proposal data и sensitive-data confirmation.
 - [x] Blank issues отключены для основного public feedback path.
-- [x] Ошибка открытия браузера обрабатывается локализованным сообщением без crash.
+- [x] Ошибка открытия browser/localized context исправлена и физически проверена без crash.
 - [x] JVM tests проверяют host/path locking и encoding feedback URL.
-- [ ] До merge: физически проверить обе кнопки, официальный URL и RU/EN UI.
-- [ ] После merge: проверить, что GitHub реально показывает обе `.yml` Issue Forms из default branch.
+- [ ] После merge проверить, что GitHub реально показывает обе `.yml` Issue Forms из default branch.
 - [ ] Controlled browser-unavailable smoke test, если среда позволяет воспроизвести сценарий.
 
 ## Manual network checks
@@ -114,6 +137,7 @@
 - [x] GitHub update check не содержит PAT/OAuth write credential.
 - [x] GitHub feedback не содержит PAT/OAuth write credential и не отправляет Issue через Android API.
 - [x] Release keystore/credentials исключены из Git.
+- [x] `ADD_TO_PROJECT_PAT` не хранится в Git и не передаётся в PR code.
 - [x] TLS certificate/hostname verification не отключается для target checks.
 - [ ] Проверить final diff/history на случайно добавленные secrets перед tag.
 
@@ -122,8 +146,9 @@
 - [x] #9 — Update Delivery implementation.
 - [ ] #9 — оставшийся controlled update-available smoke test.
 - [x] #10 — Feedback / GitHub Issues implementation.
-- [ ] #10 — physical + post-merge Issue Form smoke test по разделу выше.
-- [ ] #11 — trusted CI, Project Sync и release orchestration.
+- [ ] #10 — post-merge Issue Form smoke test.
+- [x] #11 — Trusted CI / Project Sync / Release automation implementation.
+- [ ] #11 — post-merge self-hosted/Project Sync integration smoke tests и signed release dry run.
 
 ## Release documentation
 
@@ -133,7 +158,7 @@
 - [ ] Создать синхронный `docs/releases/v1.0.0_EN.md`.
 - [ ] Использовать фиксированный порядок `О релизе / Главное / Изменения / Установка и обновление / Проверено / Известные проблемы / Артефакты / Ссылки`.
 - [ ] Указать только реально выполненные verification steps.
-- [ ] Посчитать SHA-256 финального release APK.
+- [ ] Получить фактический SHA-256 из `dist/SHA256SUMS.txt` финального release build.
 - [ ] Проверить APK через `apksigner verify --print-certs`.
 - [ ] Убедиться, что release certificate совпадает с официальным предыдущим release, если заявляется in-place update.
 - [ ] GitHub Release должен ссылаться на release notes через tag `v1.0.0`, а не через mutable `main`.
