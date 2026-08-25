@@ -2,6 +2,7 @@ package com.whitelistchecker.data.update
 
 import com.whitelistchecker.domain.update.ReleaseSourceResult
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -51,6 +52,30 @@ class GitHubReleaseJsonParserTest {
         assertEquals(
             "https://github.com/Regstar2/white-list-checker/releases/tag/v1.2.0-rc.1",
             GitHubReleaseSource.officialReleasePage("v1.2.0-rc.1"),
+        )
+    }
+
+    @Test
+    fun `latest stable web redirect becomes official release`() {
+        val release = GitHubReleaseSource.latestStableReleaseFromFinalUrl(
+            "https://github.com/Regstar2/white-list-checker/releases/tag/v1.1.0",
+        )
+
+        requireNotNull(release)
+        assertEquals("v1.1.0", release.tagName)
+        assertEquals(false, release.isPreRelease)
+        assertEquals(
+            "https://github.com/Regstar2/white-list-checker/releases/tag/v1.1.0",
+            release.pageUrl,
+        )
+    }
+
+    @Test
+    fun `latest stable web parser rejects foreign repository`() {
+        assertNull(
+            GitHubReleaseSource.latestStableReleaseFromFinalUrl(
+                "https://github.com/example/other/releases/tag/v9.9.9",
+            ),
         )
     }
 }
