@@ -10,7 +10,7 @@ Android application for checking cellular-network availability and detecting obs
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
-[Quick start](#quick-start) · [Documentation](#documentation) · [Releases](https://github.com/Regstar2/white-list-checker/releases)
+[Quick start](#quick-start) · [Screenshots](#screenshots) · [Documentation](#documentation) · [Releases](https://github.com/Regstar2/white-list-checker/releases)
 
 </div>
 
@@ -31,6 +31,16 @@ The stable release includes the local-first refactor, Room migration `7 -> 8` wi
 The home screen also reflects the current UI: six primary quick actions form a balanced grid, while About is opened through the compact information icon in the header.
 
 Current stable APK: `WhiteListChecker-v1.0.0-release.apk`. Its checksum is published next to the APK in `SHA256SUMS.txt`.
+
+## Screenshots
+
+| Home | Statistics | Site checks |
+| --- | --- | --- |
+| <img src="docs/assets/screenshots/home.jpg" width="220" alt="WhiteListChecker home screen"> | <img src="docs/assets/screenshots/statistics.jpg" width="220" alt="WhiteListChecker statistics screen"> | <img src="docs/assets/screenshots/check-sites.jpg" width="220" alt="Site check settings"> |
+| DNS settings | Background checks | Active monitoring |
+| <img src="docs/assets/screenshots/check-dns.jpg" width="220" alt="DNS resolver settings"> | <img src="docs/assets/screenshots/background-checks.jpg" width="220" alt="Background check settings"> | <img src="docs/assets/screenshots/active-monitoring.jpg" width="220" alt="Active monitoring settings"> |
+| Local notifications |  |  |
+| <img src="docs/assets/screenshots/local-notifications.jpg" width="220" alt="Local notification settings"> |  |  |
 
 ## Features
 

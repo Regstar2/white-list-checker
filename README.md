@@ -10,7 +10,7 @@ Android-приложение для проверки доступности мо
 [![Android](https://img.shields.io/badge/Android-minSdk%2026-green)](app/build.gradle.kts)
 [![License](https://img.shields.io/badge/License-MIT-lightgrey)](LICENSE)
 
-[Быстрый старт](#быстрый-старт) · [Документация](#документация) · [Релизы](https://github.com/Regstar2/white-list-checker/releases)
+[Быстрый старт](#быстрый-старт) · [Скриншоты](#скриншоты) · [Документация](#документация) · [Релизы](https://github.com/Regstar2/white-list-checker/releases)
 
 </div>
 
@@ -31,6 +31,16 @@ WhiteListChecker проверяет локальные и внешние сай�
 Главный экран также приведён к текущему UI: шесть основных быстрых действий образуют симметричную сетку, а переход в «О приложении» находится в компактной иконке в правой части шапки.
 
 Актуальный стабильный APK: `WhiteListChecker-v1.0.0-release.apk`. Контрольная сумма публикуется рядом с APK в `SHA256SUMS.txt`.
+
+## Скриншоты
+
+| Главный экран | Статистика | Настройки сайтов |
+| --- | --- | --- |
+| <img src="docs/assets/screenshots/home.jpg" width="220" alt="Главный экран WhiteListChecker"> | <img src="docs/assets/screenshots/statistics.jpg" width="220" alt="Экран статистики WhiteListChecker"> | <img src="docs/assets/screenshots/check-sites.jpg" width="220" alt="Настройки проверяемых сайтов"> |
+| Настройки DNS | Фоновая проверка | Активный мониторинг |
+| <img src="docs/assets/screenshots/check-dns.jpg" width="220" alt="Настройки DNS resolver"> | <img src="docs/assets/screenshots/background-checks.jpg" width="220" alt="Настройки фоновой проверки"> | <img src="docs/assets/screenshots/active-monitoring.jpg" width="220" alt="Настройки активного мониторинга"> |
+| Локальные уведомления |  |  |
+| <img src="docs/assets/screenshots/local-notifications.jpg" width="220" alt="Настройки локальных уведомлений"> |  |  |
 
 ## Возможности
 
