@@ -13,12 +13,12 @@ WhiteListChecker — Android-приложение для локальной ди
 - не передаёт рекламному SDK объект Android `Network`, который отдельно получает для диагностической cellular-проверки;
 - не привязывает рекламный трафик к измеряемому checker path;
 - явно отключает передачу геолокации в Yandex Mobile Ads через `YandexAds.setLocationTracking(false)`;
-- передаёт в SDK выбранное пользователем состояние согласия через `YandexAds.setUserConsent(...)`;
+- не запрашивает согласие на персонализированную/таргетированную рекламу и всегда передаёт `YandexAds.setUserConsent(false)`;
 - не делает просмотр рекламы условием доступа к проверке сети.
 
 Согласно документации Yandex Mobile Ads, SDK может обрабатывать технические данные устройства и рекламные/другие идентификаторы, если они доступны на устройстве и разрешены системой. Эти данные используются рекламной системой для показа, измерения и защиты рекламы. Передача данных SDK выполняется по защищённому сетевому соединению.
 
-При выборе ограниченного режима WhiteListChecker передаёт `userConsent = false`. Конкретная доступность и состав рекламы при таком состоянии определяются Yandex Mobile Ads и применимыми требованиями региона.
+Конкретная доступность и состав рекламы при `userConsent = false` определяются Yandex Mobile Ads и применимыми требованиями региона.
 
 ## Основная диагностика
 
@@ -32,9 +32,9 @@ WhiteListChecker получает отдельный cellular `Network` чере
 
 Личный Telegram является необязательной функцией. Если пользователь включает её, явно отправляемые данные проходят через настроенный самим пользователем Worker и Telegram согласно настройкам пользователя и политикам этих сервисов.
 
-## Управление согласием
+## Рекламные настройки
 
-При первом запуске сборки с включённой рекламой приложение предлагает выбрать персонализированную рекламу или ограниченный режим. Выбор хранится локально на устройстве и может быть изменён в разделе «Настройки» → «Реклама и конфиденциальность».
+WhiteListChecker не показывает запрос на включение персонализированной рекламы. Персонализация со стороны приложения отключена: при инициализации Yandex Mobile Ads передаётся `userConsent = false`, а отслеживание местоположения отключается.
 
 ## Контакты
 
@@ -57,12 +57,12 @@ The application:
 - does not pass the Android `Network` object obtained for cellular diagnostics to the advertising SDK;
 - does not bind advertising traffic to the checker path being measured;
 - explicitly disables location tracking in Yandex Mobile Ads with `YandexAds.setLocationTracking(false)`;
-- passes the user's consent choice to the SDK with `YandexAds.setUserConsent(...)`;
+- does not request consent for personalized/targeted advertising and always passes `YandexAds.setUserConsent(false)`;
 - never requires viewing an advertisement to use the network checker.
 
 According to Yandex Mobile Ads documentation, the SDK may process technical device data and advertising/other identifiers when they are available and permitted by the operating system. The advertising system uses this information for ad delivery, measurement, and protection. SDK data is transferred over encrypted network connections.
 
-When limited mode is selected, WhiteListChecker passes `userConsent = false`. The exact availability and composition of advertising in this state is controlled by Yandex Mobile Ads and applicable regional requirements.
+The exact availability and composition of advertising while `userConsent = false` is controlled by Yandex Mobile Ads and applicable regional requirements.
 
 ## Core diagnostics
 
@@ -76,9 +76,9 @@ Update checks and external links use Android's normal network policy.
 
 Personal Telegram integration is optional. If enabled, data explicitly submitted by the user passes through the user's own configured Worker and Telegram according to the user's settings and those services' policies.
 
-## Consent controls
+## Advertising controls
 
-On first launch of a build with advertising enabled, the application offers a choice between personalized advertising and limited mode. The choice is stored locally and can be changed under Settings → Ads and privacy.
+WhiteListChecker does not display a prompt to enable personalized advertising. Personalization is disabled by the application: Yandex Mobile Ads is initialized with `userConsent = false`, and location tracking is disabled.
 
 ## Contact
 
