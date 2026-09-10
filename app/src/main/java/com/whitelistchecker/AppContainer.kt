@@ -74,6 +74,7 @@ class AppContainer(context: Context) {
     private val appContext = context.applicationContext
     private val connectivityManager = appContext.getSystemService(ConnectivityManager::class.java)
     private val appVersionProvider = PackageAppVersionProvider(appContext)
+    private val dnsDiagnosticsEnabled = BuildConfig.DNS_DIAGNOSTICS_ENABLED
 
     val database: AppDatabase = AppDatabase.getInstance(appContext)
 
@@ -178,15 +179,19 @@ class AppContainer(context: Context) {
     private val whitelistCheckUseCase = WhitelistCheckUseCase(
         connectivityManager = connectivityManager,
         targetsRepository = checkTargetsRepository,
-        dnsServersRepository = dnsServersRepository,
+        dnsServersRepository = if (dnsDiagnosticsEnabled) dnsServersRepository else null,
         cellularNetworkProvider = CellularNetworkProvider(connectivityManager),
-        dnsProbe = CellularDnsProbe(),
-        dnsResolverFactory = CellularDnsResolverFactory(),
+        dnsProbe = if (dnsDiagnosticsEnabled) CellularDnsProbe() else null,
+        dnsResolverFactory = if (dnsDiagnosticsEnabled) CellularDnsResolverFactory() else null,
         mobileSiteChecker = MobileSiteChecker(),
-        dnsSignalClassifier = DnsWhitelistSignalClassifier(),
+        dnsSignalClassifier = if (dnsDiagnosticsEnabled) DnsWhitelistSignalClassifier() else null,
         classifier = WhitelistStateClassifier(),
         networkDiagnosticsUseCase = NetworkDiagnosticsUseCase(),
-        privateDnsDiagnosticsProvider = PrivateDnsDiagnosticsProvider(connectivityManager),
+        privateDnsDiagnosticsProvider = if (dnsDiagnosticsEnabled) {
+            PrivateDnsDiagnosticsProvider(connectivityManager)
+        } else {
+            null
+        },
     )
 
     private val whitelistMonitorUseCase = WhitelistMonitorUseCase(
@@ -264,6 +269,7 @@ class AppContainer(context: Context) {
 
     val detailedReportFormatter = DetailedReportFormatter(
         textProvider = AndroidDetailedReportTextProvider(appContext),
+        dnsDiagnosticsEnabled = dnsDiagnosticsEnabled,
     )
     val telegramWorkerClientForUi = telegramWorkerClient
     val telegramEventNotifierUseCaseForUi = telegramEventNotifierUseCase
