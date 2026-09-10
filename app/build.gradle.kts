@@ -40,6 +40,7 @@ android {
         targetSdk = 35
         versionCode = 26
         versionName = "1.0.0"
+        buildConfigField("boolean", "DNS_DIAGNOSTICS_ENABLED", "true")
     }
 
     signingConfigs {
@@ -63,6 +64,13 @@ android {
                 getDefaultProguardFile("proguard-android-optimize.txt"),
                 "proguard-rules.pro",
             )
+        }
+        create("rustoreRelease") {
+            initWith(getByName("release"))
+            matchingFallbacks += listOf("release")
+            buildConfigField("boolean", "DNS_DIAGNOSTICS_ENABLED", "false")
+            isMinifyEnabled = true
+            isShrinkResources = true
         }
     }
 
