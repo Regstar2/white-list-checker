@@ -13,9 +13,11 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.repeatOnLifecycle
+import com.whitelistchecker.BuildConfig
 import com.whitelistchecker.ui.autocheck.AutoCheckScreen
 import com.whitelistchecker.ui.about.AboutScreen
 import com.whitelistchecker.ui.checksettings.CheckSettingsScreen
+import com.whitelistchecker.ui.checksettings.RustoreCheckSettingsScreen
 import com.whitelistchecker.ui.diagnostics.DiagnosticsScreen
 import com.whitelistchecker.ui.home.HomeScreen
 import com.whitelistchecker.ui.navigation.AppScreen
@@ -128,18 +130,31 @@ fun MainScreen(
             onRetryQueue = viewModel::retryPendingTelegramReports,
             onClearQueue = viewModel::clearPendingTelegramReports,
         )
-        AppScreen.CHECK_SETTINGS -> CheckSettingsScreen(
-            uiState = uiState,
-            onBack = viewModel::goHome,
-            onToggleTarget = viewModel::setCheckTargetEnabled,
-            onAddTarget = viewModel::addCheckTarget,
-            onResetTargets = viewModel::resetCheckTargets,
-            onRemoveTarget = viewModel::removeCheckTarget,
-            onToggleDns = viewModel::setDnsServerEnabled,
-            onAddDns = viewModel::addDnsServer,
-            onResetDns = viewModel::resetDnsServers,
-            onRemoveDns = viewModel::removeDnsServer,
-        )
+        AppScreen.CHECK_SETTINGS -> {
+            if (BuildConfig.DNS_DIAGNOSTICS_ENABLED) {
+                CheckSettingsScreen(
+                    uiState = uiState,
+                    onBack = viewModel::goHome,
+                    onToggleTarget = viewModel::setCheckTargetEnabled,
+                    onAddTarget = viewModel::addCheckTarget,
+                    onResetTargets = viewModel::resetCheckTargets,
+                    onRemoveTarget = viewModel::removeCheckTarget,
+                    onToggleDns = viewModel::setDnsServerEnabled,
+                    onAddDns = viewModel::addDnsServer,
+                    onResetDns = viewModel::resetDnsServers,
+                    onRemoveDns = viewModel::removeDnsServer,
+                )
+            } else {
+                RustoreCheckSettingsScreen(
+                    uiState = uiState,
+                    onBack = viewModel::goHome,
+                    onToggleTarget = viewModel::setCheckTargetEnabled,
+                    onAddTarget = viewModel::addCheckTarget,
+                    onResetTargets = viewModel::resetCheckTargets,
+                    onRemoveTarget = viewModel::removeCheckTarget,
+                )
+            }
+        }
         AppScreen.AUTO_CHECK -> AutoCheckScreen(
             uiState = uiState,
             onBack = viewModel::goHome,
