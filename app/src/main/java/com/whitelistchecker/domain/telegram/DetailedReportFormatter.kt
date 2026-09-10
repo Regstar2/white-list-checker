@@ -9,6 +9,7 @@ import com.whitelistchecker.ui.toDisplayDateTime
 
 class DetailedReportFormatter(
     private val textProvider: DetailedReportTextProvider,
+    private val dnsDiagnosticsEnabled: Boolean = true,
 ) {
 
     fun formatCheckResult(result: NetworkCheckResult): String {
@@ -19,36 +20,40 @@ class DetailedReportFormatter(
             appendLine()
             appendLine(text(DetailedReportTextKey.FINAL_STATE, result.state.name))
             appendLine(text(DetailedReportTextKey.SITE_SIGNAL, result.siteState.name))
-            appendLine(text(DetailedReportTextKey.DNS_SIGNAL, result.dnsSignal.name))
+            if (dnsDiagnosticsEnabled) {
+                appendLine(text(DetailedReportTextKey.DNS_SIGNAL, result.dnsSignal.name))
+            }
             appendLine(text(DetailedReportTextKey.CHECKED_NETWORK, result.checkedNetworkLabel))
             appendLine(text(DetailedReportTextKey.ACTIVE_NETWORK, result.activeNetworkLabel))
-            appendLine(
-                text(
-                    DetailedReportTextKey.PRIVATE_DNS,
+            if (dnsDiagnosticsEnabled) {
+                appendLine(
                     text(
-                        if (result.privateDnsActive) {
-                            DetailedReportTextKey.ACTIVE
-                        } else {
-                            DetailedReportTextKey.INACTIVE
-                        },
+                        DetailedReportTextKey.PRIVATE_DNS,
+                        text(
+                            if (result.privateDnsActive) {
+                                DetailedReportTextKey.ACTIVE
+                            } else {
+                                DetailedReportTextKey.INACTIVE
+                            },
+                        ),
                     ),
-                ),
-            )
-            result.privateDnsServerName?.let { serverName ->
-                appendLine(text(DetailedReportTextKey.PRIVATE_DNS_SERVER, serverName))
+                )
+                result.privateDnsServerName?.let { serverName ->
+                    appendLine(text(DetailedReportTextKey.PRIVATE_DNS_SERVER, serverName))
+                }
+                appendLine(
+                    text(
+                        DetailedReportTextKey.CUSTOM_DNS,
+                        text(
+                            if (result.customDnsUsed) {
+                                DetailedReportTextKey.USED
+                            } else {
+                                DetailedReportTextKey.NOT_USED
+                            },
+                        ),
+                    ),
+                )
             }
-            appendLine(
-                text(
-                    DetailedReportTextKey.CUSTOM_DNS,
-                    text(
-                        if (result.customDnsUsed) {
-                            DetailedReportTextKey.USED
-                        } else {
-                            DetailedReportTextKey.NOT_USED
-                        },
-                    ),
-                ),
-            )
             appendLine(
                 text(
                     DetailedReportTextKey.FOREIGN_SITES_SUMMARY,
@@ -63,23 +68,25 @@ class DetailedReportFormatter(
                     local.totalCount,
                 ),
             )
-            result.foreignDnsSummary?.let { summary ->
-                appendLine(
-                    text(
-                        DetailedReportTextKey.FOREIGN_DNS_SUMMARY,
-                        summary.availableCount,
-                        summary.totalCount,
-                    ),
-                )
-            }
-            result.localDnsSummary?.let { summary ->
-                appendLine(
-                    text(
-                        DetailedReportTextKey.LOCAL_DNS_SUMMARY,
-                        summary.availableCount,
-                        summary.totalCount,
-                    ),
-                )
+            if (dnsDiagnosticsEnabled) {
+                result.foreignDnsSummary?.let { summary ->
+                    appendLine(
+                        text(
+                            DetailedReportTextKey.FOREIGN_DNS_SUMMARY,
+                            summary.availableCount,
+                            summary.totalCount,
+                        ),
+                    )
+                }
+                result.localDnsSummary?.let { summary ->
+                    appendLine(
+                        text(
+                            DetailedReportTextKey.LOCAL_DNS_SUMMARY,
+                            summary.availableCount,
+                            summary.totalCount,
+                        ),
+                    )
+                }
             }
             appendLine(text(DetailedReportTextKey.CHECK_TIME, result.checkedAtMillis.toDisplayDateTime()))
             result.diagnosticsMessage?.let { diagnostics ->
@@ -89,8 +96,10 @@ class DetailedReportFormatter(
                 appendLine(text(DetailedReportTextKey.ERROR, error))
             }
             appendLine()
-            appendDnsResults(result)
-            appendLine()
+            if (dnsDiagnosticsEnabled) {
+                appendDnsResults(result)
+                appendLine()
+            }
             appendSiteResults(result)
         }.trim()
     }
